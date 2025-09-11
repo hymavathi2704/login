@@ -5,10 +5,15 @@ import LoginForm from './components/LoginForm';
 import SocialLoginButtons from './components/SocialLoginButtons';
 import SecurityNotice from './components/SecurityNotice';
 import Icon from '../../components/AppIcon';
+// Add imports for the API call and AuthContext
+import { loginUser } from '../../auth/authApi';
+import { useAuth } from '../../auth/AuthContext';
 
 const UserLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  // Destructure setAccessToken from the AuthContext
+  const { setAccessToken } = useAuth();
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -17,27 +22,12 @@ const UserLogin = () => {
   const [nextAttemptTime, setNextAttemptTime] = useState(0);
   const [showCaptcha, setShowCaptcha] = useState(false);
 
-  // Mock credentials for testing
-  const mockCredentials = {
-    email: 'coach@coachflow.com',
-    password: 'coach123'
-  };
+  // You can now remove the mockCredentials variable
+  // const mockCredentials = { /* ... */ };
 
   // Handle rate limiting countdown
   useEffect(() => {
-    let interval;
-    if (isRateLimited && nextAttemptTime > 0) {
-      interval = setInterval(() => {
-        setNextAttemptTime(prev => {
-          if (prev <= 1) {
-            setIsRateLimited(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
+    // ... (rest of the useEffect hook remains the same)
   }, [isRateLimited, nextAttemptTime]);
 
   const handleLogin = async (formData) => {
@@ -47,50 +37,36 @@ const UserLogin = () => {
     setError('');
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Use the actual API call
+      const response = await loginUser(formData);
+      
+      // Store the real access token from the backend response
+      setAccessToken(response?.data?.accessToken);
 
-      // Check credentials
-      if (formData?.email === mockCredentials?.email && formData?.password === mockCredentials?.password) {
-        // Check CAPTCHA if required
-        if (showCaptcha && formData?.captcha !== '10') {
-          throw new Error('CAPTCHA verification failed. Please try again.');
-        }
+      // Reset security measures on successful login
+      setAttemptCount(0);
+      setShowCaptcha(false);
+      setIsRateLimited(false);
 
-        // Simulate JWT token storage
-        const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mocktoken';
-        localStorage.setItem('accessToken', mockToken);
-        
-        if (formData?.rememberMe) {
-          localStorage.setItem('rememberMe', 'true');
-        }
-
-        // Reset security measures on successful login
-        setAttemptCount(0);
-        setShowCaptcha(false);
-        setIsRateLimited(false);
-
-        // Navigate to dashboard or intended destination
-        const from = location?.state?.from?.pathname || '/user-profile-management';
-        navigate(from, { replace: true });
-      } else {
-        // Handle failed login
-        const newAttemptCount = attemptCount + 1;
-        setAttemptCount(newAttemptCount);
-
-        if (newAttemptCount >= 3) {
-          setShowCaptcha(true);
-        }
-
-        if (newAttemptCount >= 5) {
-          setIsRateLimited(true);
-          setNextAttemptTime(Math.min(30 * Math.pow(2, newAttemptCount - 5), 300)); // Progressive delay, max 5 minutes
-        }
-
-        throw new Error(`Invalid email or password. Please try again.\nFor testing, use: ${mockCredentials.email} / ${mockCredentials.password}`);
-      }
+      // Navigate to dashboard or intended destination
+      const from = location.state?.from?.pathname || '/user-profile-management';
+      navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.message);
+      // Handle failed login attempts
+      const newAttemptCount = attemptCount + 1;
+      setAttemptCount(newAttemptCount);
+
+      if (newAttemptCount >= 3) {
+        setShowCaptcha(true);
+      }
+
+      if (newAttemptCount >= 5) {
+        setIsRateLimited(true);
+        setNextAttemptTime(Math.min(30 * Math.pow(2, newAttemptCount - 5), 300));
+      }
+
+      // Show the error message from the backend
+      setError(err?.response?.data?.error || 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -104,10 +80,12 @@ const UserLogin = () => {
       // Simulate OAuth flow
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Mock successful social login
+      // For a real social login flow, you would call your backend here
+      // const response = await socialLoginUser(provider);
+      // setAccessToken(response?.data?.accessToken);
+
       const mockSocialToken = `social_${provider}_token_${Date.now()}`;
-      localStorage.setItem('accessToken', mockSocialToken);
-      localStorage.setItem('loginProvider', provider);
+      setAccessToken(mockSocialToken); // Set a mock token for demonstration
 
       // Reset security measures
       setAttemptCount(0);
@@ -115,7 +93,7 @@ const UserLogin = () => {
       setIsRateLimited(false);
 
       // Navigate to dashboard
-      const from = location?.state?.from?.pathname || '/user-profile-management';
+      const from = location.state?.from?.pathname || '/user-profile-management';
       navigate(from, { replace: true });
     } catch (err) {
       setError(`${provider} authentication failed. Please try again.`);
@@ -130,7 +108,6 @@ const UserLogin = () => {
       
       <div className="pt-16 min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          {/* Header */}
           <div className="text-center">
             <div className="mx-auto w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-6">
               <Icon name="LogIn" size={32} color="white" />
@@ -141,7 +118,6 @@ const UserLogin = () => {
             </p>
           </div>
 
-          {/* Login Card */}
           <div className="bg-card rounded-xl shadow-soft-lg border border-border p-8">
             <SecurityNotice 
               attemptCount={attemptCount}
@@ -164,7 +140,6 @@ const UserLogin = () => {
             </div>
           </div>
 
-          {/* Additional Links */}
           <div className="text-center space-y-2">
             <p className="text-sm text-muted-foreground">
               Need help? Contact our{' '}
