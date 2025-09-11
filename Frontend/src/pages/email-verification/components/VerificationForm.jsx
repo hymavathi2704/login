@@ -26,7 +26,8 @@ const VerificationForm = ({
   const handleVerifySubmit = (e) => {
     e?.preventDefault();
     if (verificationCode?.trim()?.length === 6) {
-      onVerifyToken(verificationCode?.trim());
+      // Pass both the email and the code
+      onVerifyToken(userEmail, verificationCode?.trim());
     }
   };
 

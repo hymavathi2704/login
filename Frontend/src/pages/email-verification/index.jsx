@@ -1,23 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import Header from '../../components/ui/Header';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 import VerificationForm from './components/VerificationForm';
 import TroubleshootingGuide from './components/TroubleshootingGuide';
 import VerificationStatus from './components/VerificationStatus';
+import authApi from '../../auth/authApi';
 
 const EmailVerification = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { token } = useParams();
   
-  // Mock user data - in real app this would come from auth context
-  const mockUser = {
-    email: "sarah.johnson@example.com",
-    name: "Sarah Johnson",
-    isVerified: false
-  };
-
   // State management
   const [verificationStatus, setVerificationStatus] = useState('pending');
   const [isLoading, setIsLoading] = useState(false);
@@ -25,14 +20,14 @@ const EmailVerification = () => {
   const [success, setSuccess] = useState(false);
   const [showTroubleshooting, setShowTroubleshooting] = useState(false);
   const [progress, setProgress] = useState(25);
+  const [userEmail, setUserEmail] = useState(searchParams.get('email') || '');
 
   // Check for token in URL params (from email link)
   useEffect(() => {
-    const token = searchParams?.get('token');
     if (token) {
       handleAutoVerification(token);
     }
-  }, [searchParams]);
+  }, [token]);
 
   // Auto-redirect after successful verification
   useEffect(() => {
@@ -46,47 +41,45 @@ const EmailVerification = () => {
     }
   }, [success, navigate]);
 
-  const handleAutoVerification = async (token) => {
+  const handleAutoVerification = async (verificationToken) => {
     setIsLoading(true);
     setError('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock validation - in real app this would validate against backend
-      if (token === 'valid-token-123') {
+      // Call the backend API to verify the email with the token from the URL
+      const response = await authApi.verifyEmail(userEmail, verificationToken); // Updated to pass email and token
+      if (response?.message) {
         setSuccess(true);
         setVerificationStatus('success');
         setProgress(100);
       } else {
-        throw new Error('Invalid or expired verification token');
+        throw new Error(response.error || 'Invalid or expired verification token');
       }
     } catch (err) {
-      setError(err?.message);
+      console.error(err);
+      setError(err?.message || 'There was an issue verifying your email. Please try again or contact support if the problem persists.');
       setVerificationStatus('error');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleVerifyToken = async (code) => {
+  const handleVerifyCode = async (email, code) => {
     setIsLoading(true);
     setError('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await authApi.verifyEmail(email, code);
       
-      // Mock validation - accept code "123456" as valid
-      if (code === '123456') {
+      if (response?.message) {
         setSuccess(true);
         setVerificationStatus('success');
         setProgress(100);
       } else {
-        throw new Error('Invalid verification code. Please check and try again.');
+        throw new Error(response.error || 'Invalid verification code. Please check and try again.');
       }
     } catch (err) {
+      console.error(err);
       setError(err?.message);
       setVerificationStatus('error');
     } finally {
@@ -96,13 +89,12 @@ const EmailVerification = () => {
 
   const handleResendEmail = async () => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      setIsLoading(true);
       setError('');
+      await authApi.resendVerificationEmail(userEmail);
+      
       setProgress(50);
       
-      // Show success message briefly
       const originalStatus = verificationStatus;
       setVerificationStatus('pending');
       
@@ -112,23 +104,24 @@ const EmailVerification = () => {
       
     } catch (err) {
       setError('Failed to resend email. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleContactSupport = () => {
-    // In real app, this would open support chat or redirect to support page
     console.log('Contact support clicked');
-    alert('Support contact feature would be implemented here');
+    console.log('Support contact feature would be implemented here');
   };
 
   const getStatusMessage = () => {
     switch (verificationStatus) {
       case 'pending':
-        return `We've sent a verification email to ${mockUser?.email}. Please check your inbox and click the verification link, or enter the 6-digit code below.`;
+        return `We've sent a verification email to ${userEmail || 'your email address'}. Please check your inbox and enter the code below.`;
       case 'success':
         return 'Your email has been successfully verified! You now have full access to your CoachFlow account.';
       case 'error':
-        return 'There was an issue verifying your email. Please try again or contact support if the problem persists.';
+        return error;
       case 'expired':
         return 'Your verification code has expired. Please request a new verification email to continue.';
       default:
@@ -169,8 +162,8 @@ const EmailVerification = () => {
                 
                 {!success && (
                   <VerificationForm
-                    userEmail={mockUser?.email}
-                    onVerifyToken={handleVerifyToken}
+                    userEmail={userEmail}
+                    onVerifyToken={handleVerifyCode} // Renamed prop to better reflect purpose
                     onResendEmail={handleResendEmail}
                     isLoading={isLoading}
                     error={error}
@@ -255,60 +248,34 @@ const EmailVerification = () => {
                     <TroubleshootingGuide onContactSupport={handleContactSupport} />
                   </div>
                 )}
-
-                {/* Alternative Actions */}
-                <div className="bg-muted/50 rounded-lg p-6 text-center">
-                  <h4 className="font-medium text-foreground mb-3">
-                    Need to use a different email?
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    If you entered the wrong email address, you can create a new account.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button
-                      variant="outline"
-                      asChild
-                      iconName="UserPlus"
-                      iconPosition="left"
-                    >
-                      <Link to="/user-registration">Register Again</Link>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      asChild
-                      iconName="LogIn"
-                      iconPosition="left"
-                    >
-                      <Link to="/user-login">Back to Login</Link>
-                    </Button>
-                  </div>
-                </div>
               </div>
             </div>
 
-            {/* Footer Links */}
-            <div className="mt-12 text-center">
-              <div className="flex flex-wrap justify-center gap-6 text-sm">
-                <Link 
-                  to="/homepage" 
-                  className="text-muted-foreground hover:text-primary transition-colors"
+            {/* Alternative Actions */}
+            <div className="bg-muted/50 rounded-lg p-6 text-center">
+              <h4 className="font-medium text-foreground mb-3">
+                Need to use a different email?
+              </h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                If you entered the wrong email address, you can create a new account.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button
+                  variant="outline"
+                  asChild
+                  iconName="UserPlus"
+                  iconPosition="left"
                 >
-                  Back to Home
-                </Link>
-                <span className="text-border">•</span>
-                <button 
-                  onClick={handleContactSupport}
-                  className="text-muted-foreground hover:text-primary transition-colors"
+                  <Link to="/user-registration">Register Again</Link>
+                </Button>
+                <Button
+                  variant="ghost"
+                  asChild
+                  iconName="LogIn"
+                  iconPosition="left"
                 >
-                  Contact Support
-                </button>
-                <span className="text-border">•</span>
-                <Link 
-                  to="/user-login" 
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Sign In
-                </Link>
+                  <Link to="/user-login">Back to Login</Link>
+                </Button>
               </div>
             </div>
           </div>

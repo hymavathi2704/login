@@ -5,9 +5,11 @@ const User = require('../models/user');
 const { signAccessToken, signEmailToken, verifyToken } = require('../utils/jwt');
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
 const { Op } = require('sequelize');
+const { customAlphabet } = require('nanoid');
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
+const generateOtp = customAlphabet('0123456789', 6);
 
 async function register(req, res) {
   const { name, email, password } = req.body;
@@ -19,18 +21,22 @@ async function register(req, res) {
 
   const id = uuidv4();
   const hash = await bcrypt.hash(password, SALT_ROUNDS);
-  const verificationToken = signEmailToken({ userId: id, email });
+  
+  // Generate a 6-digit OTP instead of a JWT token
+  const otp = generateOtp();
+  const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15); // OTP expires in 15 minutes
 
   const user = await User.create({
     id,
     name,
     email,
     password_hash: hash,
-    verification_token: verificationToken
+    verification_token: otp, // Use the OTP here
+    verification_token_expires_at: otp_expires_at // Add a timestamp for expiration
   });
 
-  // send verification email (async - but await to surface failures)
-  await sendVerificationEmail(email, verificationToken).catch(err => {
+  // send verification email with OTP
+  await sendVerificationEmail(email, otp).catch(err => {
     console.error('Email send failure:', err);
   });
 
@@ -38,21 +44,35 @@ async function register(req, res) {
 }
 
 async function verifyEmail(req, res) {
-  const { token } = req.params;
-  try {
-    const payload = verifyToken(token);
-    const user = await User.findOne({ where: { id: payload.userId, verification_token: token } });
-    if (!user) return res.status(400).json({ error: 'Invalid token or user' });
-
-    user.email_verified = true;
-    user.verification_token = null;
-    await user.save();
-
-    res.json({ message: 'Email verified' });
-  } catch (err) {
-    return res.status(400).json({ error: 'Invalid or expired token' });
+  const { email, otp } = req.body;
+  
+  if (!email || !otp) {
+    return res.status(400).json({ error: 'Email and OTP are required' });
   }
+
+  const user = await User.findOne({ where: { email } });
+
+  if (!user) {
+    return res.status(400).json({ error: 'Invalid email or OTP' });
+  }
+
+  // Check if OTP matches and has not expired
+  if (user.verification_token !== otp) {
+    return res.status(400).json({ error: 'Invalid OTP' });
+  }
+
+  if (new Date() > user.verification_token_expires_at) {
+    return res.status(400).json({ error: 'OTP expired' });
+  }
+
+  user.email_verified = true;
+  user.verification_token = null;
+  user.verification_token_expires_at = null;
+  await user.save();
+
+  res.json({ message: 'Email verified successfully' });
 }
+
 
 async function login(req, res) {
   const { email, password } = req.body;
@@ -97,11 +117,14 @@ async function resendVerification(req, res) {
   if (!user) return res.status(404).json({ error: 'User not found' });
   if (user.email_verified) return res.status(400).json({ error: 'Already verified' });
 
-  const verificationToken = signEmailToken({ userId: user.id, email: user.email });
-  user.verification_token = verificationToken;
+  const otp = generateOtp();
+  const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
+
+  user.verification_token = otp;
+  user.verification_token_expires_at = otp_expires_at;
   await user.save();
 
-  await sendVerificationEmail(email, verificationToken).catch(console.error);
+  await sendVerificationEmail(email, otp).catch(console.error);
   res.json({ message: 'Verification email resent' });
 }
 
@@ -151,8 +174,7 @@ async function socialLogin(req, res) {
   if (!['google','github'].includes(provider)) return res.status(400).json({ error: 'Unsupported provider' });
 
   // TODO: verify id_token with provider, get profile info (email, oauth_id, name)
-  // Example: suppose we have profile = { email, oauth_id, name }
-  const profile = { email: 'user@example.com', oauth_id: 'ext-id-123', name: 'Social User' }; // replace
+  // Example: suppose we have profile = { email: 'user@example.com', oauth_id: 'ext-id-123', name: 'Social User' }; // replace
 
   let user = await User.findOne({ where: { [Op.or]: [{ email: profile.email }, { oauth_id: profile.oauth_id }] } });
   if (!user) {
