@@ -1,20 +1,25 @@
 require('dotenv').config();
 const express = require('express');
-const helmet = require('helmet');
 const cors = require('cors');
+const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const sequelize = require('./config/db');
 const authRoutes = require('./routes/auth');
 
 const app = express();
 
+// ✅ Configure CORS (remove trailing slash and add credentials)
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true, // allows cookies/auth headers
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+
 app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
 
 app.use('/api/auth', authRoutes);
 
@@ -26,8 +31,7 @@ const PORT = process.env.PORT || 4028;
   try {
     await sequelize.authenticate();
     console.log('DB connected');
-    // For dev only: sync models (do NOT use in production migrations)
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: true }); // Dev only
     app.listen(PORT, () => console.log(`Server running on ${PORT}`));
   } catch (err) {
     console.error('Failed to start', err);
