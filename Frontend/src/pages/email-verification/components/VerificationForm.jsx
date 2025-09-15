@@ -25,13 +25,20 @@ const VerificationForm = ({
 
   const handleVerifySubmit = (e) => {
     e?.preventDefault();
-    if (verificationCode?.trim()?.length === 6) {
-      // Pass both the email and the code
-      onVerifyToken(userEmail, verificationCode?.trim());
+    const payload = {
+        email: userEmail,
+        code: verificationCode?.trim()
+    };
+    console.log('Verification form submitted with payload:', payload); // Debugging log
+
+    if (verificationCode?.trim()?.length === 6 && userEmail) {
+      onVerifyToken(payload.email, payload.code);
     }
   };
 
   const handleResendEmail = async () => {
+    if (!userEmail) return;
+
     setIsResending(true);
     await onResendEmail();
     setResendCooldown(60); // 60 second cooldown
@@ -42,6 +49,9 @@ const VerificationForm = ({
     const value = e?.target?.value?.replace(/\D/g, '')?.slice(0, 6);
     setVerificationCode(value);
   };
+  
+  // Disable button if email is missing or code is not 6 digits
+  const isDisabled = !userEmail || verificationCode?.length !== 6 || isLoading;
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -57,7 +67,7 @@ const VerificationForm = ({
             Verification email sent to
           </p>
           <p className="font-medium text-foreground break-all">
-            {userEmail}
+            {userEmail || '—'}
           </p>
         </div>
 
@@ -97,7 +107,7 @@ const VerificationForm = ({
           variant="default"
           fullWidth
           loading={isLoading}
-          disabled={verificationCode?.length !== 6 || isLoading}
+          disabled={isDisabled}
           iconName="Shield"
           iconPosition="left"
         >
@@ -113,7 +123,7 @@ const VerificationForm = ({
             type="button"
             variant="ghost"
             onClick={handleResendEmail}
-            disabled={resendCooldown > 0 || isResending}
+            disabled={resendCooldown > 0 || isResending || !userEmail}
             loading={isResending}
             iconName="RefreshCw"
             iconPosition="left"
