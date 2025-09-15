@@ -66,6 +66,7 @@ const LoginForm = ({ onSubmit, isLoading, error, showCaptcha }) => {
 
   const mockCaptchaQuestion = "What is 7 + 3?";
   const mockCaptchaAnswer = "10";
+  const isEmailNotVerifiedError = error === 'Email not verified';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -75,6 +76,21 @@ const LoginForm = ({ onSubmit, isLoading, error, showCaptcha }) => {
             <Icon name="AlertCircle" size={20} className="text-red-500 mr-3" />
             <p className="text-sm text-red-700">{error}</p>
           </div>
+          {isEmailNotVerifiedError && (
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                fullWidth
+                asChild
+                iconName="Mail"
+                iconPosition="left"
+              >
+                <Link to={`/email-verification?email=${encodeURIComponent(formData?.email)}`}>
+                  Verify Your Email
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       )}
       <div className="space-y-4">
