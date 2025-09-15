@@ -25,10 +25,15 @@ const EmailVerification = () => {
 
   // Check for token in URL params (from email link)
   useEffect(() => {
-    if (token) {
+    // If a token exists, and we have an email, attempt auto-verification
+    if (token && userEmail) {
       handleAutoVerification(token);
+    } else if (token && !userEmail) {
+      // If a token is present but email is not, set an error
+      setError('Email address is missing from the verification link. Please check your email and try again.');
+      setVerificationStatus('error');
     }
-  }, [token]);
+  }, [token, userEmail]);
 
   // Auto-redirect after successful verification
   useEffect(() => {
@@ -47,14 +52,14 @@ const EmailVerification = () => {
     setError('');
     
     try {
-      // Call the backend API to verify the email with the token from the URL
-      const response = await authApi.verifyEmail(userEmail, verificationToken); // Updated to pass email and token
-      if (response?.message) {
+      const response = await authApi.verifyEmail(userEmail, verificationToken);
+      
+      if (response?.status === 200) {
         setSuccess(true);
         setVerificationStatus('success');
         setProgress(100);
       } else {
-        throw new Error(response.error || 'Invalid or expired verification token');
+        throw new Error(response?.data?.error || 'Invalid or expired verification token');
       }
     } catch (err) {
       console.error(err);
@@ -77,11 +82,11 @@ const EmailVerification = () => {
         setVerificationStatus('success');
         setProgress(100);
       } else {
-        throw new Error(response.error || 'Invalid verification code. Please check and try again.');
+        throw new Error(response?.data?.error || 'Invalid verification code. Please check and try again.');
       }
     } catch (err) {
       console.error(err);
-      setError(err?.message);
+      setError(err?.response?.data?.error || err?.message);
       setVerificationStatus('error');
     } finally {
       setIsLoading(false);
@@ -89,6 +94,12 @@ const EmailVerification = () => {
   };
 
   const handleResendEmail = async () => {
+    if (!userEmail) {
+      setError('Could not resend email. The email address is missing. Please return to the registration page and try again.');
+      setVerificationStatus('error');
+      return;
+    }
+    
     try {
       setIsResendingEmail(true);
       setError('');
@@ -164,7 +175,7 @@ const EmailVerification = () => {
                 {!success && (
                   <VerificationForm
                     userEmail={userEmail}
-                    onVerifyToken={handleVerifyCode} // Renamed prop to better reflect purpose
+                    onVerifyToken={handleVerifyCode}
                     onResendEmail={handleResendEmail}
                     isLoading={isLoading}
                     error={error}

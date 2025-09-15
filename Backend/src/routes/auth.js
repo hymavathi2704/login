@@ -8,7 +8,7 @@ router.post('/register', authLimiter, auth.register);
 router.post('/login', authLimiter, auth.login);
 router.post('/social-login', authLimiter, auth.socialLogin);
 router.post('/send-verification', authLimiter, auth.resendVerification);
-router.get('/verify-email/:token', auth.verifyEmail);
+router.post('/verify-email', auth.verifyEmail); // Corrected this line to a POST request
 router.post('/forgot-password', authLimiter, auth.forgotPassword);
 router.post('/reset-password', authLimiter, auth.resetPassword);
 router.post('/logout', auth.logout);
