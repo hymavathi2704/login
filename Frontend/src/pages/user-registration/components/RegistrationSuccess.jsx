@@ -32,7 +32,7 @@ const RegistrationSuccess = ({ userEmail, onResendVerification, isResending }) =
               {userEmail}
             </p>
             <p className="text-sm text-blue-700 mt-3">
-              Please check your inbox and click the verification link to activate your account.
+              Please check your inbox and enter the verification code to activate your account.
             </p>
           </div>
         </div>
@@ -46,7 +46,7 @@ const RegistrationSuccess = ({ userEmail, onResendVerification, isResending }) =
           fullWidth
           asChild
         >
-          <Link to="/email-verification">
+          <Link to={`/email-verification?email=${encodeURIComponent(userEmail)}`}>
             Continue to Email Verification
           </Link>
         </Button>

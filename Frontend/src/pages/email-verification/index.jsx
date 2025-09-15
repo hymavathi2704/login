@@ -21,6 +21,7 @@ const EmailVerification = () => {
   const [showTroubleshooting, setShowTroubleshooting] = useState(false);
   const [progress, setProgress] = useState(25);
   const [userEmail, setUserEmail] = useState(searchParams.get('email') || '');
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
 
   // Check for token in URL params (from email link)
   useEffect(() => {
@@ -71,7 +72,7 @@ const EmailVerification = () => {
     try {
       const response = await authApi.verifyEmail(email, code);
       
-      if (response?.message) {
+      if (response?.status === 200) {
         setSuccess(true);
         setVerificationStatus('success');
         setProgress(100);
@@ -89,7 +90,7 @@ const EmailVerification = () => {
 
   const handleResendEmail = async () => {
     try {
-      setIsLoading(true);
+      setIsResendingEmail(true);
       setError('');
       await authApi.resendVerificationEmail(userEmail);
       
@@ -105,7 +106,7 @@ const EmailVerification = () => {
     } catch (err) {
       setError('Failed to resend email. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsResendingEmail(false);
     }
   };
 
