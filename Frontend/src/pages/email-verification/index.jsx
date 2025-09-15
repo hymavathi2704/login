@@ -25,11 +25,9 @@ const EmailVerification = () => {
 
   // Check for token in URL params (from email link)
   useEffect(() => {
-    // If a token exists, and we have an email, attempt auto-verification
     if (token && userEmail) {
       handleAutoVerification(token);
     } else if (token && !userEmail) {
-      // If a token is present but email is not, set an error
       setError('Email address is missing from the verification link. Please check your email and try again.');
       setVerificationStatus('error');
     }
