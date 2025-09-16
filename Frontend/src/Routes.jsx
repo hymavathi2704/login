@@ -9,7 +9,7 @@ import UserProfileManagement from './pages/user-profile-management';
 import UserRegistration from './pages/user-registration';
 import PasswordResetPage from './pages/password-reset';
 import Homepage from './pages/homepage';
-import PrivateRoute from "./auth/PrivateRoute"; // 🔥 import here
+import PrivateRoute from "./auth/PrivateRoute";
 
 const Routes = () => {
   return (
@@ -23,6 +23,7 @@ const Routes = () => {
           <Route path="/email-verification" element={<EmailVerification />} />
           <Route path="/user-registration" element={<UserRegistration />} />
           <Route path="/password-reset" element={<PasswordResetPage />} />
+          <Route path="/password-reset/:token" element={<PasswordResetPage />} /> {/* Add this line */}
 
           {/* Protected routes */}
           <Route
