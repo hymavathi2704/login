@@ -23,16 +23,13 @@ export default defineConfig({
       changeOrigin: true,
     },
   },
-  // ✅ Ensure all unknown routes fall back to index.html
   fs: {
     strict: false,
   },
-  middlewareMode: false,
   hmr: true,
-  historyApiFallback: {
-    index: '/index.html',  // 👈 Explicitly tell Vite to serve index.html
-  },
+  historyApiFallback: true,  // ✅ simpler and correct
 },
+
   resolve: {
     alias: {
       "components": path.resolve(__dirname, './src/components'),

@@ -1,3 +1,4 @@
+// Backend/src/utils/mailer.js
 const sgMail = require('@sendgrid/mail');
 require('dotenv').config();
 
@@ -24,7 +25,7 @@ const sendVerificationEmail = async (to, otp) => {
 
 // Send reset password email
 const sendResetPasswordEmail = async (to, token) => {
-  const url = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+  const url = `${process.env.FRONTEND_URL}/password-reset/${token}`; // <-- Corrected this line
   const msg = {
     to,
     from: process.env.FROM_EMAIL,
