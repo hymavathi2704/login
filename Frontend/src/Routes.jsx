@@ -18,12 +18,12 @@ const Routes = () => {
         <ScrollToTop />
         <RouterRoutes>
           {/* Public routes */}
-          <Route path="/" element={<EmailVerification />} />
+          <Route path="/" element={<Homepage />} />
           <Route path="/user-login" element={<UserLogin />} />
           <Route path="/email-verification" element={<EmailVerification />} />
           <Route path="/user-registration" element={<UserRegistration />} />
           <Route path="/password-reset" element={<PasswordResetPage />} />
-          <Route path="/password-reset/:token" element={<PasswordResetPage />} /> {/* Add this line */}
+          <Route path="/password-reset/:token" element={<PasswordResetPage />} />
 
           {/* Protected routes */}
           <Route
