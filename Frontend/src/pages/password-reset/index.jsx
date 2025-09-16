@@ -1,5 +1,6 @@
+// Frontend/src/pages/password-reset/index.jsx
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import Header from '../../components/ui/Header';
 import PasswordResetForm from './components/PasswordResetForm';
@@ -10,11 +11,11 @@ import RateLimitMessage from './components/RateLimitMessage';
 import authApi from '../../auth/authApi'; // Import authApi
 
 const PasswordResetPage = () => {
-  const [searchParams] = useSearchParams();
+  const { token } = useParams(); // Correctly use useParams to get the token from the URL path
   const navigate = useNavigate();
   
   // Get token from URL parameters
-  const tokenFromUrl = searchParams?.get('token');
+  const tokenFromUrl = token;
   
   // State management
   const [currentStep, setCurrentStep] = useState(tokenFromUrl ? 'new-password' : 'request-reset');
@@ -35,8 +36,6 @@ const PasswordResetPage = () => {
     currentAttempts: 5,
     maxAttempts: 5
   };
-
-  // The mockCredentials variable is removed as we will now use the real API.
 
   useEffect(() => {
     // Simulate checking if user is rate limited on component mount
