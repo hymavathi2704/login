@@ -1,3 +1,4 @@
+// Backend/src/server.js
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -8,15 +9,16 @@ const authRoutes = require('./routes/auth');
 
 const app = express();
 
-// ✅ Configure CORS (remove trailing slash and add credentials)
+// A more robust CORS configuration
 const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true, // allows cookies/auth headers
+  credentials: true,
   optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow OPTIONS
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
-
 app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());

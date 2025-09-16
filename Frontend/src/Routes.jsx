@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes as RouterRoutes, Route } from "react-router-dom";
+import { BrowserRouter, Routes as RouterRoutes, Route } from "react-router-dom"
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import NotFound from "pages/NotFound";
@@ -22,8 +22,9 @@ const Routes = () => {
           <Route path="/user-login" element={<UserLogin />} />
           <Route path="/email-verification" element={<EmailVerification />} />
           <Route path="/user-registration" element={<UserRegistration />} />
-          <Route path="/password-reset" element={<PasswordResetPage />} />
-          <Route path="/password-reset/:token" element={<PasswordResetPage />} />
+          <Route path="/reset-password/:token" element={<PasswordResetPage />} />
+          <Route path="/reset-password" element={<PasswordResetPage />} />
+
 
           {/* Protected routes */}
           <Route

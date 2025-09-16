@@ -11,9 +11,9 @@ import RateLimitMessage from './components/RateLimitMessage';
 import authApi from '../../auth/authApi'; // Import authApi
 
 const PasswordResetPage = () => {
-  const { token } = useParams(); // Correctly use useParams to get the token from the URL path
+  const { token } = useParams(); // This line is the key change
   const navigate = useNavigate();
-  
+
   // Get token from URL parameters
   const tokenFromUrl = token;
   
