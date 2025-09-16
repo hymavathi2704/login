@@ -7,6 +7,7 @@ import ResetConfirmation from './components/ResetConfirmation';
 import NewPasswordForm from './components/NewPasswordForm';
 import SuccessMessage from './components/SuccessMessage';
 import RateLimitMessage from './components/RateLimitMessage';
+import authApi from '../../auth/authApi'; // Import authApi
 
 const PasswordResetPage = () => {
   const [searchParams] = useSearchParams();
@@ -35,25 +36,12 @@ const PasswordResetPage = () => {
     maxAttempts: 5
   };
 
-  // Mock credentials for testing
-  const mockCredentials = {
-    validEmails: [
-      'coach@coachflow.com',
-      'trainer@coachflow.com',
-      'wellness@coachflow.com',
-      'business@coachflow.com'
-    ],
-    validTokens: [
-      'reset_token_123456',
-      'secure_reset_789012',
-      'password_reset_345678'
-    ]
-  };
+  // The mockCredentials variable is removed as we will now use the real API.
 
   useEffect(() => {
     // Simulate checking if user is rate limited on component mount
     const checkRateLimit = () => {
-      // Mock rate limit check - in real app this would be an API call
+      // Mock rate limit check - in a real app this would be an API call
       const isRateLimited = Math.random() < 0.1; // 10% chance of being rate limited
       
       if (isRateLimited) {
@@ -74,25 +62,25 @@ const PasswordResetPage = () => {
     setLoading(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Use the actual backend API call for forgot password
+      const response = await authApi.forgotPassword({ email: formData.email });
       
-      // Mock validation
-      if (!mockCredentials?.validEmails?.includes(formData?.email)) {
-        throw new Error('No account found with this email address. Please check your email or create a new account.');
+      // The backend returns a generic success message to prevent user enumeration
+      // We assume if the call is successful, the email was sent.
+      if (response.status === 200) {
+        setEmail(formData.email);
+        setCurrentStep('confirmation');
+      
+        // Start resend cooldown
+        setCanResend(false);
+        setTimeout(() => setCanResend(true), 60000); // 1 minute cooldown
       }
-      
-      setEmail(formData?.email);
-      setCurrentStep('confirmation');
-      
-      // Start resend cooldown
-      setCanResend(false);
-      setTimeout(() => setCanResend(true), 60000); // 1 minute cooldown
       
     } catch (error) {
       console.error('Password reset request failed:', error?.message);
-      // In a real app, you would show this error to the user
-      alert(error?.message);
+      // In a real app, you would show this error to the user,
+      // but for security, the backend's response is generic.
+      alert(error?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -104,8 +92,8 @@ const PasswordResetPage = () => {
     setResendLoading(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call the API to resend the verification email
+      await authApi.resendVerificationEmail(email);
       
       // Start new cooldown
       setCanResend(false);
@@ -113,6 +101,7 @@ const PasswordResetPage = () => {
       
     } catch (error) {
       console.error('Resend failed:', error?.message);
+      alert('Failed to resend email. Please try again.');
     } finally {
       setResendLoading(false);
     }
@@ -122,24 +111,14 @@ const PasswordResetPage = () => {
     setLoading(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock token validation
-      if (!mockCredentials?.validTokens?.includes(formData?.token)) {
-        throw new Error('Invalid or expired reset token. Please request a new password reset link.');
-      }
-      
-      // Mock password validation (additional server-side validation)
-      if (formData?.password?.length < 8) {
-        throw new Error('Password must be at least 8 characters long.');
-      }
+      // Call the API to reset the password with the new password and token
+      await authApi.resetPassword({ token: formData.token, newPassword: formData.password });
       
       setCurrentStep('success');
       
     } catch (error) {
       console.error('Password reset failed:', error?.message);
-      alert(error?.message);
+      alert(error?.message || 'Password reset failed. The link may be invalid or expired.');
     } finally {
       setLoading(false);
     }
