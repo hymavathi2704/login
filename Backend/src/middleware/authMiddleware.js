@@ -1,18 +1,17 @@
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const { expressjwt: jwt } = require("express-jwt");
+const jwksRsa = require("jwks-rsa");
+require("dotenv").config();
 
-const authenticate = (req, res, next) => {
-  const auth = req.headers.authorization;
-  if (!auth) return res.status(401).json({ error: 'Authorization header missing' });
-
-  const token = auth.split(' ')[1];
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = payload;
-    next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-};
+const authenticate = jwt({
+  secret: jwksRsa.expressJwtSecret({
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 5,
+    jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
+  }),
+  audience: "https://api.coachflow.com", // same as Auth0 API identifier
+  issuer: `https://${process.env.AUTH0_DOMAIN}/`, // must end with /
+  algorithms: ["RS256"],
+});
 
 module.exports = { authenticate };

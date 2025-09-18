@@ -1,33 +1,29 @@
-// Frontend/src/auth/Auth0ProviderWithHistory.jsx
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Auth0Provider } from '@auth0/auth0-react';
+import { Auth0Provider } from "@auth0/auth0-react";
+import { useNavigate } from "react-router-dom";
 
 const Auth0ProviderWithHistory = ({ children }) => {
   const navigate = useNavigate();
+
   const domain = import.meta.env.VITE_AUTH0_DOMAIN;
   const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
+  const audience = "https://api.coachflow.com";
 
   const onRedirectCallback = (appState) => {
     navigate(appState?.returnTo || window.location.pathname);
   };
 
-  if (!domain || !clientId) {
-    return <div>Error: Auth0 is not configured.</div>;
-  }
-
   return (
     <Auth0Provider
-      domain={domain}
-      clientId={clientId}
-      authorizationParams={{
-        // Corrected redirect_uri to match Auth0 settings
-        redirect_uri: `${window.location.origin}/auth0-callback`, 
-      }}
-      onRedirectCallback={onRedirectCallback}
-    >
-      {children}
-    </Auth0Provider>
+  domain={domain}
+  clientId={clientId}
+  authorizationParams={{
+    redirect_uri: window.location.origin + "/auth0-callback",
+    audience: "https://api.coachflow.com", // 👈 must match backend audience
+  }}
+  onRedirectCallback={onRedirectCallback}
+>
+  {children}
+</Auth0Provider>
   );
 };
 

@@ -1,6 +1,8 @@
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 const validator = require('validator');
+const jwt = require('jsonwebtoken');
+const jwksClient = require('jwks-rsa');
 const User = require('../models/user');
 const { signAccessToken, signEmailToken, verifyToken } = require('../utils/jwt');
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
@@ -10,6 +12,21 @@ const { customAlphabet } = require('nanoid');
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
 const generateOtp = customAlphabet('0123456789', 6);
+
+// ✅ Configure JWKS client for Auth0
+const client = jwksClient({
+  jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
+});
+
+const getKey = (header, callback) => {
+  client.getSigningKey(header.kid, function (err, key) {
+    if (err) {
+      return callback(err, null);
+    }
+    const signingKey = key.getPublicKey();
+    callback(null, signingKey);
+  });
+};
 
 async function register(req, res) {
   const { name, email, password } = req.body;
@@ -22,20 +39,18 @@ async function register(req, res) {
   const id = uuidv4();
   const hash = await bcrypt.hash(password, SALT_ROUNDS);
   
-  // Generate a 6-digit OTP instead of a JWT token
   const otp = generateOtp();
-  const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15); // OTP expires in 15 minutes
+  const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
   const user = await User.create({
     id,
     name,
     email,
     password_hash: hash,
-    verification_token: otp, // Use the OTP here
-    verification_token_expires_at: otp_expires_at // Add a timestamp for expiration
+    verification_token: otp,
+    verification_token_expires_at: otp_expires_at
   });
 
-  // send verification email with OTP
   await sendVerificationEmail(email, otp).catch(err => {
     console.error('Email send failure:', err);
   });
@@ -56,7 +71,6 @@ async function verifyEmail(req, res) {
     return res.status(400).json({ error: 'Invalid email or OTP' });
   }
 
-  // Check if OTP matches and has not expired
   if (user.verification_token !== otp) {
     return res.status(400).json({ error: 'Invalid OTP' });
   }
@@ -73,7 +87,6 @@ async function verifyEmail(req, res) {
   res.json({ message: 'Email verified successfully' });
 }
 
-
 async function login(req, res) {
   const { email, password } = req.body;
   const user = await User.findOne({ where: { email } });
@@ -85,9 +98,8 @@ async function login(req, res) {
   if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
   const accessToken = signAccessToken({ userId: user.id, email: user.email });
-  const refreshToken = signAccessToken({ userId: user.id, email: user.email, type: 'refresh' }); // simple; you can sign with different secret
+  const refreshToken = signAccessToken({ userId: user.id, email: user.email, type: 'refresh' });
 
-  // set refresh token as HttpOnly secure cookie
   const cookieOpts = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -100,12 +112,10 @@ async function login(req, res) {
 
 async function logout(req, res) {
   res.clearCookie(REFRESH_COOKIE_NAME, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' });
-  // Optionally blacklist refresh token in DB
   res.json({ message: 'Logged out' });
 }
 
 async function me(req, res) {
-  // expects authenticate middleware to set req.user
   const user = await User.findByPk(req.user.userId, { attributes: ['id','name','email','email_verified','provider'] });
   if (!user) return res.status(404).json({ error: 'Not found' });
   res.json({ user });
@@ -131,12 +141,11 @@ async function resendVerification(req, res) {
 async function forgotPassword(req, res) {
   const { email } = req.body;
   const user = await User.findOne({ where: { email } });
-  if (!user) return res.status(200).json({ message: 'If that email exists, we sent a link' }); // don't reveal existence
+  if (!user) return res.status(200).json({ message: 'If that email exists, we sent a link' });
 
-  // create token (use JWT or UUID)
   const token = signEmailToken({ userId: user.id, email: user.email });
   user.reset_token = token;
-  user.reset_token_expires = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+  user.reset_token_expires = new Date(Date.now() + 1000 * 60 * 60);
   await user.save();
 
   await sendResetPasswordEmail(email, token).catch(console.error);
@@ -165,28 +174,47 @@ async function resetPassword(req, res) {
 }
 
 async function socialLogin(req, res) {
-  const { email, name, sub } = req.auth; 
-  const provider = 'auth0';
-
   try {
-    let user = await User.findOne({ where: { email } });
-    if (!user) {
-      user = await User.create({
-        id: uuidv4(),
-        name,
-        email,
-        email_verified: true,
-        provider,
-        oauth_id: sub,
-      });
-    } else if (!user.oauth_id) {
-      user.oauth_id = sub;
-      user.provider = provider;
-      await user.save();
-    }
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Missing token' });
 
-    const accessToken = signAccessToken({ userId: user.id, email: user.email });
-    res.json({ accessToken, user: { id: user.id, name: user.name, email: user.email } });
+    jwt.verify(
+      token,
+      getKey,
+      {
+        audience: process.env.AUTH0_AUDIENCE || 'https://api.coachflow.com',
+        issuer: `https://${process.env.AUTH0_DOMAIN}/`,
+        algorithms: ['RS256']
+      },
+      async (err, decoded) => {
+        if (err) {
+          console.error('Auth0 token validation failed:', err);
+          return res.status(401).json({ error: 'Auth0 token validation failed' });
+        }
+
+        const { email, name, sub } = decoded;
+        const provider = 'auth0';
+
+        let user = await User.findOne({ where: { email } });
+        if (!user) {
+          user = await User.create({
+            id: uuidv4(),
+            name,
+            email,
+            email_verified: true,
+            provider,
+            oauth_id: sub,
+          });
+        } else if (!user.oauth_id) {
+          user.oauth_id = sub;
+          user.provider = provider;
+          await user.save();
+        }
+
+        const accessToken = signAccessToken({ userId: user.id, email: user.email });
+        res.json({ accessToken, user: { id: user.id, name: user.name, email: user.email } });
+      }
+    );
   } catch (err) {
     console.error('Auth0 social login error:', err);
     res.status(500).json({ error: 'Failed to process social login' });
@@ -194,5 +222,13 @@ async function socialLogin(req, res) {
 }
 
 module.exports = {
-  register, verifyEmail, login, logout, me, resendVerification, forgotPassword, resetPassword, socialLogin
+  register,
+  verifyEmail,
+  login,
+  logout,
+  me,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
+  socialLogin
 };
