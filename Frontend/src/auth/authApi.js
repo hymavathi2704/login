@@ -63,12 +63,12 @@ export const resendVerificationEmail = async (email) => {
 
 // ✅ Forgot Password
 export const forgotPassword = async (email) => {
-  return axiosInstance.post('/api/auth/forgot-password', email);
+  return axiosInstance.post('/api/auth/forgot-password', email);
 };
 
 // ✅ Reset Password
 export const resetPassword = async (data) => {
-  return axiosInstance.post('/api/auth/reset-password', data);
+  return axiosInstance.post('/api/auth/reset-password', data);
 };
 
 // ✅ (Optional) Logout function for later use
@@ -84,8 +84,8 @@ const authApi = {
   verifyEmail,
   resendVerificationEmail,
   logoutUser,
-  forgotPassword,
-  resetPassword,
+  forgotPassword,
+  resetPassword,
 };
 
 export default authApi;
