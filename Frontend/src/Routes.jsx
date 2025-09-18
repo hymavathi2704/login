@@ -1,6 +1,6 @@
 // Frontend/src/Routes.jsx
 import React from "react";
-import { Routes as RouterRoutes, Route } from "react-router-dom"; // <-- Remove BrowserRouter import
+import { Routes as RouterRoutes, Route } from "react-router-dom";
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import NotFound from "pages/NotFound";
@@ -11,6 +11,7 @@ import UserRegistration from './pages/user-registration';
 import PasswordResetPage from './pages/password-reset';
 import Homepage from './pages/homepage';
 import PrivateRoute from "./auth/PrivateRoute";
+import Auth0Callback from "./auth/Auth0Callback";
 
 const Routes = () => {
   return (
@@ -19,6 +20,7 @@ const Routes = () => {
       <RouterRoutes>
         {/* Public routes */}
         <Route path="/" element={<Homepage />} />
+        <Route path="/auth0-callback" element={<Auth0Callback />} />
         <Route path="/user-login" element={<UserLogin />} />
         <Route path="/email-verification" element={<EmailVerification />} />
         <Route path="/user-registration" element={<UserRegistration />} />
