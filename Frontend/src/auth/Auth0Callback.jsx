@@ -17,7 +17,7 @@ const Auth0Callback = () => {
         try {
           const auth0Token = await getAccessTokenSilently({
             authorizationParams: {
-              audience: import.meta.env.VITE_BACKEND_URL,
+              audience: 'https://api.coachflow.com', // <-- Updated with your API Identifier
             },
           });
 

@@ -1,14 +1,16 @@
-// Backend/src/routes/auth.js
 const express = require('express');
 const router = express.Router();
+const cors = require('cors'); // <-- Add this import
 const auth = require('../controllers/authController');
 const { authenticate } = require('../middleware/authMiddleware');
-const { checkJwt } = require('../middleware/auth0Middleware'); // <-- New import
 const { authLimiter } = require('../middleware/rateLimiter');
+
+// Add a preflight OPTIONS handler for all routes in this router
+router.options('*', cors()); 
 
 router.post('/register', authLimiter, auth.register);
 router.post('/login', authLimiter, auth.login);
-router.post('/social-login', authLimiter, checkJwt, auth.socialLogin); // <-- Updated route
+router.post('/social-login', authLimiter, auth.socialLogin);
 router.post('/send-verification', authLimiter, auth.resendVerification);
 router.post('/verify-email', auth.verifyEmail);
 router.post('/forgot-password', authLimiter, auth.forgotPassword);
