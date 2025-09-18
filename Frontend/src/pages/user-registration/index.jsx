@@ -38,17 +38,16 @@ const UserRegistration = () => {
     const { fullName, email, password } = formDataForCaptcha;
 
     try {
-      // The API call is made here, after successful CAPTCHA verification
       const response = await registerUser({
         name: fullName,
         email,
         password,
-        captcha: captchaResponse
+        captcha: captchaResponse,
       });
 
       if (response?.status === 201 || response?.status === 200) {
-        setRegisteredEmail(email);
-        setRegistrationStep("success");
+        // Corrected logic: Redirect to the email verification page
+        navigate(`/email-verification?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
       console.error("Registration error:", error.response?.data);
@@ -60,7 +59,6 @@ const UserRegistration = () => {
       setFormDataForCaptcha(null);
     }
   };
-
   const handleSocialLogin = async (provider) => {
     setIsLoading(true);
 
