@@ -1,12 +1,13 @@
+// Frontend/src/App.jsx
 import React from "react";
-import AuthProvider from "./auth/AuthContext";
+import Auth0ProviderWithHistory from "./auth/Auth0ProviderWithHistory";
 import Routes from "./Routes";
 
 function App() {
   return (
-    <AuthProvider>
+    <Auth0ProviderWithHistory>
       <Routes />
-    </AuthProvider>
+    </Auth0ProviderWithHistory>
   );
 }
 

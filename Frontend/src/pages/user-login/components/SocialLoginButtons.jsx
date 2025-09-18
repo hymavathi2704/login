@@ -1,8 +1,11 @@
+// Frontend/src/pages/user-login/components/SocialLoginButtons.jsx
 import React from 'react';
-
+import { useAuth0 } from '@auth0/auth0-react'; // <-- New import
 import Icon from '../../../components/AppIcon';
 
-const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
+const SocialLoginButtons = ({ isLoading }) => {
+  const { loginWithRedirect } = useAuth0();
+
   const socialProviders = [
     {
       id: 'google',
@@ -14,6 +17,13 @@ const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
       hoverBg: 'hover:bg-gray-50'
     }
   ];
+
+  const handleSocialLogin = (provider) => {
+    // Auth0 handles the OAuth flow automatically
+    loginWithRedirect({
+      connection: 'google-oauth2' // Auth0 connection name for Google
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -30,7 +40,7 @@ const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
           <button
             key={provider?.id}
             type="button"
-            onClick={() => onSocialLogin(provider?.id)}
+            onClick={() => handleSocialLogin(provider?.id)}
             disabled={isLoading}
             className={`
               w-full inline-flex justify-center items-center px-4 py-2.5 border rounded-lg text-sm font-medium
@@ -39,10 +49,10 @@ const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
               ${provider?.bgColor} ${provider?.textColor} ${provider?.borderColor} ${provider?.hoverBg}
             `}
           >
-            <Icon 
-              name={provider?.icon} 
-              size={18} 
-              className="mr-2" 
+            <Icon
+              name={provider?.icon}
+              size={18}
+              className="mr-2"
               color="currentColor"
             />
             Sign in with {provider?.name}

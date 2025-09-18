@@ -164,46 +164,33 @@ async function resetPassword(req, res) {
   }
 }
 
-// Stub social login handler — frontend should exchange provider token and backend validates and issues own tokens
 async function socialLogin(req, res) {
-  const { provider, id_token, access_token } = req.body;
-  // Implement provider verification:
-  // - For Google: verify id_token using Google's tokeninfo or google-auth-library
-  // - For GitHub: exchange code for access token and fetch user
-  // For brevity we show a simplified pseudo-flow.
-  if (!['google','github'].includes(provider)) return res.status(400).json({ error: 'Unsupported provider' });
+  const { email, name, sub } = req.auth; 
+  const provider = 'auth0';
 
-  // TODO: verify id_token with provider, get profile info (email, oauth_id, name)
-  // Example: suppose we have profile = { email: 'user@example.com', oauth_id: 'ext-id-123', name: 'Social User' }; // replace
-
-  let user = await User.findOne({ where: { [Op.or]: [{ email: profile.email }, { oauth_id: profile.oauth_id }] } });
-  if (!user) {
-    user = await User.create({
-      id: uuidv4(),
-      name: profile.name,
-      email: profile.email,
-      email_verified: true,
-      provider,
-      oauth_id: profile.oauth_id
-    });
-  } else {
-    // link account if necessary
-    if (!user.oauth_id) {
-      user.oauth_id = profile.oauth_id;
+  try {
+    let user = await User.findOne({ where: { email } });
+    if (!user) {
+      user = await User.create({
+        id: uuidv4(),
+        name,
+        email,
+        email_verified: true,
+        provider,
+        oauth_id: sub,
+      });
+    } else if (!user.oauth_id) {
+      user.oauth_id = sub;
+      user.provider = provider;
       await user.save();
     }
+
+    const accessToken = signAccessToken({ userId: user.id, email: user.email });
+    res.json({ accessToken, user: { id: user.id, name: user.name, email: user.email } });
+  } catch (err) {
+    console.error('Auth0 social login error:', err);
+    res.status(500).json({ error: 'Failed to process social login' });
   }
-
-  const accessToken = signAccessToken({ userId: user.id, email: user.email });
-  const refreshToken = signAccessToken({ userId: user.id, email: user.email, type: 'refresh' });
-  res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 1000 * 60 * 60 * 24 * (parseInt(process.env.REFRESH_TOKEN_EXPIRES_DAYS || '30', 10))
-  });
-
-  res.json({ accessToken, user: { id: user.id, name: user.name, email: user.email } });
 }
 
 module.exports = {

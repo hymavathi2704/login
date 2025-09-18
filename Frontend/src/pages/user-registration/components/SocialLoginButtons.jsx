@@ -1,8 +1,11 @@
+// Frontend/src/pages/user-registration/components/SocialLoginButtons.jsx
 import React from 'react';
-
+import { useAuth0 } from '@auth0/auth0-react'; // <-- New import
 import Icon from '../../../components/AppIcon';
 
 const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
+  const { loginWithRedirect } = useAuth0();
+
   const socialProviders = [
     {
       id: 'google',
@@ -26,7 +29,10 @@ const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
 
   const handleSocialLogin = (provider) => {
     console.log(`Initiating ${provider} OAuth login`);
-    onSocialLogin(provider);
+    // Auth0 handles the OAuth flow automatically
+    loginWithRedirect({
+      connection: provider === 'google' ? 'google-oauth2' : 'github'
+    });
   };
 
   return (
@@ -56,10 +62,10 @@ const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
               shadow-soft hover:shadow-soft-md
             `}
           >
-            <Icon 
-              name={provider?.icon} 
-              size={20} 
-              className="mr-3" 
+            <Icon
+              name={provider?.icon}
+              size={20}
+              className="mr-3"
               color={provider?.id === 'google' ? '#4285f4' : 'currentColor'}
             />
             <span>Sign up with {provider?.name}</span>
