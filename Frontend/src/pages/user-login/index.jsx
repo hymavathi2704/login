@@ -1,3 +1,4 @@
+// Frontend/src/pages/user-login/index.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/ui/Header';
@@ -5,25 +6,22 @@ import LoginForm from './components/LoginForm';
 import SocialLoginButtons from './components/SocialLoginButtons';
 import SecurityNotice from './components/SecurityNotice';
 import Icon from '../../components/AppIcon';
-// Add imports for the API call and AuthContext
 import { loginUser } from '../../auth/authApi';
 import { useAuth } from '../../auth/AuthContext';
+import { useAuth0 } from '@auth0/auth0-react';
 
 const UserLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  // Destructure setAccessToken from the AuthContext
   const { setAccessToken } = useAuth();
-  
+  const { loginWithRedirect } = useAuth0();
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [attemptCount, setAttemptCount] = useState(0);
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [nextAttemptTime, setNextAttemptTime] = useState(0);
   const [showCaptcha, setShowCaptcha] = useState(false);
-
-  // You can now remove the mockCredentials variable
-  // const mockCredentials = { /* ... */ };
 
   // Handle rate limiting countdown
   useEffect(() => {
@@ -37,22 +35,17 @@ const UserLogin = () => {
     setError('');
 
     try {
-      // Use the actual API call
       const response = await loginUser(formData);
       
-      // Store the real access token from the backend response
       setAccessToken(response?.data?.accessToken);
 
-      // Reset security measures on successful login
       setAttemptCount(0);
       setShowCaptcha(false);
       setIsRateLimited(false);
 
-      // Navigate to dashboard or intended destination
       const from = location.state?.from?.pathname || '/user-profile-management';
       navigate(from, { replace: true });
     } catch (err) {
-      // Handle failed login attempts
       const newAttemptCount = attemptCount + 1;
       setAttemptCount(newAttemptCount);
 
@@ -65,7 +58,6 @@ const UserLogin = () => {
         setNextAttemptTime(Math.min(30 * Math.pow(2, newAttemptCount - 5), 300));
       }
 
-      // Show the error message from the backend
       setError(err?.response?.data?.error || 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
@@ -73,33 +65,9 @@ const UserLogin = () => {
   };
 
   const handleSocialLogin = async (provider) => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      // Simulate OAuth flow
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // For a real social login flow, you would call your backend here
-      // const response = await socialLoginUser(provider);
-      // setAccessToken(response?.data?.accessToken);
-
-      const mockSocialToken = `social_${provider}_token_${Date.now()}`;
-      setAccessToken(mockSocialToken); // Set a mock token for demonstration
-
-      // Reset security measures
-      setAttemptCount(0);
-      setShowCaptcha(false);
-      setIsRateLimited(false);
-
-      // Navigate to dashboard
-      const from = location.state?.from?.pathname || '/user-profile-management';
-      navigate(from, { replace: true });
-    } catch (err) {
-      setError(`${provider} authentication failed. Please try again.`);
-    } finally {
-      setIsLoading(false);
-    }
+    loginWithRedirect({
+      connection: provider === 'google' ? 'google-oauth2' : provider, // Pass correct Auth0 connection
+    });
   };
 
   return (

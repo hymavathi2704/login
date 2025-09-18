@@ -1,6 +1,6 @@
 // Frontend/src/Routes.jsx
 import React from "react";
-import { BrowserRouter, Routes as RouterRoutes, Route } from "react-router-dom";
+import { Routes as RouterRoutes, Route } from "react-router-dom"; // <-- Remove BrowserRouter import
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import NotFound from "pages/NotFound";
@@ -13,43 +13,41 @@ import Homepage from './pages/homepage';
 import PrivateRoute from "./auth/PrivateRoute";
 
 const Routes = () => {
-  return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <ScrollToTop />
-        <RouterRoutes>
-          {/* Public routes */}
-          <Route path="/" element={<Homepage />} />
-          <Route path="/user-login" element={<UserLogin />} />
-          <Route path="/email-verification" element={<EmailVerification />} />
-          <Route path="/user-registration" element={<UserRegistration />} />
-          <Route path="/password-reset" element={<PasswordResetPage />} />
-          <Route path="/password-reset/:token" element={<PasswordResetPage />} />
+  return (
+    <ErrorBoundary>
+      <ScrollToTop />
+      <RouterRoutes>
+        {/* Public routes */}
+        <Route path="/" element={<Homepage />} />
+        <Route path="/user-login" element={<UserLogin />} />
+        <Route path="/email-verification" element={<EmailVerification />} />
+        <Route path="/user-registration" element={<UserRegistration />} />
+        <Route path="/password-reset" element={<PasswordResetPage />} />
+        <Route path="/password-reset/:token" element={<PasswordResetPage />} />
 
-          {/* Protected routes */}
-          <Route
-            path="/homepage"
-            element={
-              <PrivateRoute>
-                <Homepage />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/user-profile-management"
-            element={
-              <PrivateRoute>
-                <UserProfileManagement />
-              </PrivateRoute>
-            }
-          />
+        {/* Protected routes */}
+        <Route
+          path="/homepage"
+          element={
+            <PrivateRoute>
+              <Homepage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/user-profile-management"
+          element={
+            <PrivateRoute>
+              <UserProfileManagement />
+            </PrivateRoute>
+          }
+        />
 
-          {/* Catch-all */}
-          <Route path="*" element={<NotFound />} />
-        </RouterRoutes>
-      </ErrorBoundary>
-    </BrowserRouter>
-  );
+        {/* Catch-all */}
+        <Route path="*" element={<NotFound />} />
+      </RouterRoutes>
+    </ErrorBoundary>
+  );
 };
 
 export default Routes;
