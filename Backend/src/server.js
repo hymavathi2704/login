@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const sequelize = require('./config/db');
 const authRoutes = require('./routes/auth');
+const { UnauthorizedError } = require("express-jwt"); // Corrected import
 
 const app = express();
 
@@ -24,6 +25,15 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use('/api/auth', authRoutes);
+
+// Error handling middleware for JWT errors
+app.use((err, req, res, next) => {
+  if (err instanceof UnauthorizedError) {
+    console.error('JWT Unauthorized Error:', err.message);
+    return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
+  }
+  next(err);
+});
 
 app.get('/', (req, res) => res.send('CoachFlow auth API'));
 

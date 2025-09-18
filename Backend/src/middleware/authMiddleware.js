@@ -9,8 +9,8 @@ const authenticate = jwt({
     jwksRequestsPerMinute: 5,
     jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
   }),
-  audience: "https://api.coachflow.com", // same as Auth0 API identifier
-  issuer: `https://${process.env.AUTH0_DOMAIN}/`, // must end with /
+  audience: process.env.AUTH0_AUDIENCE,
+  issuer: `https://${process.env.AUTH0_DOMAIN}/`,
   algorithms: ["RS256"],
 });
 
