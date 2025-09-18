@@ -1,17 +1,10 @@
-const { expressjwt: jwt } = require("express-jwt");
-const jwksRsa = require("jwks-rsa");
 require("dotenv").config();
+const { expressjwt: jwt } = require("express-jwt");
 
 const authenticate = jwt({
-  secret: jwksRsa.expressJwtSecret({
-    cache: true,
-    rateLimit: true,
-    jwksRequestsPerMinute: 5,
-    jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
-  }),
-  audience: process.env.AUTH0_AUDIENCE,
-  issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-  algorithms: ["RS256"],
+  secret: process.env.JWT_SECRET,  // ✅ Use your own secret
+  algorithms: ["HS256"],           // ✅ Must match how you sign in signAccessToken
+  requestProperty: "user"
 });
 
 module.exports = { authenticate };

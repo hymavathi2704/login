@@ -2,14 +2,36 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const signAccessToken = (payload) => {
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' });
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is missing. Check your .env file.");
+  }
+
+  console.log("signAccessToken: Using secret?", !!process.env.JWT_SECRET); // 🔧 Debugging log
+
+  return jwt.sign(
+    payload,
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
+  );
 };
 
 const signEmailToken = (payload) => {
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EMAIL_VERification_EXPIRES || '24h' });
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is missing. Check your .env file.");
+  }
+
+  return jwt.sign(
+    payload,
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EMAIL_VERIFICATION_EXPIRES || '24h' } // ✅ Fixed typo
+  );
 };
 
 const verifyToken = (token) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is missing. Check your .env file.");
+  }
+
   return jwt.verify(token, process.env.JWT_SECRET);
 };
 
