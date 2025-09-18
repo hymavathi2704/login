@@ -9,11 +9,12 @@ const { authLimiter } = require('../middleware/rateLimiter');
 
 router.options('*', cors()); // Preflight OPTIONS for CORS
 
-// Auth0 JWKS setup
+// ✅ Setup JWKS client for Auth0
 const client = jwksClient({
-  jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`
+  jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
 });
 
+// ✅ Helper to retrieve Auth0 signing key
 const getKey = (header, callback) => {
   client.getSigningKey(header.kid, (err, key) => {
     if (err) {
@@ -25,7 +26,7 @@ const getKey = (header, callback) => {
   });
 };
 
-// Middleware for verifying Auth0 tokens
+// ✅ Middleware to verify Auth0-issued tokens
 const verifyAuth0Token = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) {
@@ -36,9 +37,9 @@ const verifyAuth0Token = (req, res, next) => {
     token,
     getKey,
     {
-      audience: process.env.AUTH0_AUDIENCE, // Keep in .env for flexibility
+      audience: process.env.AUTH0_AUDIENCE,
       issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-      algorithms: ['RS256']
+      algorithms: ['RS256'],
     },
     (err, decoded) => {
       if (err) {
@@ -51,9 +52,10 @@ const verifyAuth0Token = (req, res, next) => {
   );
 };
 
+// ✅ Routes
 router.post('/register', authLimiter, auth.register);
 router.post('/login', authLimiter, auth.login);
-router.post('/social-login', authLimiter, verifyAuth0Token, auth.socialLogin); // ✅ Secure social login route
+router.post('/social-login', authLimiter, verifyAuth0Token, auth.socialLogin);
 router.post('/send-verification', authLimiter, auth.resendVerification);
 router.post('/verify-email', auth.verifyEmail);
 router.post('/forgot-password', authLimiter, auth.forgotPassword);

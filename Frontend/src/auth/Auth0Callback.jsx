@@ -13,38 +13,52 @@ const Auth0Callback = () => {
 
   useEffect(() => {
     const processAuth0Login = async () => {
-      if (isAuthenticated) {
-        try {
-          const auth0Token = await getAccessTokenSilently({
-            authorizationParams: {
-              audience: 'https://api.coachflow.com', // <-- Updated with your API Identifier
-            },
-          });
+      if (!isAuthenticated) return;
 
-          // Send Auth0 token to our backend's social login endpoint
-          const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/auth/social-login`, {}, {
+      try {
+        const auth0Token = await getAccessTokenSilently({
+          authorizationParams: {
+            audience: import.meta.env.VITE_AUTH0_AUDIENCE || "https://api.coachflow.com",
+          },
+        });
+
+        if (!auth0Token) {
+          console.error("No Auth0 token received.");
+          return navigate('/user-login?error=no_token', { replace: true });
+        }
+
+        // Send Auth0 token + user data to backend
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/auth/social-login`,
+          {
+            email: user?.email,
+            name: user?.name,
+            sub: user?.sub,
+          },
+          {
             headers: {
               Authorization: `Bearer ${auth0Token}`,
             },
-          });
+          }
+        );
 
-          // Get our custom access token from the backend response
-          const customAccessToken = response?.data?.accessToken;
-          setAccessToken(customAccessToken);
-          
-          // Redirect to the user's dashboard or profile page
+        // Get backend-issued token
+        const customAccessToken = response?.data?.accessToken;
+        if (customAccessToken) {
+          setAccessToken(customAccessToken); // Store in global state (AuthContext)
           navigate('/user-profile-management', { replace: true });
-
-        } catch (error) {
-          console.error("Error processing Auth0 callback:", error);
-          // Handle error, maybe redirect to an error page
-          navigate('/user-login?error=social_login_failed', { replace: true });
+        } else {
+          console.error("No access token returned from backend.");
+          navigate('/user-login?error=backend_failed', { replace: true });
         }
+      } catch (error) {
+        console.error("Error processing Auth0 callback:", error);
+        navigate('/user-login?error=social_login_failed', { replace: true });
       }
     };
 
     processAuth0Login();
-  }, [isAuthenticated, getAccessTokenSilently, setAccessToken, navigate]);
+  }, [isAuthenticated, getAccessTokenSilently, user, setAccessToken, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -52,7 +66,9 @@ const Auth0Callback = () => {
         <div className="animate-spin mb-4">
           <Icon name="Loader2" size={32} className="text-primary" />
         </div>
-        <h1 className="text-xl font-medium text-foreground">Completing your login...</h1>
+        <h1 className="text-xl font-medium text-foreground">
+          Completing your login...
+        </h1>
         <p className="text-sm text-muted-foreground mt-2">
           Please wait while we set up your account.
         </p>

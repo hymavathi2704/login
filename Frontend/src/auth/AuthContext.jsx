@@ -1,34 +1,46 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { getMe } from "./authApi";
 
-// 1. Create context
 const AuthContext = createContext(null);
 
-// 2. Hook for consuming context
 export const useAuth = () => useContext(AuthContext);
 
-// 3. Provider
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [accessToken, setAccessToken] = useState(localStorage.getItem("token"));
+  const [accessToken, setAccessToken] = useState(() => localStorage.getItem("token"));
+  const [loading, setLoading] = useState(true);
 
-  // Auto fetch user if token exists
+  // Fetch user info whenever accessToken changes
   useEffect(() => {
-    if (accessToken) {
-      getMe(accessToken)
-        .then((res) => setUser(res.data))
-        .catch(() => {
-          setUser(null);
-          setAccessToken(null);
-          localStorage.removeItem("token");
-        });
-    }
+    const fetchUser = async () => {
+      if (!accessToken) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await getMe(accessToken);
+        setUser(res.data);
+      } catch (err) {
+        console.error("Failed to fetch user from /me:", err);
+        setUser(null);
+        setAccessToken(null);
+        localStorage.removeItem("token");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
   }, [accessToken]);
 
-  // Save token to localStorage whenever it changes
+  // Keep token in localStorage in sync
   useEffect(() => {
     if (accessToken) {
       localStorage.setItem("token", accessToken);
+    } else {
+      localStorage.removeItem("token");
     }
   }, [accessToken]);
 
@@ -39,7 +51,7 @@ export default function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, accessToken, setAccessToken, logout }}>
+    <AuthContext.Provider value={{ user, setUser, accessToken, setAccessToken, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

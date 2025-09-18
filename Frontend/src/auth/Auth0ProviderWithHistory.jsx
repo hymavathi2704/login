@@ -6,7 +6,7 @@ const Auth0ProviderWithHistory = ({ children }) => {
 
   const domain = import.meta.env.VITE_AUTH0_DOMAIN;
   const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
-  const audience = "https://api.coachflow.com";
+  const audience = "https://api.coachflow.com"; // ✅ Must match backend audience
 
   const onRedirectCallback = (appState) => {
     navigate(appState?.returnTo || window.location.pathname);
@@ -14,16 +14,17 @@ const Auth0ProviderWithHistory = ({ children }) => {
 
   return (
     <Auth0Provider
-  domain={domain}
-  clientId={clientId}
-  authorizationParams={{
-    redirect_uri: window.location.origin + "/auth0-callback",
-    audience: "https://api.coachflow.com", // 👈 must match backend audience
-  }}
-  onRedirectCallback={onRedirectCallback}
->
-  {children}
-</Auth0Provider>
+      domain={domain}
+      clientId={clientId}
+      authorizationParams={{
+        redirect_uri: `${window.location.origin}/auth0-callback`,
+        audience,
+        scope: "openid profile email", // ✅ ADDED: ensures we get email in token
+      }}
+      onRedirectCallback={onRedirectCallback}
+    >
+      {children}
+    </Auth0Provider>
   );
 };
 
