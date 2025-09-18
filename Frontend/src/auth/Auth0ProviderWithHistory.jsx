@@ -21,7 +21,8 @@ const Auth0ProviderWithHistory = ({ children }) => {
       domain={domain}
       clientId={clientId}
       authorizationParams={{
-        redirect_uri: window.location.origin,
+        // Corrected redirect_uri to match Auth0 settings
+        redirect_uri: `${window.location.origin}/auth0-callback`, 
       }}
       onRedirectCallback={onRedirectCallback}
     >
