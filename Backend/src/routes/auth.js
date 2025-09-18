@@ -61,6 +61,10 @@ router.post('/verify-email', auth.verifyEmail);
 router.post('/forgot-password', authLimiter, auth.forgotPassword);
 router.post('/reset-password', authLimiter, auth.resetPassword);
 router.post('/logout', auth.logout);
+
 router.get('/me', authenticate, auth.me);
+
+// ✅ ADD THIS PUT ROUTE
+router.put('/me', authenticate, auth.updateProfile);
 
 module.exports = router;

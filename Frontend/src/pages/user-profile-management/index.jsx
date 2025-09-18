@@ -11,268 +11,108 @@ import ProfileVisibilitySection from './components/ProfileVisibilitySection';
 
 const UserProfileManagement = () => {
   const [activeTab, setActiveTab] = useState('personal');
-  const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
 
-  // Mock user data
-  const [userProfile, setUserProfile] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@coachflow.com',
-    phone: '+1 (555) 123-4567',
-    profilePhoto: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
-    emailVerified: true,
-    joinDate: '2024-01-15'
-  });
+  const [userProfile, setUserProfile] = useState(null);
+  const [businessProfile, setBusinessProfile] = useState({});
+  const [preferences, setPreferences] = useState({});
+  const [securityInfo, setSecurityInfo] = useState({});
+  const [visibilitySettings, setVisibilitySettings] = useState({});
 
-  const [businessProfile, setBusinessProfile] = useState({
-    specialization: 'life-coaching',
-    bio: `Passionate life coach with over 8 years of experience helping individuals unlock their potential and achieve their goals. I specialize in personal development, career transitions, and work-life balance.\n\nMy approach combines evidence-based coaching techniques with personalized strategies tailored to each client's unique needs and circumstances.`,hourlyRate: '150',currency: 'USD',
-    serviceOfferings: ['one-on-one', 'group-coaching', 'workshops'],
-    experience: '8',
-    certifications: `• ICF Professional Certified Coach (PCC)\n• Certified Professional Co-Active Coach (CPCC)\n• Master's in Psychology, Stanford University\n• Certified Mindfulness-Based Stress Reduction Instructor`
-  });
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
 
-  const [preferences, setPreferences] = useState({
-    timezone: 'America/New_York',
-    language: 'en',
-    dateFormat: 'MM/DD/YYYY',
-    timeFormat: '12',
-    emailNotifications: {
-      newBookings: true,
-      reminders: true,
-      cancellations: true,
-      marketing: false,
-      systemUpdates: true
-    },
-    smsNotifications: {
-      reminders: false,
-      cancellations: false
-    },
-    availabilityHours: {
-      monday: { enabled: true, start: '09:00', end: '17:00' },
-      tuesday: { enabled: true, start: '09:00', end: '17:00' },
-      wednesday: { enabled: true, start: '09:00', end: '17:00' },
-      thursday: { enabled: true, start: '09:00', end: '17:00' },
-      friday: { enabled: true, start: '09:00', end: '17:00' },
-      saturday: { enabled: false, start: '09:00', end: '17:00' },
-      sunday: { enabled: false, start: '09:00', end: '17:00' }
-    },
-    communicationPreferences: {
-      preferredMethod: 'email',
-      allowClientMessages: true,
-      autoResponder: false
-    }
-  });
+        const response = await fetch("http://localhost:4028/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-  const [securityInfo, setSecurityInfo] = useState({
-    twoFactorEnabled: false,
-    loginNotifications: true,
-    lastPasswordChange: '2024-08-15',
-    activeSessions: 3
-  });
+        if (!response.ok) throw new Error("Failed to fetch user profile");
 
-  const [visibilitySettings, setVisibilitySettings] = useState({
-    profilePublic: true,
-    showEmail: false,
-    showPhone: false,
-    showRates: true,
-    showAvailability: true,
-    showTestimonials: true,
-    showCertifications: true,
-    searchable: true,
-    profileUrl: 'coachflow.com/coach/john-doe',
-    directBooking: true,
-    clientReviews: true,
-    socialLinks: {
-      linkedin: 'https://linkedin.com/in/johndoe-coach',
-      twitter: '',
-      website: 'https://johndoecoaching.com',
-      instagram: ''
-    }
-  });
+        const data = await response.json();
+        const user = data?.user || {};
 
-  const tabs = [
-    {
-      id: 'personal',
-      label: 'Personal Info',
-      icon: 'User',
-      description: 'Basic information and contact details'
-    },
-    {
-      id: 'business',
-      label: 'Business Profile',
-      icon: 'Briefcase',
-      description: 'Coaching specialization and services'
-    },
-    {
-      id: 'preferences',
-      label: 'Preferences',
-      icon: 'Settings',
-      description: 'Account settings and notifications'
-    },
-    {
-      id: 'security',
-      label: 'Security',
-      icon: 'Lock',
-      description: 'Password and security settings'
-    },
-    {
-      id: 'visibility',
-      label: 'Profile Visibility',
-      icon: 'Eye',
-      description: 'Public profile and privacy controls'
-    }
-  ];
+        // Safely handle dates
+        const safeDate = (dateStr) => {
+          const d = new Date(dateStr);
+          return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
+        };
+
+        setUserProfile({
+          firstName: user.firstName || user.name?.split(" ")[0] || "",
+          lastName: user.lastName || user.name?.split(" ")[1] || "",
+          email: user.email || "",
+          profilePhoto: user.picture || "",
+          emailVerified: user.email_verified || false,
+          joinDate: safeDate(user.createdAt),
+        });
+
+        // Optional: set other sections if returned from backend
+        setBusinessProfile(data.businessProfile || {});
+        setPreferences(data.preferences || {});
+        setSecurityInfo(data.securityInfo || {});
+        setVisibilitySettings(data.visibilitySettings || {});
+      } catch (err) {
+        console.error("Error fetching user profile:", err);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   const showSaveStatus = (type, message) => {
     setSaveStatus({ type, message });
     setTimeout(() => setSaveStatus(null), 3000);
   };
 
-  const handleUpdateProfile = async (updatedData) => {
-    setIsLoading(true);
+  const handleUpdateProfile = async (updatedProfile) => {
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setUserProfile(prev => ({ ...prev, ...updatedData }));
-      showSaveStatus('success', 'Personal information updated successfully');
-    } catch (error) {
-      showSaveStatus('error', 'Failed to update personal information');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateBusinessProfile = async (updatedData) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setBusinessProfile(prev => ({ ...prev, ...updatedData }));
-      showSaveStatus('success', 'Business profile updated successfully');
-    } catch (error) {
-      showSaveStatus('error', 'Failed to update business profile');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdatePreferences = async (updatedData) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setPreferences(prev => ({ ...prev, ...updatedData }));
-      showSaveStatus('success', 'Preferences updated successfully');
-    } catch (error) {
-      showSaveStatus('error', 'Failed to update preferences');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdatePassword = async (passwordData) => {
-    setIsLoading(true);
-    try {
-      // Simulate password validation
-      if (passwordData?.currentPassword !== 'currentpass123') {
-        throw new Error('Current password is incorrect');
-      }
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setSecurityInfo(prev => ({
-        ...prev,
-        lastPasswordChange: new Date()?.toISOString()?.split('T')?.[0]
-      }));
-      showSaveStatus('success', 'Password updated successfully');
-    } catch (error) {
-      showSaveStatus('error', error?.message || 'Failed to update password');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateSecurity = async (securityData) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSecurityInfo(prev => ({ ...prev, ...securityData }));
-      showSaveStatus('success', 'Security settings updated successfully');
-    } catch (error) {
-      showSaveStatus('error', 'Failed to update security settings');
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateVisibility = async (updatedData) => {
-    setIsLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setVisibilitySettings(prev => ({ ...prev, ...updatedData }));
-      showSaveStatus('success', 'Visibility settings updated successfully');
-    } catch (error) {
-      showSaveStatus('error', 'Failed to update visibility settings');
-      throw error;
-    } finally {
-      setIsLoading(false);
+      // Call your API to update the profile
+      // const res = await updateUserProfile(updatedProfile);
+      setUserProfile((prev) => ({ ...prev, ...updatedProfile }));
+      showSaveStatus('success', 'Profile updated successfully!');
+    } catch (err) {
+      console.error(err);
+      showSaveStatus('error', 'Failed to update profile.');
+      throw err;
     }
   };
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'personal':
-        return (
-          <PersonalInfoSection
-            userProfile={userProfile}
-            onUpdateProfile={handleUpdateProfile}
-          />
-        );
+        return userProfile && <PersonalInfoSection userProfile={userProfile} onUpdateProfile={handleUpdateProfile} />;
       case 'business':
-        return (
-          <BusinessProfileSection
-            businessProfile={businessProfile}
-            onUpdateBusinessProfile={handleUpdateBusinessProfile}
-          />
-        );
+        return <BusinessProfileSection businessProfile={businessProfile} onUpdateBusinessProfile={() => {}} />;
       case 'preferences':
-        return (
-          <AccountPreferencesSection
-            preferences={preferences}
-            onUpdatePreferences={handleUpdatePreferences}
-          />
-        );
+        return <AccountPreferencesSection preferences={preferences} onUpdatePreferences={() => {}} />;
       case 'security':
-        return (
-          <SecuritySection
-            securityInfo={securityInfo}
-            onUpdatePassword={handleUpdatePassword}
-            onUpdateSecurity={handleUpdateSecurity}
-          />
-        );
+        return <SecuritySection securityInfo={securityInfo} onUpdatePassword={() => {}} onUpdateSecurity={() => {}} />;
       case 'visibility':
-        return (
-          <ProfileVisibilitySection
-            visibilitySettings={visibilitySettings}
-            onUpdateVisibility={handleUpdateVisibility}
-          />
-        );
+        return <ProfileVisibilitySection visibilitySettings={visibilitySettings} onUpdateVisibility={() => {}} />;
       default:
         return null;
     }
   };
 
+  const tabs = [
+    { id: 'personal', label: 'Personal Info', icon: 'User', description: 'Basic information and contact details' },
+    { id: 'business', label: 'Business Profile', icon: 'Briefcase', description: 'Coaching specialization and services' },
+    { id: 'preferences', label: 'Preferences', icon: 'Settings', description: 'Account settings and notifications' },
+    { id: 'security', label: 'Security', icon: 'Lock', description: 'Password and security settings' },
+    { id: 'visibility', label: 'Profile Visibility', icon: 'Eye', description: 'Public profile and privacy controls' }
+  ];
+
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        isAuthenticated={true} 
+      <Header
+        isAuthenticated={true}
         userProfile={{
-          name: `${userProfile?.firstName} ${userProfile?.lastName}`,
-          email: userProfile?.email
-        }} 
+          name: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : "",
+          email: userProfile?.email || "",
+        }}
       />
       <div className="pt-16">
         {/* Page Header */}
@@ -281,9 +121,7 @@ const UserProfileManagement = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <div>
                 <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-2">
-                  <Link to="/homepage" className="hover:text-foreground transition-colors">
-                    Home
-                  </Link>
+                  <Link to="/homepage" className="hover:text-foreground transition-colors">Home</Link>
                   <Icon name="ChevronRight" size={16} />
                   <span className="text-foreground">Profile Management</span>
                 </nav>
@@ -296,7 +134,7 @@ const UserProfileManagement = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(`https://${visibilitySettings?.profileUrl}`, '_blank')}
+                  onClick={() => window.open(`https://${visibilitySettings?.profileUrl || ''}`, '_blank')}
                   iconName="ExternalLink"
                   iconPosition="left"
                   iconSize={16}
@@ -311,15 +149,10 @@ const UserProfileManagement = () => {
         {/* Save Status */}
         {saveStatus && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-            <div className={`p-3 rounded-lg border ${
-              saveStatus?.type === 'success' ?'bg-success/10 border-success/20 text-success' :'bg-error/10 border-error/20 text-error'
-            }`}>
+            <div className={`p-3 rounded-lg border ${saveStatus.type === 'success' ? 'bg-success/10 border-success/20 text-success' : 'bg-error/10 border-error/20 text-error'}`}>
               <div className="flex items-center space-x-2">
-                <Icon 
-                  name={saveStatus?.type === 'success' ? "CheckCircle" : "AlertCircle"} 
-                  size={16} 
-                />
-                <span className="text-sm font-medium">{saveStatus?.message}</span>
+                <Icon name={saveStatus.type === 'success' ? "CheckCircle" : "AlertCircle"} size={16} />
+                <span className="text-sm font-medium">{saveStatus.message}</span>
               </div>
             </div>
           </div>
@@ -327,91 +160,53 @@ const UserProfileManagement = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
-            {/* Sidebar Navigation */}
+            {/* Sidebar */}
             <div className="lg:w-80 flex-shrink-0">
               <div className="bg-card rounded-lg border border-border p-4">
                 <h2 className="text-lg font-semibold text-foreground mb-4">Settings</h2>
                 <nav className="space-y-2">
-                  {tabs?.map((tab) => (
+                  {tabs.map((tab) => (
                     <button
-                      key={tab?.id}
-                      onClick={() => setActiveTab(tab?.id)}
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-start space-x-3 p-3 rounded-lg text-left transition-colors ${
-                        activeTab === tab?.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted text-foreground'
+                        activeTab === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-foreground'
                       }`}
                     >
-                      <Icon 
-                        name={tab?.icon} 
-                        size={20} 
-                        color={activeTab === tab?.id ? 'white' : 'currentColor'} 
-                      />
+                      <Icon name={tab.icon} size={20} color={activeTab === tab.id ? 'white' : 'currentColor'} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{tab?.label}</p>
-                        <p className={`text-xs mt-1 ${
-                          activeTab === tab?.id 
-                            ? 'text-primary-foreground/80' 
-                            : 'text-muted-foreground'
-                        }`}>
-                          {tab?.description}
-                        </p>
+                        <p className="text-sm font-medium">{tab.label}</p>
+                        <p className={`text-xs mt-1 ${activeTab === tab.id ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{tab.description}</p>
                       </div>
                     </button>
                   ))}
                 </nav>
 
                 {/* Profile Summary */}
-                <div className="mt-6 pt-6 border-t border-border">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
-                      {userProfile?.profilePhoto ? (
-                        <img
-                          src={userProfile?.profilePhoto}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Icon name="User" size={24} color="rgb(100 116 139)" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {userProfile?.firstName} {userProfile?.lastName}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {businessProfile?.specialization?.replace('-', ' ')?.replace(/\b\w/g, l => l?.toUpperCase()) || 'Coach'}
-                      </p>
-                      <div className="flex items-center space-x-1 mt-1">
-                        <div className={`w-2 h-2 rounded-full ${
-                          visibilitySettings?.profilePublic ? 'bg-success' : 'bg-warning'
-                        }`}></div>
-                        <span className="text-xs text-muted-foreground">
-                          {visibilitySettings?.profilePublic ? 'Public' : 'Private'}
-                        </span>
+                {userProfile && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
+                        {userProfile.profilePhoto ? (
+                          <img src={userProfile.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Icon name="User" size={24} color="rgb(100 116 139)" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{userProfile.firstName} {userProfile.lastName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{businessProfile?.specialization || 'Coach'}</p>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 min-w-0">
-              {isLoading && (
-                <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-                  <div className="bg-card rounded-lg p-6 shadow-soft-lg">
-                    <div className="flex items-center space-x-3">
-                      <Icon name="Loader2" size={20} className="animate-spin" />
-                      <span className="text-sm font-medium">Saving changes...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {renderTabContent()}
-            </div>
+            <div className="flex-1 min-w-0">{renderTabContent()}</div>
           </div>
         </div>
       </div>

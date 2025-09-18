@@ -207,11 +207,27 @@ async function logout(req, res) {
 }
 
 async function me(req, res) {
-  const user = await User.findByPk(req.user.userId, {
-    attributes: ['id', 'name', 'email', 'email_verified', 'provider'],
-  });
-  if (!user) return res.status(404).json({ error: 'Not found' });
-  res.json({ user });
+  try {
+    // ✅ Determine userId: local JWT (req.user) or Auth0 (req.auth)
+    const userId = req.user?.userId || req.auth?.userId || req.auth?.sub;
+
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // ✅ Find user by either id (local) or oauth_id (Auth0)
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [{ id: userId }, { oauth_id: userId }],
+      },
+      attributes: ['id', 'name', 'email', 'email_verified', 'provider', 'profileImage'],
+    });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ user });
+  } catch (err) {
+    console.error('Error fetching user in /me:', err);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
 }
 
 async function resendVerification(req, res) {
@@ -278,6 +294,65 @@ async function resetPassword(req, res) {
   }
 }
 
+// ==============================
+// Update Profile
+// ==============================
+async function updateProfile(req, res) {
+  try {
+    const userId = req.user?.userId || req.auth?.userId || req.auth?.sub;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    console.log('🔄 Incoming profile update for user:', userId);
+    console.log('📥 Request body:', req.body);
+
+    const { firstName, lastName, email, phone, profilePhoto } = req.body;
+
+    // ✅ Find user by id or oauth_id
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [{ id: userId }, { oauth_id: userId }]
+      }
+    });
+
+    if (!user) {
+      console.warn('⚠️ User not found for update:', userId);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // ✅ Validate email if provided
+    if (email && !validator.isEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // ✅ Update only provided fields
+    if (firstName || lastName) {
+      user.name = [firstName, lastName].filter(Boolean).join(' ') || user.name;
+    }
+    if (email) user.email = email;
+    if (phone) user.phone = phone;
+    if (profilePhoto) user.profilePhoto = profilePhoto;
+
+    await user.save();
+
+    console.log('✅ Profile updated successfully for user:', user.id);
+
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profilePhoto: user.profilePhoto
+      }
+    });
+  } catch (err) {
+    console.error('❌ Update profile error:', err);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+}
+
+
 module.exports = {
   register,
   verifyEmail,
@@ -288,4 +363,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   socialLogin,
+  updateProfile, // ✅ add here
 };

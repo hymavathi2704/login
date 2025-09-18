@@ -42,7 +42,12 @@ const User = sequelize.define('User', {
   reset_token_expires: {
     type: DataTypes.DATE,
     allowNull: true
-  }
+  },
+  profileImage: {
+  type: DataTypes.STRING,
+  allowNull: true, // or false if required
+},
+
 }, {
   tableName: 'users'
 });

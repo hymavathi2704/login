@@ -13,7 +13,7 @@ const axiosInstance = axios.create({
 
 // ✅ Request interceptor (attach token automatically if present)
 axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); // ✅ MATCHES AuthContext
+  const token = localStorage.getItem("accessToken"); // ✅ MATCHES AuthContext & Auth0Callback
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -44,10 +44,9 @@ export const loginUser = async (credentials) => {
 };
 
 // ✅ Get Current User Profile
-export const getMe = async (token) => {
-  return axiosInstance.get("/api/auth/me", {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+export const getMe = async () => {
+  // No need to manually pass token; axios interceptor will handle it
+  return axiosInstance.get("/api/auth/me");
 };
 
 // ✅ Email Verification (Updated for OTP system)
@@ -72,7 +71,8 @@ export const resetPassword = async (data) => {
 
 // ✅ Logout function
 export const logoutUser = () => {
-  localStorage.removeItem("token"); // ✅ MATCHES AuthContext
+  localStorage.removeItem("accessToken"); // ✅ MATCHES AuthContext
+  localStorage.removeItem("user");
   localStorage.removeItem("rememberMe");
 };
 

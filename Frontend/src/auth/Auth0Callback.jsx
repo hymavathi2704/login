@@ -8,7 +8,7 @@ import Icon from '../components/AppIcon';
 
 const Auth0Callback = () => {
   const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
-  const { setAccessToken } = useAuth();
+  const { setAccessToken, setUser } = useAuth(); // ✅ store user info in context
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,6 +16,7 @@ const Auth0Callback = () => {
       if (!isAuthenticated) return;
 
       try {
+        // ✅ Get Auth0 token
         const auth0Token = await getAccessTokenSilently({
           authorizationParams: {
             audience: import.meta.env.VITE_AUTH0_AUDIENCE || "https://api.coachflow.com",
@@ -27,14 +28,10 @@ const Auth0Callback = () => {
           return navigate('/user-login?error=no_token', { replace: true });
         }
 
-        // Send Auth0 token + user data to backend
+        // ✅ Send token to backend for user creation/login
         const response = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/auth/social-login`,
-          {
-            email: user?.email,
-            name: user?.name,
-            sub: user?.sub,
-          },
+          {}, // no need to send user data, backend fetches from Auth0 /userinfo
           {
             headers: {
               Authorization: `Bearer ${auth0Token}`,
@@ -42,10 +39,19 @@ const Auth0Callback = () => {
           }
         );
 
-        // Get backend-issued token
-        const customAccessToken = response?.data?.accessToken;
-        if (customAccessToken) {
-          setAccessToken(customAccessToken); // Store in global state (AuthContext)
+        const backendToken = response?.data?.accessToken;
+        const backendUser = response?.data?.user;
+
+        if (backendToken) {
+          // ✅ Save token & user data
+          localStorage.setItem("accessToken", backendToken);
+          setAccessToken(backendToken);
+
+          if (backendUser) {
+            localStorage.setItem("user", JSON.stringify(backendUser));
+            setUser(backendUser);
+          }
+
           navigate('/user-profile-management', { replace: true });
         } else {
           console.error("No access token returned from backend.");
@@ -58,7 +64,7 @@ const Auth0Callback = () => {
     };
 
     processAuth0Login();
-  }, [isAuthenticated, getAccessTokenSilently, user, setAccessToken, navigate]);
+  }, [isAuthenticated, getAccessTokenSilently, setAccessToken, setUser, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
