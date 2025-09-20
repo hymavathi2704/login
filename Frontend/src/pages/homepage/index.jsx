@@ -10,13 +10,13 @@ const Homepage = () => {
   return (
     <>
       <Helmet>
-        <title>CoachFlow - Transform Your Coaching Into a Thriving Business</title>
+        <title>The Katha - Transform Your Coaching Into a Thriving Business</title>
         <meta 
           name="description" 
           content="The all-in-one platform for independent coaches to manage clients, automate scheduling, and grow their online presence. Join 2,500+ successful coaches today." 
         />
         <meta name="keywords" content="coaching platform, client management, scheduling automation, business growth, independent coaches" />
-        <meta property="og:title" content="CoachFlow - Transform Your Coaching Into a Thriving Business" />
+        <meta property="og:title" content="The Katha - Transform Your Coaching Into a Thriving Business" />
         <meta property="og:description" content="Streamline your coaching business with powerful tools designed for success. Start your free trial today." />
         <meta property="og:type" content="website" />
         <link rel="canonical" href="/homepage" />
@@ -48,9 +48,9 @@ const Homepage = () => {
               <div className="md:col-span-2">
                 <div className="flex items-center space-x-2 mb-4">
                   <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">CF</span>
+                    <span className="text-white font-bold text-sm">TK</span>
                   </div>
-                  <span className="text-xl font-semibold">CoachFlow</span>
+                  <span className="text-xl font-semibold">The Katha</span>
                 </div>
                 <p className="text-white/80 mb-4 max-w-md">
                   Empowering independent coaches worldwide with the tools they need to build, 
@@ -58,7 +58,7 @@ const Homepage = () => {
                 </p>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 text-sm text-white/80">
-                    <span>📧 hello@coachflow.com</span>
+                    <span>📧 thekatha@flow.com</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-white/80">
                     <span>📞 (555) 123-4567</span>
@@ -92,7 +92,7 @@ const Homepage = () => {
             {/* Bottom Bar */}
             <div className="border-t border-white/20 mt-8 pt-8 flex flex-col md:flex-row items-center justify-between">
               <p className="text-white/80 text-sm">
-                © {new Date()?.getFullYear()} CoachFlow. All rights reserved.
+                © {new Date()?.getFullYear()} The Katha. All rights reserved.
               </p>
               <div className="flex items-center gap-6 mt-4 md:mt-0">
                 <div className="flex items-center gap-2 text-sm text-white/80">

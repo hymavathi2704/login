@@ -12,6 +12,8 @@ import PasswordResetPage from './pages/password-reset';
 import Homepage from './pages/homepage';
 import PrivateRoute from "./auth/PrivateRoute";
 import Auth0Callback from "./auth/Auth0Callback";
+import RoleSelection from "./pages/role-selection"; // ✅ add this
+
 
 const Routes = () => {
   return (
@@ -26,7 +28,7 @@ const Routes = () => {
         <Route path="/user-registration" element={<UserRegistration />} />
         <Route path="/password-reset" element={<PasswordResetPage />} />
         <Route path="/password-reset/:token" element={<PasswordResetPage />} />
-
+        <Route path="/role-selection" element={<RoleSelection />} />
         {/* Protected routes */}
         <Route
           path="/homepage"

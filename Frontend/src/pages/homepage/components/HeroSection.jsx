@@ -52,7 +52,8 @@ const HeroSection = () => {
               className="w-full sm:w-auto px-8 py-4 text-lg"
               asChild
             >
-              <Link to="/user-registration">Get Started Free</Link>
+              {/* ✅ Updated to Role Selection */}
+              <Link to="/role-selection">Get Started Free</Link>
             </Button>
             
             <Button 

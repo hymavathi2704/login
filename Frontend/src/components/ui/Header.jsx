@@ -27,7 +27,7 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
       <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
         <Icon name="Zap" size={20} color="white" strokeWidth={2.5} />
       </div>
-      <span className="text-xl font-semibold text-foreground">CoachFlow</span>
+      <span className="text-xl font-semibold text-foreground">The Katha</span>
     </Link>
   );
 

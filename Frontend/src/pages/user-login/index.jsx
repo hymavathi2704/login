@@ -81,7 +81,7 @@ const UserLogin = () => {
             </div>
             <h1 className="text-3xl font-bold text-foreground">Welcome Back</h1>
             <p className="mt-2 text-muted-foreground">
-              Sign in to your CoachFlow account to continue managing your coaching business
+              Sign in to your The Katha account to continue managing your coaching business
             </p>
           </div>
 
