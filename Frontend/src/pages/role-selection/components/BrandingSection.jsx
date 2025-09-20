@@ -11,15 +11,13 @@ const BrandingSection = () => {
 
   return (
     <div className="text-white space-y-8">
-BrandingSection.jsx
-
-$0      {/* Logo and Title */}
+     {/* Logo and Title */}
       <div className="space-y-4">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
             <span className="text-white font-bold text-xl">TK</span>
           </div>
-          <h1 className="text-4xl lg:text-5xl font-bold">CoachFlow</h1>
+          <h1 className="text-4xl lg:text-5xl font-bold">The Katha</h1>
         </div>
         
         <p className="text-xl lg:text-2xl text-white/90 font-light leading-relaxed">
