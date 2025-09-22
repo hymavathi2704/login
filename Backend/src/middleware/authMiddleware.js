@@ -46,18 +46,24 @@ const authenticate = (req, res, next) => {
   authenticateLocal(req, res, (err) => {
     if (!err) {
       // Local JWT verified successfully
+      if (!req.user.id && req.user.userId) {
+        req.user.id = req.user.userId; // normalize key
+      }
       return next();
     }
 
     authenticateAuth0(req, res, (err2) => {
       if (err2) {
         // Both failed → unauthorized
-        return res.status(401).json({ error: "Unauthorized: Invalid or missing token" });
+        return res.status(401).json({
+          error: "Unauthorized: Invalid or missing token",
+          details: process.env.NODE_ENV === "development" ? err2.message : undefined,
+        });
       }
 
       // Normalize Auth0 payload to req.user
       req.user = {
-        userId: req.auth.sub, // Auth0 `sub` as userId
+        id: req.auth.sub, // use `id` consistently
         email: req.auth.email,
         name: req.auth.name || "",
       };
@@ -67,7 +73,4 @@ const authenticate = (req, res, next) => {
   });
 };
 
-// ==============================
-// Export
-// ==============================
 module.exports = { authenticate, authenticateLocal, authenticateAuth0 };

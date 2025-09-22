@@ -19,13 +19,15 @@ const UserProfileManagement = () => {
   const [securityInfo, setSecurityInfo] = useState({});
   const [visibilitySettings, setVisibilitySettings] = useState({});
 
+  const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028';
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
         const token = localStorage.getItem("accessToken");
         if (!token) return;
 
-        const response = await fetch("http://localhost:4028/api/auth/me", {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -34,22 +36,22 @@ const UserProfileManagement = () => {
         const data = await response.json();
         const user = data?.user || {};
 
-        // Safely handle dates
         const safeDate = (dateStr) => {
           const d = new Date(dateStr);
           return isNaN(d.getTime()) ? null : d.toISOString().split("T")[0];
         };
 
         setUserProfile({
-          firstName: user.firstName || user.name?.split(" ")[0] || "",
-          lastName: user.lastName || user.name?.split(" ")[1] || "",
-          email: user.email || "",
-          profilePhoto: user.picture || "",
-          emailVerified: user.email_verified || false,
-          joinDate: safeDate(user.createdAt),
-        });
+  firstName: user.firstName || user.name?.split(" ")[0] || "",
+  lastName: user.lastName || user.name?.split(" ")[1] || "",
+  email: user.email || "",
+  profilePhoto: user.profilePhoto
+    ? `${API_URL}/uploads/${user.profilePhoto}` // <-- prepend backend URL
+    : "", 
+  emailVerified: user.email_verified || false,
+  joinDate: safeDate(user.createdAt),
+});
 
-        // Optional: set other sections if returned from backend
         setBusinessProfile(data.businessProfile || {});
         setPreferences(data.preferences || {});
         setSecurityInfo(data.securityInfo || {});
@@ -60,7 +62,7 @@ const UserProfileManagement = () => {
     };
 
     fetchUserProfile();
-  }, []);
+  }, [API_URL]);
 
   const showSaveStatus = (type, message) => {
     setSaveStatus({ type, message });
@@ -70,7 +72,6 @@ const UserProfileManagement = () => {
   const handleUpdateProfile = async (updatedProfile) => {
     try {
       // Call your API to update the profile
-      // const res = await updateUserProfile(updatedProfile);
       setUserProfile((prev) => ({ ...prev, ...updatedProfile }));
       showSaveStatus('success', 'Profile updated successfully!');
     } catch (err) {
@@ -134,7 +135,10 @@ const UserProfileManagement = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(`https://${visibilitySettings?.profileUrl || ''}`, '_blank')}
+                  onClick={() => {
+                    const url = visibilitySettings?.profileUrl;
+                    if (url) window.open(`https://${url}`, '_blank');
+                  }}
                   iconName="ExternalLink"
                   iconPosition="left"
                   iconSize={16}

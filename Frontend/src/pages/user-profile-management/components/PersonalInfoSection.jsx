@@ -5,7 +5,7 @@ import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import axios from 'axios';
 
-const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
+const PersonalInfoSection = ({ userProfile, onUpdateProfile }) => {
   const [formData, setFormData] = useState({
     firstName: userProfile?.firstName || '',
     lastName: userProfile?.lastName || '',
@@ -13,6 +13,8 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
     phone: userProfile?.phone || '',
     profilePhoto: userProfile?.profilePhoto || ''
   });
+
+  const [previewPhoto, setPreviewPhoto] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -25,24 +27,31 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
       phone: userProfile?.phone || '',
       profilePhoto: userProfile?.profilePhoto || ''
     });
+    setPreviewPhoto(userProfile?.profilePhoto || '');
   }, [userProfile]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors?.[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors?.[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setPreviewPhoto(reader.result);
+    reader.readAsDataURL(file);
+
+    // Validation
     if (!file.type.startsWith('image/')) {
-      setErrors(prev => ({ ...prev, profilePhoto: 'Please select a valid image file' }));
+      setErrors((prev) => ({ ...prev, profilePhoto: 'Please select a valid image file' }));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, profilePhoto: 'Image size must be less than 5MB' }));
+      setErrors((prev) => ({ ...prev, profilePhoto: 'Image size must be less than 5MB' }));
       return;
     }
 
@@ -55,13 +64,15 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
       const response = await axios.put(
         'http://localhost:4028/api/auth/me/photo',
         data,
-        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setFormData(prev => ({ ...prev, profilePhoto: response.data.profilePhoto }));
-      setErrors(prev => ({ ...prev, profilePhoto: '' }));
+      // Update formData and parent state
+      setFormData((prev) => ({ ...prev, profilePhoto: response.data.profilePhoto }));
+      onUpdateProfile({ ...userProfile, profilePhoto: response.data.profilePhoto });
+      setErrors((prev) => ({ ...prev, profilePhoto: '' }));
     } catch (error) {
-      setErrors(prev => ({ ...prev, profilePhoto: 'Failed to upload image. Please try again.' }));
+      setErrors((prev) => ({ ...prev, profilePhoto: 'Failed to upload image. Please try again.' }));
     } finally {
       setIsUploading(false);
     }
@@ -72,8 +83,10 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
     if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
     if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Please enter a valid email address';
-    if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) newErrors.phone = 'Please enter a valid phone number';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+      newErrors.email = 'Please enter a valid email address';
+    if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone))
+      newErrors.phone = 'Please enter a valid phone number';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -87,11 +100,10 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
         formData,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       setIsEditing(false);
-      onProfileUpdated(response.data); // update parent state
+      onUpdateProfile(response.data.user); // use returned user data
     } catch (error) {
-      setErrors(prev => ({ ...prev, general: 'Failed to update profile. Please try again.' }));
+      setErrors((prev) => ({ ...prev, general: 'Failed to update profile. Please try again.' }));
     }
   };
 
@@ -103,6 +115,7 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
       phone: userProfile?.phone || '',
       profilePhoto: userProfile?.profilePhoto || ''
     });
+    setPreviewPhoto(userProfile?.profilePhoto || '');
     setErrors({});
     setIsEditing(false);
   };
@@ -116,11 +129,22 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-foreground">Personal Information</h3>
-            <p className="text-sm text-muted-foreground">Update your personal details and contact information</p>
+            <p className="text-sm text-muted-foreground">
+              Update your personal details and contact information
+            </p>
           </div>
         </div>
         {!isEditing && (
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} iconName="Edit2" iconPosition="left" iconSize={16}>Edit</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditing(true)}
+            iconName="Edit2"
+            iconPosition="left"
+            iconSize={16}
+          >
+            Edit
+          </Button>
         )}
       </div>
 
@@ -136,8 +160,8 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
           <div className="flex-shrink-0">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-muted border-2 border-border">
-                {formData.profilePhoto ? (
-                  <Image src={formData.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                {previewPhoto ? (
+                  <Image src={`http://localhost:4028/${previewPhoto}`} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Icon name="User" size={32} color="rgb(100 116 139)" />
@@ -159,25 +183,71 @@ const PersonalInfoSection = ({ userProfile, onProfileUpdated }) => {
           </div>
           <div className="flex-1">
             <h4 className="text-sm font-medium text-foreground mb-1">Profile Photo</h4>
-            <p className="text-sm text-muted-foreground mb-2">Upload a professional photo that represents you as a coach</p>
-            {isEditing && <div className="text-xs text-muted-foreground">Recommended: Square image, at least 400x400px, max 5MB</div>}
+            <p className="text-sm text-muted-foreground mb-2">
+              Upload a professional photo that represents you as a coach
+            </p>
+            {isEditing && (
+              <div className="text-xs text-muted-foreground">
+                Recommended: Square image, at least 400x400px, max 5MB
+              </div>
+            )}
             {errors.profilePhoto && <p className="text-sm text-error mt-1">{errors.profilePhoto}</p>}
           </div>
         </div>
 
         {/* Name Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="First Name" name="firstName" type="text" value={formData.firstName} onChange={handleInputChange} placeholder="Enter your first name" disabled={!isEditing} required error={errors.firstName} />
-          <Input label="Last Name" name="lastName" type="text" value={formData.lastName} onChange={handleInputChange} placeholder="Enter your last name" disabled={!isEditing} required error={errors.lastName} />
+          <Input
+            label="First Name"
+            name="firstName"
+            type="text"
+            value={formData.firstName}
+            onChange={handleInputChange}
+            placeholder="Enter your first name"
+            disabled={!isEditing}
+            required
+            error={errors.firstName}
+          />
+          <Input
+            label="Last Name"
+            name="lastName"
+            type="text"
+            value={formData.lastName}
+            onChange={handleInputChange}
+            placeholder="Enter your last name"
+            disabled={!isEditing}
+            required
+            error={errors.lastName}
+          />
         </div>
 
         {/* Contact Information */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="Email Address" name="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="Enter your email address" disabled={!isEditing} required error={errors.email} description={!userProfile?.emailVerified ? "Email not verified" : ""} />
-          <Input label="Phone Number" name="phone" type="tel" value={formData.phone} onChange={handleInputChange} placeholder="Enter your phone number" disabled={!isEditing} error={errors.phone} description="Optional - for client communication" />
+          <Input
+            label="Email Address"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            placeholder="Enter your email address"
+            disabled={!isEditing}
+            required
+            error={errors.email}
+            description={!userProfile?.emailVerified ? "Email not verified" : ""}
+          />
+          <Input
+            label="Phone Number"
+            name="phone"
+            type="tel"
+            value={formData.phone}
+            onChange={handleInputChange}
+            placeholder="Enter your phone number"
+            disabled={!isEditing}
+            error={errors.phone}
+            description="Optional - for client communication"
+          />
         </div>
 
-        {/* Action Buttons */}
         {isEditing && (
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-border">
             <Button variant="default" onClick={handleSave} iconName="Save" iconPosition="left" iconSize={16} className="sm:w-auto">Save Changes</Button>

@@ -1,3 +1,4 @@
+// Backend/src/models/User.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
@@ -6,7 +7,11 @@ const User = sequelize.define('User', {
     type: DataTypes.CHAR(36),
     primaryKey: true
   },
-  name: {
+  firstName: {
+    type: DataTypes.STRING(100),
+    allowNull: true
+  },
+  lastName: {
     type: DataTypes.STRING(100),
     allowNull: true
   },
@@ -43,10 +48,11 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: true
   },
-  profileImage: {
+  profilePhoto: {
   type: DataTypes.STRING,
-  allowNull: true, // or false if required
-},
+  allowNull: true,
+  field: 'profile_photo' // maps profileImage to profile_photo column in DB
+}
 
 }, {
   tableName: 'users'
