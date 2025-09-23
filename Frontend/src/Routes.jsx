@@ -12,8 +12,12 @@ import PasswordResetPage from './pages/password-reset';
 import Homepage from './pages/homepage';
 import PrivateRoute from "./auth/PrivateRoute";
 import Auth0Callback from "./auth/Auth0Callback";
-import RoleSelection from "./pages/role-selection"; // ✅ add this
+import RoleSelection from "./pages/role-selection";
 
+// Import Dashboards
+import ClientDashboard from './pages/dashboards/client-dashboard';
+import CoachDashboard from './pages/dashboards/coach-dashboard';
+import AdminDashboard from './pages/dashboards/admin-dashboard';
 
 const Routes = () => {
   return (
@@ -29,7 +33,34 @@ const Routes = () => {
         <Route path="/password-reset" element={<PasswordResetPage />} />
         <Route path="/password-reset/:token" element={<PasswordResetPage />} />
         <Route path="/role-selection" element={<RoleSelection />} />
-        {/* Protected routes */}
+
+        {/* Dashboard Routes - Protected */}
+        <Route
+          path="/dashboard/client"
+          element={
+            <PrivateRoute>
+              <ClientDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/coach"
+          element={
+            <PrivateRoute>
+              <CoachDashboard />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/dashboard/admin"
+          element={
+            <PrivateRoute>
+              <AdminDashboard />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Legacy Protected routes */}
         <Route
           path="/homepage"
           element={

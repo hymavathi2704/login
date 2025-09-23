@@ -6,59 +6,59 @@ const RoleSelectionSection = () => {
     {
       id: 'coach',
       title: 'Coach',
-      description: 'Manage your coaching business',
-      icon: 'Briefcase',
-      iconBgColor: 'bg-blue-500',
-      loginPath: '/user-login?role=coach',
+      description: 'Manage clients, create events, and grow your coaching business',
+      icon: 'Users',
+      iconBgColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
+      loginPath: '/dashboard/coach',
       signupPath: '/user-registration?role=coach'
     },
     {
       id: 'client',
       title: 'Client',
-      description: 'Access coaching sessions & resources',
+      description: 'Book sessions, access resources, and track your progress',
       icon: 'User',
-      iconBgColor: 'bg-blue-300',
-      loginPath: '/user-login?role=client',
+      iconBgColor: 'bg-gradient-to-r from-blue-500 to-cyan-500',
+      loginPath: '/dashboard/client',
       signupPath: '/user-registration?role=client'
     },
     {
       id: 'admin',
       title: 'Platform Admin',
-      description: 'System administration',
-      icon: 'Settings',
-      iconBgColor: 'bg-gray-700',
-      loginPath: '/user-login?role=admin',
+      description: 'Manage platform users, analytics, and system settings',
+      icon: 'Shield',
+      iconBgColor: 'bg-gradient-to-r from-red-500 to-orange-500',
+      loginPath: '/dashboard/admin',
       signupPath: '/user-registration?role=admin'
     }
   ];
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl p-8 lg:p-12">
+    <div className="bg-white rounded-2xl shadow-xl p-8">
       <div className="text-center mb-8">
-        <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+        <h2 className="text-3xl font-bold text-gray-900 mb-3">
           Choose Your Role
         </h2>
-        <p className="text-lg text-gray-600">
-          Select how you'll be using CoachFlow
+        <p className="text-gray-600 text-lg">
+          Select how you'll be using The Katha to get started with the right dashboard and features.
         </p>
       </div>
 
       <div className="space-y-4">
-        {roles?.map((role) => (
-          <RoleCard 
-            key={role?.id}
-            role={role}
-          />
+        {roles.map((role) => (
+          <RoleCard key={role.id} role={role} />
         ))}
       </div>
 
-      <div className="mt-8 text-center">
-        <p className="text-sm text-gray-500">
-          Not sure which role to choose?{' '}
-          <a href="#" className="text-blue-500 hover:text-blue-600 font-medium">
-            Learn more about roles
-          </a>
+      <div className="text-center mt-8 pt-6 border-t border-gray-100">
+        <p className="text-sm text-gray-500 mb-4">
+          Don't have an account yet?
         </p>
+        <a
+          href="/user-registration"
+          className="inline-flex items-center px-6 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+        >
+          Create New Account
+        </a>
       </div>
     </div>
   );
