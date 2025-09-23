@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../../auth/AuthContext';
 import { LogOut, Menu, X } from 'lucide-react';
-import { useState } from 'react';
 
 const DashboardLayout = ({ 
   children, 
@@ -34,7 +33,7 @@ const DashboardLayout = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -45,8 +44,9 @@ const DashboardLayout = ({
 
       {/* Sidebar */}
       <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0
+        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out 
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:static lg:translate-x-0 lg:flex-shrink-0
       `}>
         {/* Sidebar Header */}
         <div className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(userType)} text-white`}>
@@ -116,7 +116,7 @@ const DashboardLayout = ({
       </div>
 
       {/* Main Content */}
-      <div className="lg:ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen">
         {/* Top Header */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
           <div className="flex items-center space-x-4">
