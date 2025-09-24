@@ -35,6 +35,7 @@ axiosInstance.interceptors.response.use(
 
 // ✅ User Registration
 export const registerUser = async (userData) => {
+  // Pass the userData object directly, which now includes 'role'
   return axiosInstance.post("/api/auth/register", userData);
 };
 
@@ -50,8 +51,8 @@ export const getMe = async () => {
 };
 
 // ✅ Email Verification (Updated for OTP system)
-export const verifyEmail = async (email, otp) => {
-  return axiosInstance.post(`/api/auth/verify-email`, { email, otp });
+export const verifyEmail = async (payload) => {
+  return axiosInstance.post(`/api/auth/verify-email`, payload);
 };
 
 // ✅ Resend Verification Email

@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import DashboardLayout from '../shared/DashboardLayout';
 import { 
   BarChart3, 
-  Users, 
+  Users, // Keep Users icon, but we won't use UserManagement component
   DollarSign, 
   Settings, 
   Shield, 
@@ -14,7 +14,7 @@ import {
 
 // Import admin dashboard components
 import AdminOverview from './components/AdminOverview';
-import UserManagement from './components/UserManagement';
+// Removed: import UserManagement from './components/UserManagement';
 import PlatformAnalytics from './components/PlatformAnalytics';
 import RevenueManagement from './components/RevenueManagement';
 import SystemSettings from './components/SystemSettings';
@@ -25,7 +25,7 @@ const AdminDashboard = () => {
 
   const navigationItems = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'users', label: 'User Management', icon: Users },
+    // Removed: { id: 'users', label: 'User Management', icon: Users },
     { id: 'analytics', label: 'Platform Analytics', icon: Activity },
     { id: 'revenue', label: 'Revenue', icon: DollarSign },
     { id: 'security', label: 'Security', icon: Shield },
@@ -36,8 +36,8 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case 'overview':
         return <AdminOverview />;
-      case 'users':
-        return <UserManagement />;
+      // Removed: case 'users':
+      // Removed:   return <UserManagement />;
       case 'analytics':
         return <PlatformAnalytics />;
       case 'revenue':

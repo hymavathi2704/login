@@ -38,12 +38,30 @@ const UserLogin = () => {
       
       setAccessToken(response?.data?.accessToken);
 
+      // Add role-based redirection logic here
+        const userRole = response?.data?.user?.role;
+        const from = location.state?.from?.pathname;
+        let redirectPath;
+
+        switch (userRole) {
+          case 'client':
+            redirectPath = '/dashboard/client';
+            break;
+          case 'coach':
+            redirectPath = '/dashboard/coach';
+            break;
+          case 'admin':
+            redirectPath = '/dashboard/admin';
+            break;
+          default:
+            redirectPath = from || '/role-selection';
+        }
+
       setAttemptCount(0);
       setShowCaptcha(false);
       setIsRateLimited(false);
 
-      const from = location.state?.from?.pathname || '/user-profile-management';
-      navigate(from, { replace: true });
+      navigate(redirectPath, { replace: true });
     } catch (err) {
       const newAttemptCount = attemptCount + 1;
       setAttemptCount(newAttemptCount);

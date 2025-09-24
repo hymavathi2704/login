@@ -5,9 +5,9 @@ const validator = require('validator');
 const axios = require('axios');
 const { Op } = require('sequelize');
 const { customAlphabet } = require('nanoid');
-const User = require('../models/User');
+const User = require('../models/user');
 const { signAccessToken, signEmailToken } = require('../utils/jwt');
-const { sendVerificationEmail } = require('../utils/mailer');
+const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -18,7 +18,7 @@ const generateOtp = customAlphabet('0123456789', 6);
 // ==============================
 async function register(req, res) {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password, role } = req.body;
 
     if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
     if (!password || password.length < 8)
@@ -42,6 +42,7 @@ async function register(req, res) {
       verification_token_expires: otp_expires_at,
       provider: 'email',
       email_verified: false,
+      role: role || 'client',
     });
 
     await sendVerificationEmail(email, otp).catch(console.error);
@@ -63,7 +64,6 @@ async function login(req, res) {
 
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // Only email/password users can login this way
     if (user.provider !== 'email')
       return res.status(400).json({ error: `Use ${user.provider} login` });
 
@@ -93,6 +93,7 @@ async function login(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -130,6 +131,7 @@ async function socialLogin(req, res) {
         email_verified: userInfo.email_verified || true,
         provider: userInfo.sub.split('|')[0],
         oauth_id: userInfo.sub,
+        role: 'client',
       });
     }
 
@@ -142,6 +144,7 @@ async function socialLogin(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -172,7 +175,7 @@ async function me(req, res) {
 
     const user = await User.findOne({
       where: { [Op.or]: [{ id: userId }, { oauth_id: userId }] },
-      attributes: ['id', 'firstName', 'lastName', 'email', 'email_verified', 'provider'],
+      attributes: ['id', 'firstName', 'lastName', 'email', 'email_verified', 'provider', 'role'],
     });
 
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -186,6 +189,7 @@ async function me(req, res) {
         phone: user.phone || null,
         email_verified: user.email_verified,
         provider: user.provider,
+        role: user.role,
       },
     });
   } catch (err) {
@@ -195,12 +199,102 @@ async function me(req, res) {
 }
 
 // ==============================
-// Placeholders for email & password reset
+// Email & Password Reset
 // ==============================
-async function verifyEmail(req, res) { res.json({ message: 'TODO: verifyEmail' }); }
-async function resendVerification(req, res) { res.json({ message: 'TODO: resendVerification' }); }
-async function forgotPassword(req, res) { res.json({ message: 'TODO: forgotPassword' }); }
-async function resetPassword(req, res) { res.json({ message: 'TODO: resetPassword' }); }
+async function verifyEmail(req, res) {
+  try {
+    const { email, code } = req.body;
+    const user = await User.findOne({ where: { email, verification_token: code } });
+
+    if (!user) return res.status(400).json({ error: 'Invalid verification code' });
+    if (user.verification_token_expires < new Date())
+      return res.status(400).json({ error: 'Verification code expired' });
+
+    user.email_verified = true;
+    user.verification_token = null;
+    user.verification_token_expires = null;
+    await user.save();
+
+    res.status(200).json({ message: 'Email verified successfully' });
+  } catch (err) {
+    console.error('Email verification error:', err);
+    res.status(500).json({ error: 'Failed to verify email' });
+  }
+}
+
+async function resendVerification(req, res) {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.email_verified) return res.status(400).json({ error: 'Email is already verified' });
+
+    const otp = generateOtp();
+    user.verification_token = otp;
+    user.verification_token_expires = new Date(Date.now() + 1000 * 60 * 15);
+    await user.save();
+
+    await sendVerificationEmail(email, otp);
+
+    res.status(200).json({ message: 'Verification email resent' });
+  } catch (err) {
+    console.error('Resend verification error:', err);
+    res.status(500).json({ error: 'Failed to resend verification email' });
+  }
+}
+
+async function forgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return res.status(200).json({ message: 'If a matching email was found, a password reset link has been sent.' });
+    }
+
+    const token = signEmailToken({ userId: user.id });
+    const tokenExpires = new Date(Date.now() + 1000 * 60 * 60);
+    
+    user.reset_token = token;
+    user.reset_token_expires = tokenExpires;
+    await user.save();
+
+    await sendResetPasswordEmail(email, token).catch(console.error);
+
+    res.status(200).json({ message: 'If a matching email was found, a password reset link has been sent.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Failed to process password reset request.' });
+  }
+}
+
+async function resetPassword(req, res) {
+  try {
+    const { token, newPassword } = req.body;
+    const user = await User.findOne({
+      where: {
+        reset_token: token,
+        reset_token_expires: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired password reset token.' });
+    }
+
+    const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    user.password_hash = hash;
+    user.reset_token = null;
+    user.reset_token_expires = null;
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successfully.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Failed to reset password.' });
+  }
+}
 
 // ==============================
 // Exports

@@ -26,16 +26,14 @@ const RoleSelection = () => {
         <Header isAuthenticated={false} />
 
         {/* Main Content */}
-        <main className="pt-16 min-h-screen">
-          <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
-            <div className="w-full max-w-7xl mx-auto">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-                {/* Left Side - Branding */}
-                <BrandingSection />
+        <main className="pt-16 min-h-screen flex items-center justify-center">
+          <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center p-8 bg-white/10 rounded-2xl backdrop-blur-sm shadow-soft-lg">
+              {/* Left Side - Branding */}
+              <BrandingSection />
 
-                {/* Right Side - Role Selection */}
-                <RoleSelectionSection />
-              </div>
+              {/* Right Side - Role Selection */}
+              <RoleSelectionSection />
             </div>
           </div>
         </main>

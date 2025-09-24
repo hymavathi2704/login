@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import Icon from '../../../components/AppIcon';
 
@@ -67,24 +67,43 @@ const RoleCard = ({ role }) => {
               {role?.id === 'admin' && "Manage platform settings, user accounts, and system administration."}
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-3">
+            {role?.id === 'admin' ? (
+              // New: Single button for Admin
               <Button
                 variant="default"
                 size="sm"
-                className="flex-1"
-                onClick={() => handleRoleSelect(role?.loginPath)}
+                fullWidth
+                asChild
               >
-                Login as {role?.title}
+                <Link to={role?.loginPath}>
+                  Access Admin Dashboard
+                </Link>
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1"
-                onClick={() => handleRoleSelect(role?.signupPath)}
-              >
-                Sign Up as {role?.title}
-              </Button>
-            </div>
+            ) : (
+              // Existing: Two buttons for other roles
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="flex-1"
+                  asChild
+                >
+                  <Link to={role?.loginPath}>
+                    Login as {role?.title}
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  asChild
+                >
+                  <Link to={role?.signupPath}>
+                    Sign Up as {role?.title}
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

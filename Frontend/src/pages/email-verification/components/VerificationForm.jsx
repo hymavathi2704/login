@@ -25,14 +25,9 @@ const VerificationForm = ({
 
   const handleVerifySubmit = (e) => {
     e?.preventDefault();
-    const payload = {
-        email: userEmail,
-        code: verificationCode?.trim()
-    };
-    console.log('Verification form submitted with payload:', payload); // Debugging log
-
+    // Ensure both email and code are available before submitting
     if (verificationCode?.trim()?.length === 6 && userEmail) {
-      onVerifyToken(payload.email, payload.code);
+      onVerifyToken(userEmail, verificationCode?.trim());
     }
   };
 

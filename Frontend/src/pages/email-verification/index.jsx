@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom';
 import Header from '../../components/ui/Header';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
@@ -22,6 +22,9 @@ const EmailVerification = () => {
   const [progress, setProgress] = useState(25);
   const [userEmail, setUserEmail] = useState(searchParams.get('email') || '');
   const [isResendingEmail, setIsResendingEmail] = useState(false);
+  
+  // Context hook is no longer needed here as we redirect to login after verification
+  // const { user, setUser } = useAuth(); 
 
   // Check for token in URL params (from email link)
   useEffect(() => {
@@ -32,18 +35,6 @@ const EmailVerification = () => {
       setVerificationStatus('error');
     }
   }, [token, userEmail]);
-
-  // Auto-redirect after successful verification
-  useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => {
-        navigate('/user-profile-management', { 
-          state: { message: 'Email verified successfully! Welcome to CoachFlow.' }
-        });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [success, navigate]);
 
   const handleAutoVerification = async (verificationToken) => {
     setIsLoading(true);
@@ -56,6 +47,9 @@ const EmailVerification = () => {
         setSuccess(true);
         setVerificationStatus('success');
         setProgress(100);
+        
+        // Redirect to login after successful verification
+        setTimeout(() => navigate('/user-login'), 3000);
       } else {
         throw new Error(response?.data?.error || 'Invalid or expired verification token');
       }
@@ -73,12 +67,19 @@ const EmailVerification = () => {
     setError('');
     
     try {
-      const response = await authApi.verifyEmail(email, code);
+      const payload = {
+          email: email,
+          code: code
+      };
+      const response = await authApi.verifyEmail(payload);
       
       if (response?.status === 200) {
         setSuccess(true);
         setVerificationStatus('success');
         setProgress(100);
+        
+        // Redirect to login after successful verification
+        setTimeout(() => navigate('/user-login'), 3000);
       } else {
         throw new Error(response?.data?.error || 'Invalid verification code. Please check and try again.');
       }
@@ -129,7 +130,7 @@ const EmailVerification = () => {
       case 'pending':
         return `We've sent a verification email to ${userEmail || 'your email address'}. Please check your inbox and enter the code below.`;
       case 'success':
-        return 'Your email has been successfully verified! You now have full access to your CoachFlow account.';
+        return 'Your email has been successfully verified! You can now log in to your account.';
       case 'error':
         return error;
       case 'expired':
@@ -188,7 +189,7 @@ const EmailVerification = () => {
                       <span className="font-medium">Verification Complete!</span>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Redirecting you to your dashboard...
+                      Redirecting you to the login page to sign in...
                     </p>
                     <Button
                       variant="default"
@@ -196,8 +197,8 @@ const EmailVerification = () => {
                       iconName="ArrowRight"
                       iconPosition="right"
                     >
-                      <Link to="/user-profile-management">
-                        Continue to Dashboard
+                      <Link to="/user-login">
+                        Continue to Login
                       </Link>
                     </Button>
                   </div>

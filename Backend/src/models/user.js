@@ -1,4 +1,3 @@
-// src/models/User.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
@@ -50,6 +49,11 @@ const User = sequelize.define('User', {
   reset_token_expires: {
     type: DataTypes.DATE,
     allowNull: true,
+  },
+  role: { // Add this new field
+    type: DataTypes.ENUM('client', 'coach', 'admin'),
+    allowNull: false,
+    defaultValue: 'client',
   },
 }, {
   tableName: 'users',

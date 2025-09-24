@@ -1,4 +1,4 @@
-// Frontend/src/auth/Auth0Callback.jsx
+// In src/auth/Auth0Callback.jsx
 import React, { useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
@@ -50,9 +50,28 @@ const Auth0Callback = () => {
           if (backendUser) {
             localStorage.setItem("user", JSON.stringify(backendUser));
             setUser(backendUser);
-          }
 
-          navigate('/user-profile-management', { replace: true });
+            // Add role-based redirection logic here
+            const userRole = backendUser.role;
+            let redirectPath;
+            switch (userRole) {
+              case 'client':
+                redirectPath = '/dashboard/client';
+                break;
+              case 'coach':
+                redirectPath = '/dashboard/coach';
+                break;
+              case 'admin':
+                redirectPath = '/dashboard/admin';
+                break;
+              default:
+                redirectPath = '/user-profile-management'; // Fallback
+            }
+            navigate(redirectPath, { replace: true });
+          } else {
+            console.error("No user data returned from backend.");
+            navigate('/user-login?error=backend_failed', { replace: true });
+          }
         } else {
           console.error("No access token returned from backend.");
           navigate('/user-login?error=backend_failed', { replace: true });

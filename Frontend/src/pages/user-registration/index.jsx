@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/ui/Header";
 import RegistrationForm from "./components/RegistrationForm";
 import SocialLoginButtons from "./components/SocialLoginButtons";
@@ -10,6 +10,8 @@ import { registerUser } from "../../auth/authApi";
 
 const UserRegistration = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const role = searchParams.get("role") || "client";
 
   const [isLoading, setIsLoading] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
@@ -17,10 +19,14 @@ const UserRegistration = () => {
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [rateLimitMessage, setRateLimitMessage] = useState("");
   const [formDataForCaptcha, setFormDataForCaptcha] = useState(null);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
 
   const handleFormSubmit = async (formData) => {
-    // Save form data and show CAPTCHA first, before hitting the backend
-    setFormDataForCaptcha(formData);
+    // Parse full name into first and last name
+    const [firstName, ...lastNameParts] = formData.fullName.split(' ');
+    const lastName = lastNameParts.join(' ');
+
+    setFormDataForCaptcha({ ...formData, firstName, lastName, role });
     setShowCaptcha(true);
   };
 
@@ -35,18 +41,19 @@ const UserRegistration = () => {
       return;
     }
 
-    const { fullName, email, password } = formDataForCaptcha;
+    const { firstName, lastName, email, password, role } = formDataForCaptcha;
 
     try {
       const response = await registerUser({
-        name: fullName,
+        firstName, // Use firstName
+        lastName, // Use lastName
         email,
         password,
+        role,
         captcha: captchaResponse,
       });
 
       if (response?.status === 201 || response?.status === 200) {
-        // Corrected logic: Redirect to the email verification page
         navigate(`/email-verification?email=${encodeURIComponent(email)}`);
       }
     } catch (error) {
