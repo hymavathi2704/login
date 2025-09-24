@@ -28,7 +28,7 @@ const RoleSelection = () => {
         {/* Main Content */}
         <main className="pt-16 min-h-screen flex items-center justify-center">
           <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center p-8 bg-white/10 rounded-2xl backdrop-blur-sm shadow-soft-lg">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center p-8 rounded-2xl">
               {/* Left Side - Branding */}
               <BrandingSection />
 

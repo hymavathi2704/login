@@ -16,7 +16,7 @@ const RoleCard = ({ role }) => {
   };
 
   return (
-    <div className="border border-gray-200 rounded-xl hover:border-gray-300 transition-all duration-200 hover:shadow-lg">
+    <div className="border border-gray-200 rounded-xl transition-all duration-200">
       {/* Main Role Card */}
       <div 
         className="p-6 cursor-pointer"
