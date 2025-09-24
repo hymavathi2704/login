@@ -1,36 +1,17 @@
+// src/controllers/authController.js
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 const validator = require('validator');
 const axios = require('axios');
 const { Op } = require('sequelize');
 const { customAlphabet } = require('nanoid');
-const path = require('path');
-const fs = require('fs');
-const multer = require('multer');
 const User = require('../models/User');
-const { signAccessToken, signEmailToken, verifyToken } = require('../utils/jwt');
-const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
+const { signAccessToken, signEmailToken } = require('../utils/jwt');
+const { sendVerificationEmail } = require('../utils/mailer');
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
 const generateOtp = customAlphabet('0123456789', 6);
-
-// ==============================
-// Multer setup for profile photo
-// ==============================
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `profile_${req.user.id}${ext}`);
-  },
-});
-
-const uploadProfilePhotoMiddleware = multer({ storage }).single('profilePhoto');
 
 // ==============================
 // Register
@@ -38,6 +19,7 @@ const uploadProfilePhotoMiddleware = multer({ storage }).single('profilePhoto');
 async function register(req, res) {
   try {
     const { firstName, lastName, email, password } = req.body;
+
     if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
     if (!password || password.length < 8)
       return res.status(400).json({ error: 'Password must be >= 8 chars' });
@@ -57,10 +39,13 @@ async function register(req, res) {
       email,
       password_hash: hash,
       verification_token: otp,
-      verification_token_expires_at: otp_expires_at,
+      verification_token_expires: otp_expires_at,
+      provider: 'email',
+      email_verified: false,
     });
 
     await sendVerificationEmail(email, otp).catch(console.error);
+
     res.status(201).json({ message: 'Registered. Please check email to verify.' });
   } catch (err) {
     console.error('Register error:', err);
@@ -72,21 +57,26 @@ async function register(req, res) {
 // Login
 // ==============================
 async function login(req, res) {
-  const { email, password } = req.body;
   try {
+    const { email, password } = req.body;
     const user = await User.findOne({ where: { email } });
+
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+
+    // Only email/password users can login this way
+    if (user.provider !== 'email')
+      return res.status(400).json({ error: `Use ${user.provider} login` });
+
     if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
 
-    const ok = await bcrypt.compare(password, user.password_hash || '');
+    if (!user.password_hash)
+      return res.status(401).json({ error: 'Invalid credentials' });
+
+    const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
     const accessToken = signAccessToken({ userId: user.id, email: user.email });
-    const refreshToken = signAccessToken({
-      userId: user.id,
-      email: user.email,
-      type: 'refresh',
-    });
+    const refreshToken = signAccessToken({ userId: user.id, email: user.email, type: 'refresh' });
 
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
@@ -102,8 +92,7 @@ async function login(req, res) {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone,
-        profilePhoto: user.profilePhoto,
+        phone: user.phone || null,
       },
     });
   } catch (err) {
@@ -131,6 +120,7 @@ async function socialLogin(req, res) {
       return res.status(400).json({ error: 'Email not returned by Auth0' });
 
     let user = await User.findOne({ where: { email: userInfo.email } });
+
     if (!user) {
       user = await User.create({
         id: uuidv4(),
@@ -140,7 +130,6 @@ async function socialLogin(req, res) {
         email_verified: userInfo.email_verified || true,
         provider: userInfo.sub.split('|')[0],
         oauth_id: userInfo.sub,
-        profilePhoto: userInfo.picture || null,
       });
     }
 
@@ -152,8 +141,7 @@ async function socialLogin(req, res) {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone,
-        profilePhoto: user.profilePhoto,
+        phone: user.phone || null,
       },
     });
   } catch (err) {
@@ -163,17 +151,20 @@ async function socialLogin(req, res) {
 }
 
 // ==============================
-// Profile & Session
+// Logout
 // ==============================
 async function logout(req, res) {
   res.clearCookie(REFRESH_COOKIE_NAME, {
     httpOnly: true,
-    sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
   });
   res.json({ message: 'Logged out' });
 }
 
+// ==============================
+// Get current user
+// ==============================
 async function me(req, res) {
   try {
     const userId = req.user?.userId || req.auth?.userId || req.auth?.sub;
@@ -181,98 +172,30 @@ async function me(req, res) {
 
     const user = await User.findOne({
       where: { [Op.or]: [{ id: userId }, { oauth_id: userId }] },
-      attributes: ['id', 'firstName', 'lastName', 'email', 'email_verified', 'provider', 'profilePhoto'],
+      attributes: ['id', 'firstName', 'lastName', 'email', 'email_verified', 'provider'],
     });
 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const baseUrl = `${req.protocol}://${req.get('host')}/uploads`;
-
-    res.json({ 
-  user: {
-    id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    phone: user.phone,
-    profilePhoto: user.profilePhoto ? `/uploads/${user.profilePhoto}` : null,
-    email_verified: user.email_verified,
-    provider: user.provider
-  } 
-});
+    res.json({
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone || null,
+        email_verified: user.email_verified,
+        provider: user.provider,
+      },
+    });
   } catch (err) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 }
 
-async function updateProfile(req, res) {
-  try {
-    const userId = req.user?.userId || req.auth?.userId || req.auth?.sub;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const { firstName, lastName, email, phone, profilePhoto } = req.body;
-
-    const user = await User.findOne({
-      where: { [Op.or]: [{ id: userId }, { oauth_id: userId }] },
-    });
-
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    if (email && !validator.isEmail(email))
-      return res.status(400).json({ error: 'Invalid email format' });
-
-    if (firstName !== undefined) user.firstName = firstName;
-    if (lastName !== undefined) user.lastName = lastName;
-    if (email !== undefined) user.email = email;
-    if (phone !== undefined) user.phone = phone;
-    if (profilePhoto !== undefined) user.profilePhoto = profilePhoto;
-
-    await user.save();
-
-    res.json({
-      message: 'Profile updated successfully',
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        profilePhoto: user.profilePhoto,
-      },
-    });
-  } catch (err) {
-    console.error('Update profile error:', err);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
-}
-
 // ==============================
-// Upload Profile Photo
-// ==============================
-async function uploadProfilePhoto(req, res) {
-  try {
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
-
-    const userId = req.user.id;
-    const filePath = `uploads/${req.file.filename}`;
-
-    // Update the user record in DB
-    const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    user.profilePhoto = filePath;
-    await user.save();
-
-    res.json({ message: 'Profile photo updated', profilePhoto: user.profilePhoto });
-  } catch (err) {
-    console.error('Upload profile photo error:', err);
-    res.status(500).json({ message: 'Failed to upload profile photo' });
-  }
-}
-
-// ==============================
-// Verification & Password Reset
+// Placeholders for email & password reset
 // ==============================
 async function verifyEmail(req, res) { res.json({ message: 'TODO: verifyEmail' }); }
 async function resendVerification(req, res) { res.json({ message: 'TODO: resendVerification' }); }
@@ -284,14 +207,11 @@ async function resetPassword(req, res) { res.json({ message: 'TODO: resetPasswor
 // ==============================
 module.exports = {
   register,
-  verifyEmail,
   login,
+  socialLogin,
   logout,
   me,
-  socialLogin,
-  updateProfile,
-  uploadProfilePhoto,
-  uploadProfilePhotoMiddleware,
+  verifyEmail,
   resendVerification,
   forgotPassword,
   resetPassword,

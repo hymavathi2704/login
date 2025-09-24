@@ -63,18 +63,11 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
     return (
       <div className="hidden md:flex items-center space-x-3">
         <Button
-          variant="ghost"
-          onClick={() => handleAuthAction('login')}
-          asChild
-        >
-          <Link to="/user-login">Sign In</Link>
-        </Button>
-        <Button
           variant="default"
           onClick={() => handleAuthAction('register')}
           asChild
         >
-          <Link to="/user-registration">Get Started</Link>
+          <Link to="/role-selection">Get Started</Link>
         </Button>
       </div>
     );
@@ -118,20 +111,12 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
           ) : (
             <>
               <Button
-                variant="ghost"
-                fullWidth
-                onClick={() => handleAuthAction('login')}
-                asChild
-              >
-                <Link to="/user-login">Sign In</Link>
-              </Button>
-              <Button
                 variant="default"
                 fullWidth
                 onClick={() => handleAuthAction('register')}
                 asChild
               >
-                <Link to="/user-registration">Get Started</Link>
+                <Link to="/role-selection">Get Started</Link>
               </Button>
             </>
           )}

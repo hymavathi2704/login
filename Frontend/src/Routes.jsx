@@ -6,7 +6,6 @@ import ErrorBoundary from "components/ErrorBoundary";
 import NotFound from "pages/NotFound";
 import UserLogin from './pages/user-login';
 import EmailVerification from './pages/email-verification';
-import UserProfileManagement from './pages/user-profile-management';
 import UserRegistration from './pages/user-registration';
 import PasswordResetPage from './pages/password-reset';
 import Homepage from './pages/homepage';
@@ -60,20 +59,12 @@ const Routes = () => {
           }
         />
 
-        {/* Legacy Protected routes */}
+        {/* Legacy Protected route (Optional) */}
         <Route
           path="/homepage"
           element={
             <PrivateRoute>
               <Homepage />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/user-profile-management"
-          element={
-            <PrivateRoute>
-              <UserProfileManagement />
             </PrivateRoute>
           }
         />

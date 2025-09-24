@@ -1,23 +1,6 @@
-// Backend/src/middlewares/upload.js
-const multer = require('multer');
-const path = require('path');
+// Deprecated: profile/upload handling removed from backend.
+// If you still need file uploads for other features later, reintroduce multer and configure an upload dir.
 
-// Storage config
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads')); // upload folder
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) cb(null, true);
-  else cb(new Error('Only images are allowed'), false);
+module.exports = function deprecatedUploadMiddleware() {
+  throw new Error('upload middleware was removed — profile uploads are deprecated. If you need uploads, re-add multer configuration.');
 };
-
-const upload = multer({ storage, fileFilter });
-
-module.exports = upload;

@@ -3,22 +3,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-const path = require('path');
-const fs = require('fs');
 const { UnauthorizedError } = require('express-jwt');
-const sequelize = require('./config/db');
+const sequelize = require('./config/db.js');
 const authRoutes = require('./routes/auth');
 
 const app = express();
-
-// ==========================================
-// Define uploads folder once
-// ==========================================
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-  console.log('✅ uploads folder created');
-}
 
 // ==========================================
 // Middlewares
@@ -37,16 +26,11 @@ app.use(express.json());
 app.use(cookieParser());
 
 // ==========================================
-// Serve static files (profile photos, etc.)
-// ==========================================
-app.use('/uploads', express.static(uploadDir)); // ✅ Only once
-
-// ==========================================
 // Routes
 // ==========================================
 app.use('/api/auth', authRoutes);
 
-app.get('/', (req, res) => res.send('CoachFlow auth API running 🚀'));
+app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
 // JWT Unauthorized Error Handling

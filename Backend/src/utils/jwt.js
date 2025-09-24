@@ -6,8 +6,6 @@ const signAccessToken = (payload) => {
     throw new Error("JWT_SECRET is missing. Check your .env file.");
   }
 
-  console.log("signAccessToken: Using secret?", !!process.env.JWT_SECRET); // 🔧 Debugging log
-
   return jwt.sign(
     payload,
     process.env.JWT_SECRET,
@@ -23,7 +21,7 @@ const signEmailToken = (payload) => {
   return jwt.sign(
     payload,
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EMAIL_VERIFICATION_EXPIRES || '24h' } // ✅ Fixed typo
+    { expiresIn: process.env.JWT_EMAIL_VERIFICATION_EXPIRES || '24h' }
   );
 };
 

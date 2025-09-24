@@ -3,8 +3,6 @@ const router = express.Router();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
-const path = require('path');
-const multer = require('multer');
 
 const auth = require('../controllers/authController');
 const { authenticate } = require('../middleware/authMiddleware');
@@ -12,22 +10,6 @@ const { authLimiter } = require('../middleware/rateLimiter');
 
 // Allow preflight requests for CORS
 router.options('*', cors());
-
-// ==============================
-// Multer setup for profile photo uploads
-// ==============================
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads');
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `profile_${Date.now()}${ext}`);
-  },
-});
-
-const upload = multer({ storage });
 
 // ==============================
 // Auth0 JWKS client for social login
@@ -84,14 +66,6 @@ router.post('/reset-password', authLimiter, auth.resetPassword);
 
 router.post('/logout', auth.logout);
 
-// ==============================
-// Profile Routes (Requires JWT)
-// ==============================
 router.get('/me', authenticate, auth.me);
-router.put('/me', authenticate, auth.updateProfile);
-router.put('/me/photo', authenticate, upload.single('profilePhoto'), auth.uploadProfilePhoto);
 
-// ==============================
-// Export router
-// ==============================
 module.exports = router;

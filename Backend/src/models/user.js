@@ -1,61 +1,61 @@
-// Backend/src/models/User.js
+// src/models/User.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.CHAR(36),
-    primaryKey: true
+    primaryKey: true,
+    allowNull: false,
   },
   firstName: {
     type: DataTypes.STRING(100),
-    allowNull: true
+    allowNull: true,
   },
   lastName: {
     type: DataTypes.STRING(100),
-    allowNull: true
+    allowNull: true,
   },
   email: {
     type: DataTypes.STRING(255),
     allowNull: false,
-    unique: true
+    unique: true,
   },
   password_hash: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
   },
   email_verified: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false
+    allowNull: false,
+    defaultValue: false,
   },
   provider: {
     type: DataTypes.ENUM('email', 'google', 'github'),
-    defaultValue: 'email'
+    allowNull: false,
+    defaultValue: 'email',
   },
   oauth_id: {
     type: DataTypes.STRING(255),
-    allowNull: true
+    allowNull: true,
   },
   verification_token: {
     type: DataTypes.STRING(255),
-    allowNull: true
+    allowNull: true,
   },
   reset_token: {
     type: DataTypes.STRING(255),
-    allowNull: true
+    allowNull: true,
   },
   reset_token_expires: {
     type: DataTypes.DATE,
-    allowNull: true
+    allowNull: true,
   },
-  profilePhoto: {
-  type: DataTypes.STRING,
-  allowNull: true,
-  field: 'profile_photo' // maps profileImage to profile_photo column in DB
-}
-
 }, {
-  tableName: 'users'
+  tableName: 'users',
+  timestamps: true, // createdAt & updatedAt automatically managed
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
 });
 
 module.exports = User;
