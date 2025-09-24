@@ -35,7 +35,6 @@ axiosInstance.interceptors.response.use(
 
 // ✅ User Registration
 export const registerUser = async (userData) => {
-  // Pass the userData object directly, which now includes 'role'
   return axiosInstance.post("/api/auth/register", userData);
 };
 
@@ -46,7 +45,6 @@ export const loginUser = async (credentials) => {
 
 // ✅ Get Current User Profile
 export const getMe = async () => {
-  // No need to manually pass token; axios interceptor will handle it
   return axiosInstance.get("/api/auth/me");
 };
 
@@ -70,6 +68,11 @@ export const resetPassword = async (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
+// ✅ Update user profile
+export const updateProfile = async (profileData) => {
+  return axiosInstance.put('/api/auth/profile', profileData);
+};
+
 // ✅ Logout function
 export const logoutUser = () => {
   localStorage.removeItem("accessToken"); // ✅ MATCHES AuthContext
@@ -86,6 +89,7 @@ const authApi = {
   logoutUser,
   forgotPassword,
   resetPassword,
+  updateProfile,
 };
 
 export default authApi;

@@ -1,3 +1,4 @@
+// src/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const cors = require('cors');
@@ -67,5 +68,7 @@ router.post('/reset-password', authLimiter, auth.resetPassword);
 router.post('/logout', auth.logout);
 
 router.get('/me', authenticate, auth.me);
+
+router.put('/profile', authenticate, auth.updateProfile); // New profile update route
 
 module.exports = router;

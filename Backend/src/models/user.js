@@ -50,14 +50,18 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: true,
   },
-  role: { // Add this new field
+  role: {
     type: DataTypes.ENUM('client', 'coach', 'admin'),
     allowNull: false,
     defaultValue: 'client',
   },
+  phone: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
 }, {
   tableName: 'users',
-  timestamps: true, // createdAt & updatedAt automatically managed
+  timestamps: true,
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
 });

@@ -7,17 +7,22 @@ const { UnauthorizedError } = require('express-jwt');
 const sequelize = require('./config/db.js');
 const authRoutes = require('./routes/auth');
 
+// Import all models to ensure they are registered with Sequelize
+require('./models/user');
+require('./models/CoachProfile'); // Import the new CoachProfile model
+require('./models/ClientProfile'); // Import the new ClientProfile model
+
 const app = express();
 
 // ==========================================
 // Middlewares
 // ==========================================
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true,
-  optionsSuccessStatus: 200,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
@@ -36,14 +41,14 @@ app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 // JWT Unauthorized Error Handling
 // ==========================================
 app.use((err, req, res, next) => {
-  if (err instanceof UnauthorizedError) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('JWT Unauthorized Error:', err);
-    }
-    return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
-  }
-  console.error('Unexpected Error:', err);
-  return res.status(500).json({ error: 'Internal server error' });
+  if (err instanceof UnauthorizedError) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('JWT Unauthorized Error:', err);
+    }
+    return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
+  }
+  console.error('Unexpected Error:', err);
+  return res.status(500).json({ error: 'Internal server error' });
 });
 
 // ==========================================
@@ -52,13 +57,13 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4028;
 
 (async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ Database connected');
-    await sequelize.sync({ alter: true }); // Auto-sync models (dev only)
-    app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
-  } catch (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  }
+  try {
+    await sequelize.authenticate();
+    console.log('✅ Database connected');
+    await sequelize.sync({ alter: true }); // Auto-sync models (dev only)
+    app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+  } catch (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
 })();

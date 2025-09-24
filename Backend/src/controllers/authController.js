@@ -6,6 +6,8 @@ const axios = require('axios');
 const { Op } = require('sequelize');
 const { customAlphabet } = require('nanoid');
 const User = require('../models/user');
+const CoachProfile = require('../models/CoachProfile');
+const ClientProfile = require('../models/ClientProfile');
 const { signAccessToken, signEmailToken } = require('../utils/jwt');
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
 
@@ -32,7 +34,7 @@ async function register(req, res) {
     const otp = generateOtp();
     const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
-    await User.create({
+    const newUser = await User.create({
       id,
       firstName,
       lastName,
@@ -44,6 +46,12 @@ async function register(req, res) {
       email_verified: false,
       role: role || 'client',
     });
+    
+    if (newUser.role === 'coach') {
+      await CoachProfile.create({ userId: newUser.id });
+    } else if (newUser.role === 'client') {
+      await ClientProfile.create({ userId: newUser.id });
+    }
 
     await sendVerificationEmail(email, otp).catch(console.error);
 
@@ -170,31 +178,67 @@ async function logout(req, res) {
 // ==============================
 async function me(req, res) {
   try {
-    const userId = req.user?.userId || req.auth?.userId || req.auth?.sub;
+    const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const user = await User.findOne({
-      where: { [Op.or]: [{ id: userId }, { oauth_id: userId }] },
-      attributes: ['id', 'firstName', 'lastName', 'email', 'email_verified', 'provider', 'role'],
+    const user = await User.findByPk(userId, {
+      include: [
+        { model: CoachProfile },
+        { model: ClientProfile }
+      ]
     });
-
+    
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    res.json({
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone || null,
-        email_verified: user.email_verified,
-        provider: user.provider,
-        role: user.role,
-      },
-    });
+    const userWithProfile = {
+      ...user.get({ plain: true }),
+      profile: user.role === 'coach' ? user.CoachProfile : user.ClientProfile,
+    };
+
+    res.json({ user: userWithProfile });
   } catch (err) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
+  }
+}
+
+// ==============================
+// Update user profile
+// ==============================
+async function updateProfile(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
+    const { role } = req.user;
+    const { firstName, lastName, email, phone, ...profileData } = req.body;
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    await user.update({ firstName, lastName, email, phone });
+
+    if (role === 'coach') {
+      const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
+      await coachProfile.update(profileData);
+    } else if (role === 'client') {
+      const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
+      await clientProfile.update(profileData);
+    }
+    
+    const updatedUser = await User.findByPk(userId, {
+      include: [
+        { model: CoachProfile },
+        { model: ClientProfile }
+      ]
+    });
+    
+    res.status(200).json({ message: 'Profile updated successfully', user: updatedUser.get({ plain: true }) });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 }
 
@@ -309,4 +353,5 @@ module.exports = {
   resendVerification,
   forgotPassword,
   resetPassword,
+  updateProfile,
 };

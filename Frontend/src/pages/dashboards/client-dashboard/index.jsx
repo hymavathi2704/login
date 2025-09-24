@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import DashboardLayout from '../shared/DashboardLayout';
 import { Calendar, BookOpen, User, MessageSquare, TrendingUp } from 'lucide-react';
+import { useAuth } from '../../../auth/AuthContext';
+import authApi from '../../../auth/authApi';
 
 // Import dashboard sections
 import UpcomingSessions from './components/UpcomingSessions';
@@ -64,11 +66,13 @@ const ClientDashboard = () => {
 
 // Client Overview Component
 const ClientOverview = () => {
+  const { user } = useAuth();
+  const fullName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : '';
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">Welcome back, Sarah!</h2>
+        <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.firstName || 'Client'}!</h2>
         <p className="text-blue-100">You have 2 upcoming sessions this week</p>
       </div>
 
@@ -130,6 +134,55 @@ const ClientOverview = () => {
 
 // Client Profile Component
 const ClientProfile = () => {
+  const { user, setUser } = useAuth();
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    coachingGoals: user?.ClientProfile?.coachingGoals || '',
+  });
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        coachingGoals: user.ClientProfile?.coachingGoals || '',
+      });
+    }
+  }, [user]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      const response = await authApi.updateProfile({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        coachingGoals: formData.coachingGoals // Correctly pass the data to the API
+      });
+      
+      // Update local user state from the response
+      setUser(response.data.user);
+      alert('Profile saved successfully!');
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -137,27 +190,43 @@ const ClientProfile = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
             <input
               type="text"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              defaultValue="Sarah Johnson"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+            <input
+              type="text"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
             <input
               type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              defaultValue="sarah.johnson@email.com"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
             <input
               type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              defaultValue="+1 (555) 123-4567"
             />
           </div>
           <div>
@@ -175,15 +244,21 @@ const ClientProfile = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">Coaching Goals</label>
           <textarea
             rows="4"
+            name="coachingGoals"
+            value={formData.coachingGoals}
+            onChange={handleInputChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Describe your coaching goals and what you'd like to achieve..."
-            defaultValue="I want to improve my work-life balance and develop better leadership skills in my role as a team manager."
           />
         </div>
 
         <div className="mt-6 flex justify-end">
-          <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-            Save Changes
+          <button 
+            onClick={handleSave} 
+            disabled={isLoading}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {isLoading ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
