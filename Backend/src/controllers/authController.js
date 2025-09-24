@@ -178,7 +178,7 @@ async function logout(req, res) {
 // ==============================
 async function me(req, res) {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const user = await User.findByPk(userId, {
@@ -207,27 +207,28 @@ async function me(req, res) {
 // ==============================
 async function updateProfile(req, res) {
   try {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
-    const { role } = req.user;
-    const { firstName, lastName, email, phone, ...profileData } = req.body;
-
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
-
+    
+    const { firstName, lastName, email, phone, ...profileData } = req.body;
+    
+    // Update the main user table fields
     await user.update({ firstName, lastName, email, phone });
-
-    if (role === 'coach') {
-      const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
-      await coachProfile.update(profileData);
-    } else if (role === 'client') {
-      const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
-      await clientProfile.update(profileData);
+    
+    // Update the specific profile table
+    if (user.role === 'client') {
+      const clientProfile = await user.getClientProfile();
+      if (clientProfile) {
+        await clientProfile.update({ coachingGoals: profileData.coachingGoals });
+      }
     }
     
+    // Fetch the updated user data with its associated profile to send back
     const updatedUser = await User.findByPk(userId, {
       include: [
         { model: CoachProfile },
