@@ -32,6 +32,20 @@ const DashboardLayout = ({
     }
   };
 
+  const getInitials = (firstName, lastName, email) => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (email) {
+      return email.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
+  const displayName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user?.email || 'User';
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Mobile sidebar overlay */}
@@ -63,10 +77,10 @@ const DashboardLayout = ({
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
             <div className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(userType)} rounded-full flex items-center justify-center text-white font-medium`}>
-              {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+              {getInitials(user?.firstName, user?.lastName, user?.email)}
             </div>
             <div>
-              <div className="font-medium">{user?.name || 'User'}</div>
+              <div className="font-medium">{displayName}</div>
               <div className="text-sm text-gray-500 capitalize">{userType}</div>
             </div>
           </div>

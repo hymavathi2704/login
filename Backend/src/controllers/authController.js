@@ -189,8 +189,9 @@ async function me(req, res) {
     });
     
     if (!user) return res.status(404).json({ error: 'User not found' });
-
-    res.json({ user: user.get({ plain: true }) });
+    
+    const plainUser = user.get({ plain: true });
+    res.json({ user: plainUser });
   } catch (err) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
@@ -229,7 +230,9 @@ async function updateProfile(req, res) {
       ]
     });
     
-    res.status(200).json({ message: 'Profile updated successfully', user: updatedUser.get({ plain: true }) });
+    const plainUpdatedUser = updatedUser.get({ plain: true });
+    
+    res.status(200).json({ message: 'Profile updated successfully', user: plainUpdatedUser });
   } catch (err) {
     console.error('Update profile error:', err);
     res.status(500).json({ error: 'Failed to update profile' });
