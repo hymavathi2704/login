@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Camera, 
@@ -15,46 +15,70 @@ import {
   X,
   Edit
 } from 'lucide-react';
+import { useAuth } from '../../../../auth/AuthContext';
+import authApi from '../../../../auth/authApi';
 
 const CoachProfile = () => {
+  const { user, setUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [editingSection, setEditingSection] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    title: user?.CoachProfile?.title || '',
+    bio: user?.CoachProfile?.bio || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    location: user?.CoachProfile?.location || '',
+    website: user?.CoachProfile?.website || '',
+    timezone: user?.CoachProfile?.timezone || 'Pacific Time (PT)',
+    specialties: user?.CoachProfile?.specialties || [],
+    certifications: user?.CoachProfile?.certifications || [],
+    languages: user?.CoachProfile?.languages || [],
+    sessionTypes: user?.CoachProfile?.sessionTypes || [],
+    availability: user?.CoachProfile?.availability || {},
+  });
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        title: user.CoachProfile?.title || '',
+        bio: user.CoachProfile?.bio || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        location: user.CoachProfile?.location || '',
+        website: user.CoachProfile?.website || '',
+        timezone: user.CoachProfile?.timezone || 'Pacific Time (PT)',
+        specialties: user.CoachProfile?.specialties || [],
+        certifications: user.CoachProfile?.certifications || [],
+        languages: user.CoachProfile?.languages || [],
+        sessionTypes: user.CoachProfile?.sessionTypes || [],
+        availability: user.CoachProfile?.availability || {},
+      });
+    }
+  }, [user]);
 
   const coachData = {
     personalInfo: {
-      name: "Dr. Emily Chen",
-      title: "Certified Life & Executive Coach",
-      email: "emily.chen@thekata.com",
-      phone: "+1 (555) 123-4567",
-      location: "San Francisco, CA",
-      timezone: "Pacific Time (PT)",
-      website: "www.emilychen-coaching.com",
+      name: user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email || '',
+      title: formData.title || "Certified Coach",
+      email: formData.email || '',
+      phone: formData.phone || '',
+      location: formData.location || '',
+      timezone: formData.timezone || 'Pacific Time (PT)',
+      website: formData.website || '',
       avatar: "/api/placeholder/120/120"
     },
-    bio: "I'm a certified life and executive coach with over 8 years of experience helping professionals achieve work-life balance and career excellence. My approach combines evidence-based coaching methodologies with mindfulness practices to create sustainable change.",
-    specialties: ["Life Coaching", "Executive Coaching", "Work-Life Balance", "Leadership Development", "Stress Management"],
-    certifications: [
-      { name: "International Coach Federation (ICF) - PCC", year: "2018" },
-      { name: "Certified Professional Co-Active Coach (CPCC)", year: "2017" },
-      { name: "Mindfulness-Based Stress Reduction (MBSR)", year: "2019" }
-    ],
-    experience: "8+ years",
-    languages: ["English", "Mandarin", "Spanish"],
-    sessionTypes: [
-      { name: "Life Coaching Session", duration: "60 min", price: 150 },
-      { name: "Executive Coaching", duration: "90 min", price: 200 },
-      { name: "Initial Consultation", duration: "30 min", price: 0 },
-      { name: "Group Coaching", duration: "120 min", price: 75 }
-    ],
-    availability: {
-      monday: { enabled: true, start: "09:00", end: "17:00" },
-      tuesday: { enabled: true, start: "09:00", end: "17:00" },
-      wednesday: { enabled: true, start: "09:00", end: "17:00" },
-      thursday: { enabled: true, start: "09:00", end: "17:00" },
-      friday: { enabled: true, start: "09:00", end: "15:00" },
-      saturday: { enabled: false, start: "", end: "" },
-      sunday: { enabled: false, start: "", end: "" }
-    },
+    bio: formData.bio || "No bio provided.",
+    specialties: formData.specialties,
+    certifications: formData.certifications,
+    languages: formData.languages,
+    sessionTypes: formData.sessionTypes,
+    availability: formData.availability,
     stats: {
       totalSessions: 342,
       activeClients: 24,
@@ -77,6 +101,31 @@ const CoachProfile = () => {
         date: "2025-01-08"
       }
     ]
+  };
+
+  const handleSaveProfile = async () => {
+    setIsLoading(true);
+    try {
+      const response = await authApi.updateProfile({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        title: formData.title,
+        bio: formData.bio,
+        location: formData.location,
+        website: formData.website,
+        timezone: formData.timezone,
+      });
+      setUser(response.data.user);
+      setEditingSection(null);
+      alert('Profile saved successfully!');
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const renderProfileTab = () => (
@@ -148,10 +197,22 @@ const CoachProfile = () => {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                 <input
                   type="text"
-                  defaultValue={coachData.personalInfo.name}
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -159,7 +220,9 @@ const CoachProfile = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Professional Title</label>
                 <input
                   type="text"
-                  defaultValue={coachData.personalInfo.title}
+                  name="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -167,7 +230,9 @@ const CoachProfile = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <input
                   type="email"
-                  defaultValue={coachData.personalInfo.email}
+                  name="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -175,7 +240,9 @@ const CoachProfile = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                 <input
                   type="tel"
-                  defaultValue={coachData.personalInfo.phone}
+                  name="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -183,7 +250,9 @@ const CoachProfile = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
                 <input
                   type="text"
-                  defaultValue={coachData.personalInfo.location}
+                  name="location"
+                  value={formData.location}
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -191,7 +260,9 @@ const CoachProfile = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Website</label>
                 <input
                   type="url"
-                  defaultValue={coachData.personalInfo.website}
+                  name="website"
+                  value={formData.website}
+                  onChange={(e) => setFormData({...formData, website: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -204,10 +275,11 @@ const CoachProfile = () => {
                 Cancel
               </button>
               <button
-                onClick={() => setEditingSection(null)}
+                onClick={handleSaveProfile}
+                disabled={isLoading}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
-                Save Changes
+                {isLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
@@ -231,7 +303,9 @@ const CoachProfile = () => {
           <div>
             <textarea
               rows="4"
-              defaultValue={coachData.bio}
+              name="bio"
+              value={formData.bio}
+              onChange={(e) => setFormData({...formData, bio: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="Tell potential clients about your background, approach, and expertise..."
             />
@@ -243,10 +317,11 @@ const CoachProfile = () => {
                 Cancel
               </button>
               <button
-                onClick={() => setEditingSection(null)}
+                onClick={handleSaveProfile}
+                disabled={isLoading}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
-                Save Bio
+                {isLoading ? 'Saving...' : 'Save Bio'}
               </button>
             </div>
           </div>

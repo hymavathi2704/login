@@ -190,12 +190,7 @@ async function me(req, res) {
     
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const userWithProfile = {
-      ...user.get({ plain: true }),
-      profile: user.role === 'coach' ? user.CoachProfile : user.ClientProfile,
-    };
-
-    res.json({ user: userWithProfile });
+    res.json({ user: user.get({ plain: true }) });
   } catch (err) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
@@ -217,18 +212,16 @@ async function updateProfile(req, res) {
     
     const { firstName, lastName, email, phone, ...profileData } = req.body;
     
-    // Update the main user table fields
     await user.update({ firstName, lastName, email, phone });
-    
-    // Update the specific profile table
-    if (user.role === 'client') {
-      const clientProfile = await user.getClientProfile();
-      if (clientProfile) {
-        await clientProfile.update({ coachingGoals: profileData.coachingGoals });
-      }
+
+    if (user.role === 'coach') {
+      const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
+      await coachProfile.update(profileData);
+    } else if (user.role === 'client') {
+      const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
+      await clientProfile.update(profileData);
     }
     
-    // Fetch the updated user data with its associated profile to send back
     const updatedUser = await User.findByPk(userId, {
       include: [
         { model: CoachProfile },
