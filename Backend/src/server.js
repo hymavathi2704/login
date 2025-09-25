@@ -8,9 +8,9 @@ const sequelize = require('./config/db.js');
 const authRoutes = require('./routes/auth');
 
 // Import all models to ensure they are registered with Sequelize
-require('./models/user');
-require('./models/CoachProfile'); // Import the new CoachProfile model
-require('./models/ClientProfile'); // Import the new ClientProfile model
+const User = require('./models/user');
+const CoachProfile = require('./models/CoachProfile');
+const ClientProfile = require('./models/ClientProfile');
 
 const app = express();
 
@@ -58,6 +58,12 @@ const PORT = process.env.PORT || 4028;
 
 (async () => {
   try {
+    // Define associations between models
+    User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE' });
+    CoachProfile.belongsTo(User, { foreignKey: 'userId' });
+    User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE' });
+    ClientProfile.belongsTo(User, { foreignKey: 'userId' });
+
     await sequelize.authenticate();
     console.log('✅ Database connected');
     await sequelize.sync({ alter: true }); // Auto-sync models (dev only)
