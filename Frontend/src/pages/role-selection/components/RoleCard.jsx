@@ -1,3 +1,4 @@
+// Frontend/src/pages/role-selection/components/RoleCard.jsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
@@ -75,7 +76,7 @@ const RoleCard = ({ role }) => {
                 fullWidth
                 asChild
               >
-                <Link to={role?.loginPath}>
+                <Link to='/user-login' state={{ role: role?.id }}>
                   Access Admin Dashboard
                 </Link>
               </Button>
@@ -88,7 +89,7 @@ const RoleCard = ({ role }) => {
                   className="flex-1"
                   asChild
                 >
-                  <Link to={role?.loginPath}>
+                  <Link to='/user-login' state={{ role: role?.id }}>
                     Login as {role?.title}
                   </Link>
                 </Button>

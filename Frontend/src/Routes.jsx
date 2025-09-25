@@ -4,6 +4,7 @@ import { Routes as RouterRoutes, Route } from "react-router-dom";
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import NotFound from "pages/NotFound";
+import Unauthorized from "./pages/Unauthorized"; // Import the new Unauthorized page
 import UserLogin from './pages/user-login';
 import EmailVerification from './pages/email-verification';
 import UserRegistration from './pages/user-registration';
@@ -32,12 +33,13 @@ const Routes = () => {
         <Route path="/password-reset" element={<PasswordResetPage />} />
         <Route path="/password-reset/:token" element={<PasswordResetPage />} />
         <Route path="/role-selection" element={<RoleSelection />} />
+        <Route path="/unauthorized" element={<Unauthorized />} /> {/* New unauthorized route */}
 
-        {/* Dashboard Routes - Protected */}
+        {/* Dashboard Routes - Protected with role check */}
         <Route
           path="/dashboard/client"
           element={
-            <PrivateRoute>
+            <PrivateRoute allowedRoles={['client']}>
               <ClientDashboard />
             </PrivateRoute>
           }
@@ -45,7 +47,7 @@ const Routes = () => {
         <Route
           path="/dashboard/coach"
           element={
-            <PrivateRoute>
+            <PrivateRoute allowedRoles={['coach']}>
               <CoachDashboard />
             </PrivateRoute>
           }
@@ -53,7 +55,7 @@ const Routes = () => {
         <Route
           path="/dashboard/admin"
           element={
-            <PrivateRoute>
+            <PrivateRoute allowedRoles={['admin']}>
               <AdminDashboard />
             </PrivateRoute>
           }
@@ -63,7 +65,7 @@ const Routes = () => {
         <Route
           path="/homepage"
           element={
-            <PrivateRoute>
+            <PrivateRoute allowedRoles={['client', 'coach', 'admin']}>
               <Homepage />
             </PrivateRoute>
           }

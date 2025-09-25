@@ -1,4 +1,4 @@
-// In src/auth/Auth0Callback.jsx
+// In Frontend/src/auth/Auth0Callback.jsx
 import React, { useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ import Icon from '../components/AppIcon';
 
 const Auth0Callback = () => {
   const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
-  const { setAccessToken, setUser } = useAuth(); // ✅ store user info in context
+  const { setAccessToken, setUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,7 +16,6 @@ const Auth0Callback = () => {
       if (!isAuthenticated) return;
 
       try {
-        // ✅ Get Auth0 token
         const auth0Token = await getAccessTokenSilently({
           authorizationParams: {
             audience: import.meta.env.VITE_AUTH0_AUDIENCE || "https://api.coachflow.com",
@@ -28,10 +27,9 @@ const Auth0Callback = () => {
           return navigate('/user-login?error=no_token', { replace: true });
         }
 
-        // ✅ Send token to backend for user creation/login
         const response = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/auth/social-login`,
-          {}, // no need to send user data, backend fetches from Auth0 /userinfo
+          {},
           {
             headers: {
               Authorization: `Bearer ${auth0Token}`,
@@ -43,7 +41,6 @@ const Auth0Callback = () => {
         const backendUser = response?.data?.user;
 
         if (backendToken) {
-          // ✅ Save token & user data
           localStorage.setItem("accessToken", backendToken);
           setAccessToken(backendToken);
 
@@ -51,7 +48,7 @@ const Auth0Callback = () => {
             localStorage.setItem("user", JSON.stringify(backendUser));
             setUser(backendUser);
 
-            // Add role-based redirection logic here
+            // Dynamically redirect based on the user's role from the backend
             const userRole = backendUser.role;
             let redirectPath;
             switch (userRole) {
@@ -65,7 +62,9 @@ const Auth0Callback = () => {
                 redirectPath = '/dashboard/admin';
                 break;
               default:
-                redirectPath = '/user-profile-management'; // Fallback
+                // Fallback for an unrecognized role
+                redirectPath = '/unauthorized';
+                break;
             }
             navigate(redirectPath, { replace: true });
           } else {
