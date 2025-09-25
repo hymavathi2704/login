@@ -52,13 +52,10 @@ const Routes = () => {
             </PrivateRoute>
           }
         />
+        {/* Updated: Admin dashboard route is now public */}
         <Route
           path="/dashboard/admin"
-          element={
-            <PrivateRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </PrivateRoute>
-          }
+          element={<AdminDashboard />}
         />
 
         {/* Legacy Protected route (Optional) */}
