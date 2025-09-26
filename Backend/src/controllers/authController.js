@@ -366,6 +366,48 @@ async function resetPassword(req, res) {
 }
 
 // ==============================
+// Create a new role profile
+// ==============================
+// MODIFIED: Function is now defined to match the style of your other functions
+async function createProfile(req, res) {
+  try {
+    const userId = req.user?.id; // From auth middleware
+    const { role } = req.body; // 'client' or 'coach'
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (role !== 'client' && role !== 'coach') {
+      return res.status(400).json({ error: 'Invalid role specified' });
+    }
+
+    if (role === 'client') {
+      const existingProfile = await ClientProfile.findOne({ where: { userId } });
+      if (existingProfile) {
+        return res.status(409).json({ error: 'Client profile already exists' });
+      }
+      await ClientProfile.create({ userId });
+    }
+
+    if (role === 'coach') {
+      const existingProfile = await CoachProfile.findOne({ where: { userId } });
+      if (existingProfile) {
+        return res.status(409).json({ error: 'Coach profile already exists' });
+      }
+      await CoachProfile.create({ userId });
+    }
+
+    res.status(201).json({ message: `${role} profile created successfully.` });
+
+  } catch (err) {
+    console.error('Create profile error:', err);
+    res.status(500).json({ error: 'Failed to create profile' });
+  }
+};
+
+
+// ==============================
 // Exports
 // ==============================
 module.exports = {
@@ -379,4 +421,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateProfile,
+  createProfile, // Add this line
 };

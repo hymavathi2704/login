@@ -1,4 +1,3 @@
-// src/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const cors = require('cors');
@@ -69,6 +68,11 @@ router.post('/logout', auth.logout);
 
 router.get('/me', authenticate, auth.me);
 
-router.put('/profile', authenticate, auth.updateProfile); // New profile update route
+router.put('/profile', authenticate, auth.updateProfile);
+
+// --- NEW ROUTE ---
+// Adds a new role profile (client or coach) to the logged-in user's account
+router.post('/create-profile', authenticate, auth.createProfile);
+// -----------------
 
 module.exports = router;

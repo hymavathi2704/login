@@ -11,16 +11,16 @@ const axiosInstance = axios.create({
   },
 });
 
-// ✅ Request interceptor (attach token automatically if present)
+// Request interceptor (attach token automatically if present)
 axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken"); // ✅ MATCHES AuthContext & Auth0Callback
+  const token = localStorage.getItem("accessToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// ✅ Response interceptor (basic error handling)
+// Response interceptor (basic error handling)
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,49 +33,56 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// ✅ User Registration
-export const registerUser = async (userData) => {
+// User Registration
+export const registerUser = (userData) => {
   return axiosInstance.post("/api/auth/register", userData);
 };
 
-// ✅ User Login
-export const loginUser = async (credentials) => {
+// User Login
+export const loginUser = (credentials) => {
   return axiosInstance.post("/api/auth/login", credentials);
 };
 
-// ✅ Get Current User Profile
-export const getMe = async () => {
+// Get Current User Profile
+export const getMe = () => {
   return axiosInstance.get("/api/auth/me");
 };
 
-// ✅ Email Verification (Updated for OTP system)
-export const verifyEmail = async (payload) => {
+// --- NEW FUNCTION ---
+// Creates a new profile (role) for the currently authenticated user.
+export const createProfile = (profileData) => {
+  return axiosInstance.post('/api/auth/create-profile', profileData);
+};
+// --------------------
+
+// Email Verification (Updated for OTP system)
+export const verifyEmail = (payload) => {
   return axiosInstance.post(`/api/auth/verify-email`, payload);
 };
 
-// ✅ Resend Verification Email
-export const resendVerificationEmail = async (email) => {
+// Resend Verification Email
+export const resendVerificationEmail = (email) => {
   return axiosInstance.post("/api/auth/send-verification", { email });
 };
 
-// ✅ Forgot Password
-export const forgotPassword = async (email) => {
-  return axiosInstance.post('/api/auth/forgot-password', email);
+// Forgot Password
+export const forgotPassword = (email) => {
+  return axiosInstance.post('/api/auth/forgot-password', { email });
 };
 
-// ✅ Reset Password
-export const resetPassword = async (data) => {
+// Reset Password
+export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
-// ✅ Update user profile
-export const updateProfile = async (profileData) => {
+// Update user profile
+export const updateProfile = (profileData) => {
   return axiosInstance.put('/api/auth/profile', profileData);
 };
 
-// ✅ Logout function
+// Logout function
 export const logoutUser = () => {
-  localStorage.removeItem("accessToken"); // ✅ MATCHES AuthContext
+  localStorage.removeItem("accessToken");
   localStorage.removeItem("user");
   localStorage.removeItem("rememberMe");
 };
@@ -90,6 +97,7 @@ const authApi = {
   forgotPassword,
   resetPassword,
   updateProfile,
+  createProfile, // Add the new function here
 };
 
 export default authApi;

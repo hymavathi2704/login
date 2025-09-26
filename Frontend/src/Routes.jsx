@@ -1,10 +1,9 @@
-// Frontend/src/Routes.jsx
 import React from "react";
 import { Routes as RouterRoutes, Route } from "react-router-dom";
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import NotFound from "pages/NotFound";
-import Unauthorized from "./pages/Unauthorized"; // Import the new Unauthorized page
+import Unauthorized from "./pages/Unauthorized";
 import UserLogin from './pages/user-login';
 import EmailVerification from './pages/email-verification';
 import UserRegistration from './pages/user-registration';
@@ -14,7 +13,9 @@ import PrivateRoute from "./auth/PrivateRoute";
 import Auth0Callback from "./auth/Auth0Callback";
 import RoleSelection from "./pages/role-selection";
 
-// Import Dashboards
+// --- UPDATED IMPORTS ---
+import DashboardLayout from './pages/dashboards/shared/DashboardLayout';
+import AccountSettings from './pages/dashboards/shared/AccountSettings';
 import ClientDashboard from './pages/dashboards/client-dashboard';
 import CoachDashboard from './pages/dashboards/coach-dashboard';
 import AdminDashboard from './pages/dashboards/admin-dashboard';
@@ -26,47 +27,29 @@ const Routes = () => {
       <RouterRoutes>
         {/* Public routes */}
         <Route path="/" element={<Homepage />} />
-        <Route path="/auth0-callback" element={<Auth0Callback />} />
         <Route path="/user-login" element={<UserLogin />} />
-        <Route path="/email-verification" element={<EmailVerification />} />
         <Route path="/user-registration" element={<UserRegistration />} />
+        <Route path="/email-verification" element={<EmailVerification />} />
         <Route path="/password-reset" element={<PasswordResetPage />} />
-        <Route path="/password-reset/:token" element={<PasswordResetPage />} />
         <Route path="/role-selection" element={<RoleSelection />} />
-        <Route path="/unauthorized" element={<Unauthorized />} /> {/* New unauthorized route */}
+        <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/auth0-callback" element={<Auth0Callback />} />
 
-        {/* Dashboard Routes - Protected with role check */}
+        {/* --- NEW: Shared, Protected Dashboard Layout --- */}
         <Route
-          path="/dashboard/client"
-          element={
-            <PrivateRoute allowedRoles={['client']}>
-              <ClientDashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/dashboard/coach"
-          element={
-            <PrivateRoute allowedRoles={['coach']}>
-              <CoachDashboard />
-            </PrivateRoute>
-          }
-        />
-        {/* Updated: Admin dashboard route is now public */}
-        <Route
-          path="/dashboard/admin"
-          element={<AdminDashboard />}
-        />
-
-        {/* Legacy Protected route (Optional) */}
-        <Route
-          path="/homepage"
+          path="/dashboard"
           element={
             <PrivateRoute allowedRoles={['client', 'coach', 'admin']}>
-              <Homepage />
+              <DashboardLayout />
             </PrivateRoute>
           }
-        />
+        >
+          {/* Nested routes will render inside the DashboardLayout's <Outlet /> */}
+          <Route path="client" element={<ClientDashboard />} />
+          <Route path="coach" element={<CoachDashboard />} />
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="settings" element={<AccountSettings />} />
+        </Route>
 
         {/* Catch-all */}
         <Route path="*" element={<NotFound />} />
