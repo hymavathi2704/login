@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [currentRole, setCurrentRole] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false); // 1. ADD REFRESHING STATE
   const navigate = useNavigate();
 
   const logout = useCallback(() => {
@@ -19,7 +20,6 @@ export const AuthProvider = ({ children }) => {
   }, [navigate]);
 
   const login = (data) => {
-    // ... (this function is correct and does not need changes)
     const { accessToken, user: userData } = data;
     localStorage.setItem('accessToken', accessToken);
     setUser(userData);
@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const switchRole = (newRole) => {
-    // ... (this function is correct and does not need changes)
     if (user && user.roles.includes(newRole)) {
       setCurrentRole(newRole);
       localStorage.setItem('currentRole', newRole);
@@ -46,23 +45,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ NEW FUNCTION TO REFRESH USER DATA
   const refreshUserData = useCallback(async () => {
+    setIsRefreshing(true); // 2. SET REFRESHING TO TRUE
     try {
       const response = await getMe();
       const userData = response.data.user;
       setUser(userData);
-      // You can also update the currentRole if needed, but it's often better
-      // to let the user switch manually if they just added a new role.
     } catch (error) {
       console.error("Failed to refresh user data:", error);
-      // If refreshing fails, it might mean the token is invalid, so log out
       logout();
+    } finally {
+      setIsRefreshing(false); // 3. ALWAYS SET TO FALSE WHEN DONE
     }
   }, [logout]);
 
   useEffect(() => {
-    // ... (this useEffect for session initialization is correct and does not need changes)
     const initializeSession = async () => {
       const token = localStorage.getItem('accessToken');
       if (token) {
@@ -89,12 +86,12 @@ export const AuthProvider = ({ children }) => {
     initializeSession();
   }, [logout]);
   
-  // ✅ ADD `refreshUserData` AND `roles` TO THE EXPORTED VALUE
   const value = { 
     user, 
-    roles: user?.roles || [], // Provide a convenient roles array
+    roles: user?.roles || [],
     currentRole, 
-    isLoading, 
+    isLoading,
+    isRefreshing, // 4. EXPORT REFRESHING STATE
     login, 
     logout, 
     switchRole, 

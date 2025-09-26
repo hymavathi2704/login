@@ -5,14 +5,14 @@ import authApi from '../../auth/authApi';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 import Header from '../../components/ui/Header';
-import { useAuth } from '../../auth/AuthContext'; // 1. Import the useAuth hook
+import { useAuth } from '../../auth/AuthContext';
 
 const WelcomeSetup = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { fetchUser } = useAuth(); // 2. Get the fetchUser function
+  const { refreshUserData } = useAuth(); // use correct function
 
   const handleRoleSelection = (role) => {
     setSelectedRole(role);
@@ -24,28 +24,30 @@ const WelcomeSetup = () => {
       setError('Please select a role to continue.');
       return;
     }
+
     setLoading(true);
     setError('');
+
     try {
-      // Tell the backend to create the role profile
+      console.log("✅ Creating profile with role:", selectedRole);
       await authApi.createProfile({ role: selectedRole });
-      
-      // ✅ 3. REFRESH the user's data to get the new role
-      await fetchUser(); 
-      
-      // Now that the user's role is updated, navigate to the dashboard
-      if (selectedRole === 'coach') {
-        navigate('/dashboard/coach');
-      } else {
-        navigate('/dashboard/client');
-      }
+      console.log("✅ Profile created successfully.");
+
+      console.log("✅ Refreshing user context...");
+      await refreshUserData(); // <-- correct function to refresh context
+      console.log("✅ User context updated.");
+
+      console.log("✅ Navigating to dashboard...");
+      navigate(`/dashboard/${selectedRole}`); // navigate after refresh
+
     } catch (err) {
+      console.error("❌ Error in handleSubmit:", err);
       setError(err.message || 'Failed to set role. Please try again.');
+    } finally {
       setLoading(false);
     }
   };
 
-  // ... rest of the file remains the same
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -133,9 +135,7 @@ const RoleCard = ({ icon: IconComponent, title, description, isSelected, onSelec
       </div>
       <h3 className="text-xl font-semibold text-foreground">{title}</h3>
     </div>
-    <p className="text-muted-foreground">
-      {description}
-    </p>
+    <p className="text-muted-foreground">{description}</p>
   </button>
 );
 

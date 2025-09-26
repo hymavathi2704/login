@@ -1,14 +1,14 @@
-// src/auth/PrivateRoute.jsx
-
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 const PrivateRoute = ({ children, allowedRoles }) => {
-  const { user, isLoading } = useAuth(); // Use 'user' and 'isLoading' from our context
+  // 1. GET isRefreshing FROM THE CONTEXT
+  const { user, isLoading, isRefreshing } = useAuth();
   const location = useLocation();
 
-  if (isLoading) {
+  // 2. CHECK BOTH LOADING AND REFRESHING STATES
+  if (isLoading || isRefreshing) {
     return <div>Loading...</div>; // Or a spinner component
   }
 
@@ -18,7 +18,6 @@ const PrivateRoute = ({ children, allowedRoles }) => {
   }
 
   // This is the special case for the /welcome-setup page.
-  // If the route allows an empty array of roles, it means we just need the user to be logged in.
   if (allowedRoles && allowedRoles.length === 0) {
     return children;
   }
