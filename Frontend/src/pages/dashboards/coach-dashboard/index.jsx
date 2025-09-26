@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
+import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '../shared/DashboardLayout';
 import {
   Users,
@@ -22,9 +23,12 @@ import CommunicationCenter from './components/CommunicationCenter';
 import ResourcesLibrary from './components/ResourcesLibrary';
 import CoachAnalytics from './components/CoachAnalytics';
 import CoachProfile from './components/CoachProfile';
-import AccountSettings from '../shared/AccountSettings'; // ✅ Import AccountSettings
 
 const CoachDashboard = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Determine active tab based on URL query or fallback to overview
   const [activeTab, setActiveTab] = useState('overview');
 
   const navigationItems = [
@@ -35,8 +39,8 @@ const CoachDashboard = () => {
     { id: 'communication', label: 'Communication', icon: MessageSquare },
     { id: 'resources', label: 'Resources', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'profile', label: 'Profile', icon: Settings }, // ✅ Existing Profile
-    { id: 'settings', label: 'Account Settings', icon: Settings } // ✅ New Account Settings
+    { id: 'profile', label: 'Profile', icon: Settings },
+    { id: 'account-settings', label: 'Account Settings', icon: Settings }, // ✅ New item
   ];
 
   const renderContent = () => {
@@ -56,9 +60,7 @@ const CoachDashboard = () => {
       case 'analytics':
         return <CoachAnalytics />;
       case 'profile':
-        return <CoachProfile />; // ✅ Keep Profile tab
-      case 'settings':
-        return <AccountSettings />; // ✅ Account Settings tab
+        return <CoachProfile />;
       default:
         return <CoachOverview />;
     }
@@ -78,7 +80,13 @@ const CoachDashboard = () => {
         userType="coach"
         navigationItems={navigationItems}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tabId) => {
+          if (tabId === 'account-settings') {
+            navigate('/dashboard/account-settings'); // ✅ Navigate to settings route
+          } else {
+            setActiveTab(tabId); // ✅ Switch tab for dashboard content
+          }
+        }}
         title="Coach Dashboard"
         subtitle="Manage your coaching business"
       >

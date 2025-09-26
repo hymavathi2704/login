@@ -7,7 +7,7 @@ import authApi from '../../../auth/authApi';
 import AccountSettings from '../shared/AccountSettings';
 
 // Import dashboard sections
-import ClientOverview from './components/ClientOverview'; // Using the detailed overview
+import ClientOverview from './components/ClientOverview';
 import BookNewSession from './components/BookNewSession';
 import MyResources from './components/MyResources';
 import ProgressTracker from './components/ProgressTracker';
@@ -23,10 +23,18 @@ const ClientDashboard = () => {
     { id: 'progress', label: 'Progress', icon: TrendingUp },
     { id: 'communication', label: 'Messages', icon: MessageSquare },
     { id: 'profile', label: 'My Profile', icon: User },
-    { id: 'settings', label: 'Account Settings', icon: Settings }
+    { id: 'account-settings', label: 'Account Settings', icon: Settings }, // ✅ Match case
   ];
 
-  // Client Profile Component defined locally as requested
+  const handleTabChange = (tabId) => {
+    if (tabId === 'account-settings') {
+      setActiveTab('account-settings');
+    } else {
+      setActiveTab(tabId);
+    }
+  };
+
+  // Client Profile Component defined locally
   const ClientProfile = () => {
     const { user, setUser } = useAuth();
     const [formData, setFormData] = useState({
@@ -135,7 +143,7 @@ const ClientDashboard = () => {
         return <CoachCommunication />;
       case 'profile':
         return <ClientProfile />;
-      case 'settings':
+      case 'account-settings': // ✅ Match navigation item id
         return <AccountSettings />;
       default:
         return <ClientOverview />;
@@ -153,7 +161,7 @@ const ClientDashboard = () => {
         userType="client"
         navigationItems={navigationItems}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange} // ✅ Use updated handler
         title="Client Dashboard"
         subtitle="Manage your coaching journey"
       >
