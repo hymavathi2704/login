@@ -1,35 +1,63 @@
 import React, { useState } from 'react';
-// MODIFIED: Added more hooks from the auth context
+// MODIFIED: Added more hooks from useAuth
 import { useAuth } from '../../../auth/AuthContext';
 import { LogOut, Menu, X } from 'lucide-react';
 
 const DashboardLayout = ({ 
   children, 
-  navigationItems = [], // This prevents crashes but doesn't change your layout
+  navigationItems, 
   activeTab, 
   onTabChange, 
   title, 
   subtitle, 
   userType 
 }) => {
-  // MODIFIED: Getting multi-role state from the context
+  // MODIFIED: Destructured all necessary values from the auth context
   const { user, roles, currentRole, switchRole, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    // No need for window.location.href, the context handles navigation
+    // MODIFIED: The logout function in the context already handles navigation.
+    // window.location.href = '/'; 
   };
 
-  // --- NEW: Role Switcher Component ---
-  // This dropdown only appears if the user has more than one role.
+  const getUserTypeColor = (type) => {
+    switch (type) {
+      case 'client':
+        return 'from-blue-600 to-cyan-600';
+      case 'coach':
+        return 'from-purple-600 to-pink-600';
+      case 'admin':
+        return 'from-red-600 to-orange-600';
+      default:
+        return 'from-gray-600 to-gray-700';
+    }
+  };
+
+  // NEW: A helper function to get user initials correctly
+  const getInitials = (firstName, lastName, email) => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (email) {
+      return email.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
+  // NEW: A helper to get the full display name
+  const displayName = user?.firstName && user?.lastName 
+    ? `${user.firstName} ${user.lastName}` 
+    : user?.email || 'User';
+  
+  // NEW: The RoleSwitcher component will only render if needed
   const RoleSwitcher = () => {
-    // If the user has only one role, just display it as text.
+    // Only show the switcher if the user has more than one role
     if (!roles || roles.length <= 1) {
       return <div className="text-sm text-gray-500 capitalize">{currentRole || userType}</div>;
     }
-    
-    // If they have multiple roles, show the dropdown.
+
     return (
       <select
         value={currentRole}
@@ -45,27 +73,8 @@ const DashboardLayout = ({
       </select>
     );
   };
-
-  const getUserTypeColor = (type) => {
-    switch (type) {
-      case 'client': return 'from-blue-600 to-cyan-600';
-      case 'coach': return 'from-purple-600 to-pink-600';
-      case 'admin': return 'from-red-600 to-orange-600';
-      default: return 'from-gray-600 to-gray-700';
-    }
-  };
-
-  const getInitials = (firstName, lastName, email) => {
-    if (firstName && lastName) return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    if (email) return email.charAt(0).toUpperCase();
-    return 'U';
-  };
-
-  const displayName = user?.firstName && user?.lastName 
-    ? `${user.firstName} ${user.lastName}` 
-    : user?.email || 'User';
-
-  // Use the role from the context first, but fall back to the prop for safety.
+  
+  // NEW: Determine the display role from context first, then the prop
   const displayRole = currentRole || userType;
 
   return (
@@ -82,27 +91,34 @@ const DashboardLayout = ({
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:static lg:translate-x-0 lg:flex-shrink-0
       `}>
+        {/* MODIFIED: Uses the dynamic displayRole for color */}
         <div className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(displayRole)} text-white`}>
           <div className="font-bold text-lg">The Katha</div>
-          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 hover:bg-white/20 rounded">
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-1 hover:bg-white/20 rounded"
+          >
             <X size={20} />
           </button>
         </div>
 
+        {/* User Info */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
+            {/* MODIFIED: Uses dynamic displayRole for color and new getInitials function */}
             <div className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(displayRole)} rounded-full flex items-center justify-center text-white font-medium`}>
               {getInitials(user?.firstName, user?.lastName, user?.email)}
             </div>
             <div>
+              {/* MODIFIED: Uses the new displayName */}
               <div className="font-medium">{displayName}</div>
-              {/* --- MODIFIED: The RoleSwitcher is now here --- */}
+              {/* NEW: The RoleSwitcher is placed here */}
               <RoleSwitcher />
             </div>
           </div>
         </div>
 
-        {/* Navigation remains unchanged and is driven by your props */}
+        {/* Navigation (This section is UNCHANGED and still uses props) */}
         <nav className="flex-1 px-4 py-6">
           <ul className="space-y-2">
             {navigationItems.map((item) => {
@@ -119,7 +135,7 @@ const DashboardLayout = ({
                     className={`
                       w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
                       ${isActive 
-                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600 font-semibold' 
+                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' 
                         : 'text-gray-600 hover:bg-gray-50'
                       }
                     `}
@@ -134,7 +150,10 @@ const DashboardLayout = ({
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          <button onClick={handleLogout} className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+          >
             <LogOut size={20} />
             <span className="font-medium">Logout</span>
           </button>
@@ -144,7 +163,10 @@ const DashboardLayout = ({
       <div className="flex-1 flex flex-col min-h-screen">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
           <div className="flex items-center space-x-4">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 hover:bg-gray-100 rounded-lg">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+            >
               <Menu size={20} />
             </button>
             <div>
@@ -152,9 +174,10 @@ const DashboardLayout = ({
               {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
             </div>
           </div>
+
           <div className="flex items-center space-x-4">
             <div className="text-sm text-gray-500">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {new Date().toLocaleDateString()}
             </div>
           </div>
         </header>
