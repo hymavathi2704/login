@@ -1,9 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Import useNavigate
 import Button from '../../../components/ui/Button';
 import Icon from '../../../components/AppIcon';
 
 const HeroSection = () => {
+  const navigate = useNavigate(); // Initialize useNavigate
+
   return (
     <section className="relative bg-gradient-to-br from-blue-50 via-white to-indigo-50 py-20 lg:py-32 overflow-hidden">
       {/* Background Pattern */}
@@ -50,10 +52,9 @@ const HeroSection = () => {
               iconName="ArrowRight"
               iconPosition="right"
               className="w-full sm:w-auto px-8 py-4 text-lg"
-              asChild
+              onClick={() => navigate('/register')} // ✅ Updated to use navigate
             >
-              {/* ✅ Updated to Role Selection */}
-              <Link to="/role-selection">Get Started Free</Link>
+              Get Started Free
             </Button>
             
             <Button 

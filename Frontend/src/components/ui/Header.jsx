@@ -1,26 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../AppIcon';
 import Button from './Button';
+import { useAuth } from '../../auth/AuthContext'; // Import useAuth
 
-const Header = ({ isAuthenticated = false, userProfile = null }) => {
+const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth(); // Get user and logout from context
 
   // Close mobile menu when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
-
-  const handleAuthAction = (action) => {
-    console.log(`Authentication action: ${action}`);
-    // Handle authentication actions here
-  };
-
-  const handleLogout = () => {
-    console.log('Logout action');
-    // Handle logout logic here
-  };
 
   const CoachFlowLogo = () => (
     <Link to="/homepage" className="flex items-center space-x-2">
@@ -32,42 +25,42 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
   );
 
   const AuthenticationActions = () => {
-    if (isAuthenticated && userProfile) {
+    if (user) {
+      // User is authenticated
       return (
-        <div className="relative">
-          <div className="hidden md:flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              onClick={() => handleAuthAction('profile')}
-              className="flex items-center space-x-2"
-            >
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <Icon name="User" size={16} color="white" />
-              </div>
-              <span className="text-sm font-medium">{userProfile?.name || 'Profile'}</span>
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleLogout}
-              iconName="LogOut"
-              iconPosition="left"
-              iconSize={16}
-            >
-              Sign Out
-            </Button>
-          </div>
+        <div className="hidden md:flex items-center space-x-4">
+          <Button
+            variant="primary"
+            onClick={() => navigate('/dashboard')}
+          >
+            Go to Dashboard
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={logout}
+            aria-label="Logout"
+          >
+            <Icon name="LogOut" size={20} />
+          </Button>
         </div>
       );
     }
 
+    // User is not authenticated
     return (
       <div className="hidden md:flex items-center space-x-3">
         <Button
-          variant="default"
-          onClick={() => handleAuthAction('register')}
-          asChild
+          variant="ghost"
+          onClick={() => navigate('/login')}
         >
-          <Link to="/role-selection">Get Started</Link>
+          Sign In
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => navigate('/register')}
+        >
+          Get Started
         </Button>
       </div>
     );
@@ -77,31 +70,30 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
     <div className={`md:hidden ${isMobileMenuOpen ? 'block' : 'hidden'}`}>
       <div className="absolute top-full left-0 right-0 bg-card border-t border-border shadow-soft-md z-50">
         <div className="px-4 py-4 space-y-3">
-          {isAuthenticated && userProfile ? (
+          {user ? (
             <>
               <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
                 <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                   <Icon name="User" size={20} color="white" />
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">{userProfile?.name || 'User'}</p>
-                  <p className="text-sm text-muted-foreground">{userProfile?.email || 'user@example.com'}</p>
+                  <p className="font-medium text-foreground">{`${user.firstName} ${user.lastName}`}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 fullWidth
-                onClick={() => handleAuthAction('profile')}
+                onClick={() => navigate('/dashboard/settings')}
                 iconName="Settings"
                 iconPosition="left"
-                asChild
               >
-                <Link to="/user-profile-management">Profile Settings</Link>
+                Profile Settings
               </Button>
               <Button
                 variant="outline"
                 fullWidth
-                onClick={handleLogout}
+                onClick={logout}
                 iconName="LogOut"
                 iconPosition="left"
               >
@@ -113,10 +105,16 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
               <Button
                 variant="default"
                 fullWidth
-                onClick={() => handleAuthAction('register')}
-                asChild
+                onClick={() => navigate('/register')}
               >
-                <Link to="/role-selection">Get Started</Link>
+                Get Started
+              </Button>
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={() => navigate('/login')}
+              >
+                Sign In
               </Button>
             </>
           )}
@@ -129,17 +127,12 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
     <header className="fixed top-0 left-0 right-0 bg-card border-b border-border shadow-soft z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <div className="flex-shrink-0">
             <CoachFlowLogo />
           </div>
-
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <AuthenticationActions />
           </nav>
-
-          {/* Mobile Menu Button */}
           <div className="md:hidden">
             <Button
               variant="ghost"
@@ -147,17 +140,15 @@ const Header = ({ isAuthenticated = false, userProfile = null }) => {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle mobile menu"
             >
-              <Icon 
-                name={isMobileMenuOpen ? "X" : "Menu"} 
-                size={24} 
-                color="currentColor" 
+              <Icon
+                name={isMobileMenuOpen ? "X" : "Menu"}
+                size={24}
+                color="currentColor"
               />
             </Button>
           </div>
         </div>
       </div>
-
-      {/* Mobile Menu */}
       <MobileMenu />
     </header>
   );

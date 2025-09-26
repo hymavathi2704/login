@@ -1,111 +1,115 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as authApi from './authApi';
+import { jwtDecode } from 'jwt-decode';
 
-const AuthContext = createContext();
-
-export const useAuth = () => useContext(AuthContext);
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [roles, setRoles] = useState([]);
   const [currentRole, setCurrentRole] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const initializeAuth = () => {
-      const token = localStorage.getItem('accessToken');
-      if (token) {
-        try {
-          const storedUser = JSON.parse(localStorage.getItem('user'));
-          if (storedUser) {
-            setUser(storedUser);
-            setRoles(storedUser.roles || []);
-            const defaultRole = (storedUser.roles && storedUser.roles[0]) || null;
-            setCurrentRole(defaultRole);
-            setIsAuthenticated(true);
-          }
-        } catch (error) {
-          console.error('Failed to initialize auth:', error);
-          logout();
-        }
-      }
-      setLoading(false);
-    };
-    initializeAuth();
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('currentRole');
+    setUser(null);
+    setCurrentRole(null);
   }, []);
 
-  const login = (userData) => {
-    setUser(userData.user);
-    const userRoles = userData.user.roles || [];
-    setRoles(userRoles);
-    const defaultRole = userRoles.length > 0 ? userRoles[0] : null;
-    setCurrentRole(defaultRole);
-    setIsAuthenticated(true);
-    localStorage.setItem('accessToken', userData.accessToken);
-    localStorage.setItem('user', JSON.stringify(userData.user));
+  const setSession = useCallback((data) => {
+    setIsLoading(true);
+    try {
+      if (data && data.accessToken) {
+        const decodedToken = jwtDecode(data.accessToken);
+        localStorage.setItem('accessToken', data.accessToken);
+        
+        const userData = { ...data.user, roles: decodedToken.roles || [] };
+        setUser(userData);
+        
+        const defaultRole = userData.roles.length > 0 ? userData.roles[0] : null;
+        setCurrentRole(defaultRole);
+        localStorage.setItem('currentRole', defaultRole);
 
-    if (defaultRole) {
-      navigate(`/dashboard/${defaultRole}`);
-    } else {
-      navigate('/onboarding'); 
+        if (userData.roles.length === 0) {
+          navigate('/welcome-setup'); // Redirect new users to a setup page
+        } else {
+          navigate(`/dashboard/${defaultRole}`);
+        }
+      } else {
+        throw new Error("No access token provided.");
+      }
+    } catch (error) {
+      console.error("Failed to set session:", error);
+      clearSession();
+      navigate('/login'); // Redirect to login on error
+    } finally {
+      setIsLoading(false);
     }
+  }, [navigate, clearSession]);
+
+  const login = (data) => {
+    setSession(data);
   };
 
   const logout = () => {
-    authApi.logoutUser(); // Use the logout function from authApi
-    setUser(null);
-    setRoles([]);
-    setCurrentRole(null);
-    setIsAuthenticated(false);
-    navigate('/user-login');
+    clearSession();
+    navigate('/');
   };
   
   const switchRole = (newRole) => {
-    if (roles.includes(newRole)) {
+    if (user && user.roles.includes(newRole)) {
       setCurrentRole(newRole);
+      localStorage.setItem('currentRole', newRole);
       navigate(`/dashboard/${newRole}`);
-    } else {
-      console.error(`Attempted to switch to an invalid role: ${newRole}`);
     }
   };
 
-  // --- NEW FUNCTION TO REFRESH USER DATA ---
-  const refreshUserData = async () => {
-    try {
-      const response = await authApi.getMe();
-      const updatedUser = response.data.user;
-      
-      if (updatedUser) {
-        const userRoles = [];
-        if (updatedUser.ClientProfile) userRoles.push('client');
-        if (updatedUser.CoachProfile) userRoles.push('coach');
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
         
-        const fullUser = { ...updatedUser, roles: userRoles };
-        setUser(fullUser);
-        setRoles(userRoles);
-        localStorage.setItem('user', JSON.stringify(fullUser));
+        if (decoded.exp < currentTime) {
+          // Token is expired
+          throw new Error("Token expired.");
+        }
+        
+        // In a real app, you'd fetch fresh user data here using the token
+        setUser({ email: decoded.email, id: decoded.userId, roles: decoded.roles });
+        
+        const storedRole = localStorage.getItem('currentRole');
+        if (storedRole && decoded.roles.includes(storedRole)) {
+          setCurrentRole(storedRole);
+        } else if (decoded.roles.length > 0) {
+          const defaultRole = decoded.roles[0];
+          setCurrentRole(defaultRole);
+          localStorage.setItem('currentRole', defaultRole);
+        }
+
+      } catch (e) {
+        console.error("Session re-hydration failed:", e);
+        clearSession(); // Clear bad token
       }
-    } catch (error) {
-      console.error("Failed to refresh user data:", error);
-      logout();
     }
-  };
-  // ------------------------------------------
+    setIsLoading(false);
+  }, [clearSession]);
 
-  const value = {
-    user,
-    isAuthenticated,
-    loading,
-    roles,
-    currentRole,
-    login,
-    logout,
-    switchRole,
-    refreshUserData, // Expose the new function
-  };
+  const value = { user, currentRole, isLoading, login, logout, switchRole, setSession };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {!isLoading && children}
+    </AuthContext.Provider> 
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

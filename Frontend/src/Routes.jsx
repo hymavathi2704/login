@@ -10,7 +10,6 @@ import PasswordResetPage from './pages/password-reset';
 import Homepage from './pages/homepage';
 import PrivateRoute from "./auth/PrivateRoute";
 import Auth0Callback from "./auth/Auth0Callback";
-import RoleSelection from "./pages/role-selection";
 
 // Dashboard imports
 import ClientDashboard from './pages/dashboards/client-dashboard';
@@ -24,11 +23,11 @@ const Routes = () => {
       <RouterRoutes>
         {/* Public Routes */}
         <Route path="/" element={<Homepage />} />
-        <Route path="/user-login" element={<UserLogin />} />
-        <Route path="/user-registration" element={<UserRegistration />} />
+        <Route path="/login" element={<UserLogin />} /> {/* Updated from /user-login for simplicity */}
+        <Route path="/register" element={<UserRegistration />} /> {/* Updated from /user-registration */}
         <Route path="/email-verification" element={<EmailVerification />} />
         <Route path="/password-reset" element={<PasswordResetPage />} />
-        <Route path="/role-selection" element={<RoleSelection />} />
+        {/* REMOVED: The /role-selection route is no longer needed */}
         <Route path="/auth0-callback" element={<Auth0Callback />} />
 
         {/* Protected Dashboard Routes */}
