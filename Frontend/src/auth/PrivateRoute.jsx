@@ -5,28 +5,33 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 const PrivateRoute = ({ children, allowedRoles }) => {
-  const auth = useAuth();
+  const { user, isLoading } = useAuth(); // Use 'user' and 'isLoading' from our context
   const location = useLocation();
 
-  if (auth.loading) {
-    // You can return a loading spinner here
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return <div>Loading...</div>; // Or a spinner component
   }
 
-  if (!auth.isAuthenticated) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to. This allows us to send them along to that page after they login.
+  // If there's no user object, they are not logged in.
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // **MODIFIED: Check the currentRole from AuthContext**
-  const isAllowed = allowedRoles.includes(auth.currentRole);
+  // This is the special case for the /welcome-setup page.
+  // If the route allows an empty array of roles, it means we just need the user to be logged in.
+  if (allowedRoles && allowedRoles.length === 0) {
+    return children;
+  }
 
-  if (!isAllowed) {
-    // User is authenticated but does not have the required role for this route
+  // For all other private routes, check if the user's roles array contains at least one of the allowed roles.
+  const userHasRequiredRole = user.roles && user.roles.some(role => allowedRoles.includes(role));
+
+  if (!userHasRequiredRole) {
+    // If they don't have the role, send them to an unauthorized page.
     return <Navigate to="/unauthorized" replace />;
   }
 
+  // If they are logged in and have the role, show the page.
   return children;
 };
 
