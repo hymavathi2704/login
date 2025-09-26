@@ -9,7 +9,8 @@ const SuccessMessage = ({ autoRedirect = true, redirectDelay = 5 }) => {
   useEffect(() => {
     if (autoRedirect) {
       const timer = setTimeout(() => {
-        navigate('/user-login');
+        // ✅ FIX: Corrected redirect path
+        navigate('/login');
       }, redirectDelay * 1000);
 
       return () => clearTimeout(timer);
@@ -49,7 +50,8 @@ const SuccessMessage = ({ autoRedirect = true, redirectDelay = 5 }) => {
           fullWidth
           asChild
         >
-          <Link to="/user-login">
+          {/* ✅ FIX: Corrected link path */}
+          <Link to="/login">
             Continue to Sign In
           </Link>
         </Button>

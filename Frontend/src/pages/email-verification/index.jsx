@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, useParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Header from '../../components/ui/Header';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
@@ -11,7 +11,7 @@ import authApi from '../../auth/authApi';
 const EmailVerification = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { token } = useParams();
+  const { token } = { token: searchParams.get('token') }; // Simplified to get token from search params
   
   // State management
   const [verificationStatus, setVerificationStatus] = useState('pending');
@@ -23,9 +23,6 @@ const EmailVerification = () => {
   const [userEmail, setUserEmail] = useState(searchParams.get('email') || '');
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   
-  // Context hook is no longer needed here as we redirect to login after verification
-  // const { user, setUser } = useAuth(); 
-
   // Check for token in URL params (from email link)
   useEffect(() => {
     if (token && userEmail) {
@@ -41,7 +38,8 @@ const EmailVerification = () => {
     setError('');
     
     try {
-      const response = await authApi.verifyEmail(userEmail, verificationToken);
+      // ✅ Use payload object for consistency
+      const response = await authApi.verifyEmail({ email: userEmail, code: verificationToken });
       
       if (response?.status === 200) {
         setSuccess(true);
@@ -49,7 +47,7 @@ const EmailVerification = () => {
         setProgress(100);
         
         // Redirect to login after successful verification
-        setTimeout(() => navigate('/user-login'), 3000);
+        setTimeout(() => navigate('/login'), 3000);
       } else {
         throw new Error(response?.data?.error || 'Invalid or expired verification token');
       }
@@ -79,7 +77,7 @@ const EmailVerification = () => {
         setProgress(100);
         
         // Redirect to login after successful verification
-        setTimeout(() => navigate('/user-login'), 3000);
+        setTimeout(() => navigate('/login'), 3000);
       } else {
         throw new Error(response?.data?.error || 'Invalid verification code. Please check and try again.');
       }
@@ -130,7 +128,7 @@ const EmailVerification = () => {
       case 'pending':
         return `We've sent a verification email to ${userEmail || 'your email address'}. Please check your inbox and enter the code below.`;
       case 'success':
-        return 'Your email has been successfully verified! You can now log in to your account.';
+        return 'Your email has been successfully verified! You will be redirected to the login page shortly.';
       case 'error':
         return error;
       case 'expired':
@@ -145,51 +143,36 @@ const EmailVerification = () => {
       <Header />
       <main className="pt-16">
         <div className="min-h-screen flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-4xl mx-auto">
+          <div className="w-full max-w-4xl mx-auto space-y-8">
             
             {/* Header Section */}
-            <div className="text-center mb-8">
+            <div className="text-center">
               <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Icon name="ShieldCheck" size={40} color="var(--color-primary)" />
+                <Icon name={success ? "ShieldCheck" : "Mail"} size={40} color="var(--color-primary)" />
               </div>
               <h1 className="text-3xl font-bold text-foreground mb-3">
-                Verify Your Email
+                {success ? "Email Verified!" : "Verify Your Email"}
               </h1>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Complete your account setup by verifying your email address
+                {success ? "You can now securely log in to your account." : "Complete your account setup by verifying your email address"}
               </p>
             </div>
 
             {/* Main Content */}
             <div className="grid lg:grid-cols-2 gap-8 items-start">
               
-              {/* Left Column - Verification Form */}
+              {/* Left Column */}
               <div className="space-y-8">
-                <VerificationStatus 
-                  status={verificationStatus}
-                  message={getStatusMessage()}
-                  progress={progress}
-                />
-                
-                {!success && (
-                  <VerificationForm
-                    userEmail={userEmail}
-                    onVerifyToken={handleVerifyCode}
-                    onResendEmail={handleResendEmail}
-                    isLoading={isLoading}
-                    error={error}
-                    success={success}
-                  />
-                )}
-
-                {success && (
-                  <div className="text-center space-y-4">
-                    <div className="flex items-center justify-center space-x-2 text-success">
-                      <Icon name="CheckCircle" size={20} />
-                      <span className="font-medium">Verification Complete!</span>
-                    </div>
+                {/* ✅ Simplified logic to show one view at a time */}
+                {success ? (
+                  <div className="bg-card border border-border rounded-lg p-6 text-center space-y-6">
+                    <VerificationStatus 
+                      status={verificationStatus}
+                      message={getStatusMessage()}
+                      progress={progress}
+                    />
                     <p className="text-sm text-muted-foreground">
-                      Redirecting you to the login page to sign in...
+                      Redirecting you to the login page...
                     </p>
                     <Button
                       variant="default"
@@ -197,11 +180,28 @@ const EmailVerification = () => {
                       iconName="ArrowRight"
                       iconPosition="right"
                     >
-                      <Link to="/user-login">
+                      {/* ✅ FIX: Corrected link to point to /login */}
+                      <Link to="/login">
                         Continue to Login
                       </Link>
                     </Button>
                   </div>
+                ) : (
+                  <>
+                    <VerificationStatus 
+                      status={verificationStatus}
+                      message={getStatusMessage()}
+                      progress={progress}
+                    />
+                    <VerificationForm
+                      userEmail={userEmail}
+                      onVerifyToken={handleVerifyCode}
+                      onResendEmail={handleResendEmail}
+                      isLoading={isLoading}
+                      error={error}
+                      success={success}
+                    />
+                  </>
                 )}
               </div>
 
@@ -259,34 +259,6 @@ const EmailVerification = () => {
                     <TroubleshootingGuide onContactSupport={handleContactSupport} />
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Alternative Actions */}
-            <div className="bg-muted/50 rounded-lg p-6 text-center">
-              <h4 className="font-medium text-foreground mb-3">
-                Need to use a different email?
-              </h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                If you entered the wrong email address, you can create a new account.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button
-                  variant="outline"
-                  asChild
-                  iconName="UserPlus"
-                  iconPosition="left"
-                >
-                  <Link to="/user-registration">Register Again</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  asChild
-                  iconName="LogIn"
-                  iconPosition="left"
-                >
-                  <Link to="/user-login">Back to Login</Link>
-                </Button>
               </div>
             </div>
           </div>

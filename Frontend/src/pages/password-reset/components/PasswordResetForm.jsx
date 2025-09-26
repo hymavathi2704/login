@@ -77,8 +77,9 @@ const PasswordResetForm = ({ onSubmit, loading = false }) => {
         <div className="text-center">
           <p className="text-sm text-muted-foreground">
             Remember your password?{' '}
+            {/* ✅ FIX: Corrected link path */}
             <Link 
-              to="/user-login" 
+              to="/login" 
               className="text-primary hover:text-primary/80 font-medium transition-colors"
             >
               Sign in

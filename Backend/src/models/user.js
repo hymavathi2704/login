@@ -1,65 +1,94 @@
+// src/models/user.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
-  id: {
-    type: DataTypes.CHAR(36),
-    primaryKey: true,
-    allowNull: false,
-  },
-  firstName: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-  },
-  lastName: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-  },
-  email: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-    unique: true,
-  },
-  password_hash: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  email_verified: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-  },
-  provider: {
-    type: DataTypes.ENUM('email', 'google', 'github'),
-    allowNull: false,
-    defaultValue: 'email',
-  },
-  oauth_id: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  verification_token: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  reset_token: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  reset_token_expires: {
-    type: DataTypes.DATE,
-    allowNull: true,
-  },
-  // The 'role' field has been removed from here
-  phone: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
+    // Primary Key and User Info
+    id: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        primaryKey: true,
+        allowNull: false,
+    },
+    firstName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    lastName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    email: {
+        type: DataTypes.STRING(255),
+        allowNull: false,
+        unique: true,
+    },
+    phone: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+    },
+
+    // Authentication Fields
+    password_hash: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+    },
+    provider: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+    },
+    oauth_id: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+    },
+
+    // Roles
+    roles: {
+      type: DataTypes.JSON,
+      defaultValue: [],
+      allowNull: false,
+    },
+
+    // Verification & Reset Tokens
+    email_verified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+    },
+    verification_token: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+    },
+    verification_token_expires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
+    reset_token: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+    },
+    reset_token_expires: {
+        type: DataTypes.DATE,
+        allowNull: true,
+    },
+    
+    // ✅ FIX: Timestamps defined as top-level attributes
+    created_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    },
+    updated_at: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: DataTypes.NOW
+    }
 }, {
-  tableName: 'users',
-  timestamps: true,
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt',
+    // Model Options
+    tableName: 'users',
+    // Tell Sequelize to use the fields we defined above for timestamps
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
 });
 
 module.exports = User;

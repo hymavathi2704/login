@@ -29,7 +29,11 @@ const Routes = () => {
         <Route path="/login" element={<UserLogin />} />
         <Route path="/register" element={<UserRegistration />} />
         <Route path="/email-verification" element={<EmailVerification />} />
+        
+        {/* ✅ FIX: Updated routes to handle the optional token parameter */}
         <Route path="/password-reset" element={<PasswordResetPage />} />
+        <Route path="/password-reset/:token" element={<PasswordResetPage />} />
+        
         <Route path="/auth0-callback" element={<Auth0Callback />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -55,7 +59,6 @@ const Routes = () => {
           <Route path="client" element={<ClientDashboard />} />
           <Route path="coach" element={<CoachDashboard />} />
           <Route path="admin" element={<AdminDashboard />} />
-          {/* ❌ REMOVED: The separate route for account-settings is no longer needed */}
         </Route>
 
         {/* Catch-all route */}

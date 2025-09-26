@@ -20,8 +20,8 @@ const generateOtp = customAlphabet('0123456789', 6);
 // ==============================
 async function register(req, res) {
   try {
-    // **MODIFIED: Removed 'role' from the request body**
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, password } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
 
     if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
     if (!password || password.length < 8)
@@ -35,8 +35,6 @@ async function register(req, res) {
     const otp = generateOtp();
     const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
-    // **MODIFIED: User is created without a role.**
-    // Profile creation will be handled in a separate step, like onboarding.
     const newUser = await User.create({
       id,
       firstName,
@@ -47,11 +45,9 @@ async function register(req, res) {
       verification_token_expires: otp_expires_at,
       provider: 'email',
       email_verified: false,
+      roles: [], // ✅ Initialize with an empty roles array
     });
     
-    // **REMOVED: Automatic profile creation based on role.**
-    // This logic should be moved to an onboarding flow after registration.
-
     await sendVerificationEmail(email, otp).catch(console.error);
 
     res.status(201).json({ message: 'Registered. Please check email to verify.' });
@@ -66,31 +62,22 @@ async function register(req, res) {
 // ==============================
 async function login(req, res) {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({ where: { email } });
 
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-
     if (user.provider !== 'email')
       return res.status(400).json({ error: `Use ${user.provider} login` });
-
     if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
-
     if (!user.password_hash)
       return res.status(401).json({ error: 'Invalid credentials' });
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // **NEW: Dynamically determine user roles by checking for profiles**
-    const coachProfile = await CoachProfile.findOne({ where: { userId: user.id } });
-    const clientProfile = await ClientProfile.findOne({ where: { userId: user.id } });
-
-    const roles = [];
-    if (coachProfile) roles.push('coach');
-    if (clientProfile) roles.push('client');
-
-    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles });
+    // ✅ SIMPLIFIED: Use the roles array directly from the user object
+    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles: user.roles });
     const refreshToken = signAccessToken({ userId: user.id, email: user.email, type: 'refresh' });
 
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
@@ -108,8 +95,7 @@ async function login(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
-        // **MODIFIED: Return a list of roles instead of a single role**
-        roles: roles,
+        roles: user.roles, // ✅ Send the roles array to the frontend
       },
     });
   } catch (err) {
@@ -135,35 +121,26 @@ async function socialLogin(req, res) {
     const userInfo = userInfoResponse.data;
     if (!userInfo.email)
       return res.status(400).json({ error: 'Email not returned by Auth0' });
-
-    let user = await User.findOne({ where: { email: userInfo.email } });
+    
+    const email = userInfo.email.toLowerCase().trim();
+    let user = await User.findOne({ where: { email } });
 
     if (!user) {
-      // **MODIFIED: Create user without a default role**
       user = await User.create({
         id: uuidv4(),
         firstName: userInfo.given_name || '',
         lastName: userInfo.family_name || '',
-        email: userInfo.email,
+        email: email,
         email_verified: userInfo.email_verified || true,
         provider: userInfo.sub.split('|')[0],
         oauth_id: userInfo.sub,
-        // role: 'client' // -- REMOVED
+        roles: ['client'], // ✅ Default social logins to 'client' role
       });
-      // **NEW: Create a default client profile for new social sign-ups**
-      // This is a common pattern to ensure a smooth first-time user experience.
       await ClientProfile.create({ userId: user.id });
     }
 
-    // **NEW: Dynamically determine user roles**
-    const coachProfile = await CoachProfile.findOne({ where: { userId: user.id } });
-    const clientProfile = await ClientProfile.findOne({ where: { userId: user.id } });
-
-    const roles = [];
-    if (coachProfile) roles.push('coach');
-    if (clientProfile) roles.push('client');
-
-    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles });
+    // ✅ SIMPLIFIED: Use roles from the user object
+    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles: user.roles });
     res.json({
       accessToken,
       user: {
@@ -172,8 +149,7 @@ async function socialLogin(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
-        // **MODIFIED: Return roles array**
-        roles: roles,
+        roles: user.roles, // ✅ Send the roles array to the frontend
       },
     });
   } catch (err) {
@@ -182,21 +158,6 @@ async function socialLogin(req, res) {
   }
 }
 
-// ==============================
-// Logout
-// ==============================
-async function logout(req, res) {
-  res.clearCookie(REFRESH_COOKIE_NAME, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
-  res.json({ message: 'Logged out' });
-}
-
-// ==============================
-// Get current user
-// ==============================
 // ==============================
 // Get current user
 // ==============================
@@ -212,22 +173,14 @@ async function me(req, res) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // ✅ THIS IS THE CRITICAL FIX
-    // We now dynamically build the roles array here, just like in the login function
-    const coachProfile = await CoachProfile.findOne({ where: { userId } });
-    const clientProfile = await ClientProfile.findOne({ where: { userId } });
-
-    const roles = [];
-    if (coachProfile) roles.push('coach');
-    if (clientProfile) roles.push('client');
-
+    // ✅ SIMPLIFIED: Send the roles array directly from the user object
     const userPayload = {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
       phone: user.phone || null,
-      roles: roles, // Ensure roles are always included
+      roles: user.roles,
     };
 
     res.status(200).json({ user: userPayload });
@@ -236,6 +189,57 @@ async function me(req, res) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
   }
+}
+
+// ==============================
+// Create a new role profile
+// ==============================
+async function createProfile(req, res) {
+  try {
+    const userId = req.user?.userId; // Correctly get userId from the token payload
+    const { role } = req.body;
+
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (role !== 'client' && role !== 'coach')
+      return res.status(400).json({ error: 'Invalid role specified' });
+
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // ✅ NEW LOGIC: Add the new role to the user's roles array if it doesn't exist
+    if (!user.roles.includes(role)) {
+      user.roles = [...user.roles, role];
+      await user.save();
+    }
+
+    // Still create the specific profile table for role-specific data
+    if (role === 'client') {
+      await ClientProfile.findOrCreate({ where: { userId } });
+    }
+    if (role === 'coach') {
+      await CoachProfile.findOrCreate({ where: { userId } });
+    }
+
+    res.status(201).json({ message: `${role} profile created successfully.` });
+
+  } catch (err) {
+    console.error('Create profile error:', err);
+    res.status(500).json({ error: 'Failed to create profile' });
+  }
+};
+
+
+// ... (rest of the file remains the same: logout, updateProfile, verifyEmail, etc.)
+// ==============================
+// Logout
+// ==============================
+async function logout(req, res) {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+  res.json({ message: 'Logged out' });
 }
 
 // ==============================
@@ -251,13 +255,10 @@ async function updateProfile(req, res) {
         const user = await User.findByPk(userId);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        const { firstName, lastName, email, phone, coachData, clientData } = req.body;
+        const { firstName, lastName, phone, coachData, clientData } = req.body;
+        const email = req.body.email ? req.body.email.toLowerCase().trim() : undefined;
 
-        // Update basic user info
         await user.update({ firstName, lastName, email, phone });
-
-        // **MODIFIED: Update profiles based on the data provided in the request**
-        // This allows updating one or both profiles in a single API call.
 
         if (coachData && Object.keys(coachData).length > 0) {
             const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
@@ -291,7 +292,8 @@ async function updateProfile(req, res) {
 // ==============================
 async function verifyEmail(req, res) {
   try {
-    const { email, code } = req.body;
+    const { code } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({ where: { email, verification_token: code } });
 
     if (!user) return res.status(400).json({ error: 'Invalid verification code' });
@@ -312,7 +314,7 @@ async function verifyEmail(req, res) {
 
 async function resendVerification(req, res) {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({ where: { email } });
 
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -334,7 +336,7 @@ async function resendVerification(req, res) {
 
 async function forgotPassword(req, res) {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
@@ -385,48 +387,6 @@ async function resetPassword(req, res) {
 }
 
 // ==============================
-// Create a new role profile
-// ==============================
-// MODIFIED: Function is now defined to match the style of your other functions
-async function createProfile(req, res) {
-  try {
-    const userId = req.user?.id; // From auth middleware
-    const { role } = req.body; // 'client' or 'coach'
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    if (role !== 'client' && role !== 'coach') {
-      return res.status(400).json({ error: 'Invalid role specified' });
-    }
-
-    if (role === 'client') {
-      const existingProfile = await ClientProfile.findOne({ where: { userId } });
-      if (existingProfile) {
-        return res.status(409).json({ error: 'Client profile already exists' });
-      }
-      await ClientProfile.create({ userId });
-    }
-
-    if (role === 'coach') {
-      const existingProfile = await CoachProfile.findOne({ where: { userId } });
-      if (existingProfile) {
-        return res.status(409).json({ error: 'Coach profile already exists' });
-      }
-      await CoachProfile.create({ userId });
-    }
-
-    res.status(201).json({ message: `${role} profile created successfully.` });
-
-  } catch (err) {
-    console.error('Create profile error:', err);
-    res.status(500).json({ error: 'Failed to create profile' });
-  }
-};
-
-
-// ==============================
 // Exports
 // ==============================
 module.exports = {
@@ -440,5 +400,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateProfile,
-  createProfile, // Add this line
+  createProfile,
 };

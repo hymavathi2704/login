@@ -66,8 +66,9 @@ export const resendVerificationEmail = (email) => {
 };
 
 // Forgot Password
-export const forgotPassword = (email) => {
-  return axiosInstance.post('/api/auth/forgot-password', { email });
+// ✅ FIX: Changed the function to accept a payload object directly
+export const forgotPassword = (payload) => {
+  return axiosInstance.post('/api/auth/forgot-password', payload);
 };
 
 // Reset Password
@@ -97,7 +98,7 @@ const authApi = {
   forgotPassword,
   resetPassword,
   updateProfile,
-  createProfile, // Add the new function here
+  createProfile,
 };
 
 export default authApi;
