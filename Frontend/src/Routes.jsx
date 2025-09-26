@@ -3,7 +3,6 @@ import { Routes as RouterRoutes, Route, Outlet } from "react-router-dom";
 import ScrollToTop from "components/ScrollToTop";
 import ErrorBoundary from "components/ErrorBoundary";
 import NotFound from "pages/NotFound";
-import Unauthorized from "./pages/Unauthorized";
 import UserLogin from './pages/user-login';
 import EmailVerification from './pages/email-verification';
 import UserRegistration from './pages/user-registration';
@@ -30,7 +29,6 @@ const Routes = () => {
         <Route path="/email-verification" element={<EmailVerification />} />
         <Route path="/password-reset" element={<PasswordResetPage />} />
         <Route path="/role-selection" element={<RoleSelection />} />
-        <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/auth0-callback" element={<Auth0Callback />} />
 
         {/* Protected Dashboard Routes */}
