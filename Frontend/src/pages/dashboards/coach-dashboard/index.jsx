@@ -22,6 +22,7 @@ import CommunicationCenter from './components/CommunicationCenter';
 import ResourcesLibrary from './components/ResourcesLibrary';
 import CoachAnalytics from './components/CoachAnalytics';
 import CoachProfile from './components/CoachProfile';
+import AccountSettings from '../shared/AccountSettings'; // ✅ Import AccountSettings
 
 const CoachDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -34,7 +35,8 @@ const CoachDashboard = () => {
     { id: 'communication', label: 'Communication', icon: MessageSquare },
     { id: 'resources', label: 'Resources', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'profile', label: 'Profile', icon: Settings }
+    { id: 'profile', label: 'Profile', icon: Settings }, // ✅ Existing Profile
+    { id: 'settings', label: 'Account Settings', icon: Settings } // ✅ New Account Settings
   ];
 
   const renderContent = () => {
@@ -54,7 +56,9 @@ const CoachDashboard = () => {
       case 'analytics':
         return <CoachAnalytics />;
       case 'profile':
-        return <CoachProfile />;
+        return <CoachProfile />; // ✅ Keep Profile tab
+      case 'settings':
+        return <AccountSettings />; // ✅ Account Settings tab
       default:
         return <CoachOverview />;
     }

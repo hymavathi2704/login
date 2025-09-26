@@ -17,7 +17,6 @@ import RoleSelection from "./pages/role-selection";
 import ClientDashboard from './pages/dashboards/client-dashboard';
 import CoachDashboard from './pages/dashboards/coach-dashboard';
 import AdminDashboard from './pages/dashboards/admin-dashboard';
-import AccountSettings from './pages/dashboards/shared/AccountSettings';
 
 const Routes = () => {
   return (
@@ -46,7 +45,6 @@ const Routes = () => {
           <Route path="client" element={<ClientDashboard />} />
           <Route path="coach" element={<CoachDashboard />} />
           <Route path="admin" element={<AdminDashboard />} />
-          <Route path="settings" element={<AccountSettings />} />
         </Route>
 
         {/* Catch-all */}
