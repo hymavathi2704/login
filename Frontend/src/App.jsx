@@ -1,19 +1,20 @@
-// Frontend/src/App.jsx
-import React from "react";
-import { BrowserRouter } from "react-router-dom";
-import AuthProvider from "./auth/AuthContext";
-import Auth0ProviderWithHistory from "./auth/Auth0ProviderWithHistory";
-import Routes from "./Routes";
+import React from 'react';
+import { BrowserRouter as Router } from 'react-router-dom';
+// --- THIS LINE IS CORRECTED ---
+import { AuthProvider } from './auth/AuthContext';
+// ------------------------------
+import AppRoutes from './Routes';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Auth0ProviderWithHistory>
-          <Routes />
-        </Auth0ProviderWithHistory>
-      </AuthProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

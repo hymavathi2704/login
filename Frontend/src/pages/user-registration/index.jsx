@@ -1,3 +1,5 @@
+// Frontend/src/pages/user-registration/index.jsx
+
 import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/ui/Header";
@@ -6,7 +8,9 @@ import SocialLoginButtons from "./components/SocialLoginButtons";
 import CaptchaVerification from "./components/CaptchaVerification";
 import RegistrationSuccess from "./components/RegistrationSuccess";
 import Icon from "../../components/AppIcon";
+// --- THIS LINE IS CORRECTED ---
 import { registerUser } from "../../auth/authApi";
+// ------------------------------
 
 const UserRegistration = () => {
   const navigate = useNavigate();
@@ -44,7 +48,9 @@ const UserRegistration = () => {
     const { firstName, lastName, email, password, role } = formDataForCaptcha;
 
     try {
+      // --- THIS LINE IS CORRECTED ---
       const response = await registerUser({
+      // ------------------------------
         firstName, // Use firstName
         lastName, // Use lastName
         email,

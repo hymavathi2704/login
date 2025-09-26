@@ -20,7 +20,8 @@ const generateOtp = customAlphabet('0123456789', 6);
 // ==============================
 async function register(req, res) {
   try {
-    const { firstName, lastName, email, password, role } = req.body;
+    // **MODIFIED: Removed 'role' from the request body**
+    const { firstName, lastName, email, password } = req.body;
 
     if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
     if (!password || password.length < 8)
@@ -34,6 +35,8 @@ async function register(req, res) {
     const otp = generateOtp();
     const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
+    // **MODIFIED: User is created without a role.**
+    // Profile creation will be handled in a separate step, like onboarding.
     const newUser = await User.create({
       id,
       firstName,
@@ -44,14 +47,10 @@ async function register(req, res) {
       verification_token_expires: otp_expires_at,
       provider: 'email',
       email_verified: false,
-      role: role || 'client',
     });
     
-    if (newUser.role === 'coach') {
-      await CoachProfile.create({ userId: newUser.id });
-    } else if (newUser.role === 'client') {
-      await ClientProfile.create({ userId: newUser.id });
-    }
+    // **REMOVED: Automatic profile creation based on role.**
+    // This logic should be moved to an onboarding flow after registration.
 
     await sendVerificationEmail(email, otp).catch(console.error);
 
@@ -83,7 +82,15 @@ async function login(req, res) {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const accessToken = signAccessToken({ userId: user.id, email: user.email });
+    // **NEW: Dynamically determine user roles by checking for profiles**
+    const coachProfile = await CoachProfile.findOne({ where: { userId: user.id } });
+    const clientProfile = await ClientProfile.findOne({ where: { userId: user.id } });
+
+    const roles = [];
+    if (coachProfile) roles.push('coach');
+    if (clientProfile) roles.push('client');
+
+    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles });
     const refreshToken = signAccessToken({ userId: user.id, email: user.email, type: 'refresh' });
 
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
@@ -101,7 +108,8 @@ async function login(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
-        role: user.role,
+        // **MODIFIED: Return a list of roles instead of a single role**
+        roles: roles,
       },
     });
   } catch (err) {
@@ -131,6 +139,7 @@ async function socialLogin(req, res) {
     let user = await User.findOne({ where: { email: userInfo.email } });
 
     if (!user) {
+      // **MODIFIED: Create user without a default role**
       user = await User.create({
         id: uuidv4(),
         firstName: userInfo.given_name || '',
@@ -139,11 +148,22 @@ async function socialLogin(req, res) {
         email_verified: userInfo.email_verified || true,
         provider: userInfo.sub.split('|')[0],
         oauth_id: userInfo.sub,
-        role: 'client',
+        // role: 'client' // -- REMOVED
       });
+      // **NEW: Create a default client profile for new social sign-ups**
+      // This is a common pattern to ensure a smooth first-time user experience.
+      await ClientProfile.create({ userId: user.id });
     }
 
-    const accessToken = signAccessToken({ userId: user.id, email: user.email });
+    // **NEW: Dynamically determine user roles**
+    const coachProfile = await CoachProfile.findOne({ where: { userId: user.id } });
+    const clientProfile = await ClientProfile.findOne({ where: { userId: user.id } });
+
+    const roles = [];
+    if (coachProfile) roles.push('coach');
+    if (clientProfile) roles.push('client');
+
+    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles });
     res.json({
       accessToken,
       user: {
@@ -152,7 +172,8 @@ async function socialLogin(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
-        role: user.role,
+        // **MODIFIED: Return roles array**
+        roles: roles,
       },
     });
   } catch (err) {
@@ -202,42 +223,49 @@ async function me(req, res) {
 // Update user profile
 // ==============================
 async function updateProfile(req, res) {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const { firstName, lastName, email, phone, ...profileData } = req.body;
-    
-    await user.update({ firstName, lastName, email, phone });
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
 
-    if (user.role === 'coach') {
-      const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
-      await coachProfile.update(profileData);
-    } else if (user.role === 'client') {
-      const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
-      await clientProfile.update(profileData);
+        const user = await User.findByPk(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const { firstName, lastName, email, phone, coachData, clientData } = req.body;
+
+        // Update basic user info
+        await user.update({ firstName, lastName, email, phone });
+
+        // **MODIFIED: Update profiles based on the data provided in the request**
+        // This allows updating one or both profiles in a single API call.
+
+        if (coachData && Object.keys(coachData).length > 0) {
+            const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
+            await coachProfile.update(coachData);
+        }
+
+        if (clientData && Object.keys(clientData).length > 0) {
+            const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
+            await clientProfile.update(clientData);
+        }
+
+        const updatedUser = await User.findByPk(userId, {
+            include: [
+                { model: CoachProfile },
+                { model: ClientProfile }
+            ]
+        });
+
+        const plainUpdatedUser = updatedUser.get({ plain: true });
+
+        res.status(200).json({ message: 'Profile updated successfully', user: plainUpdatedUser });
+    } catch (err) {
+        console.error('Update profile error:', err);
+        res.status(500).json({ error: 'Failed to update profile' });
     }
-    
-    const updatedUser = await User.findByPk(userId, {
-      include: [
-        { model: CoachProfile },
-        { model: ClientProfile }
-      ]
-    });
-    
-    const plainUpdatedUser = updatedUser.get({ plain: true });
-    
-    res.status(200).json({ message: 'Profile updated successfully', user: plainUpdatedUser });
-  } catch (err) {
-    console.error('Update profile error:', err);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
 }
+
 
 // ==============================
 // Email & Password Reset

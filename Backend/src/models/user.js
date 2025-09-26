@@ -50,11 +50,7 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE,
     allowNull: true,
   },
-  role: {
-    type: DataTypes.ENUM('client', 'coach', 'admin'),
-    allowNull: false,
-    defaultValue: 'client',
-  },
+  // The 'role' field has been removed from here
   phone: {
     type: DataTypes.STRING(255),
     allowNull: true,

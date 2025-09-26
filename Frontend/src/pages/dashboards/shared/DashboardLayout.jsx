@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../../auth/AuthContext';
+import { useAuth } from '../../../auth/AuthContext'; // Now using more from auth context
 import { LogOut, Menu, X } from 'lucide-react';
 
 const DashboardLayout = ({ 
@@ -9,14 +9,39 @@ const DashboardLayout = ({
   onTabChange, 
   title, 
   subtitle, 
-  userType 
+  userType // This prop is still used as a fallback
 }) => {
-  const { user, logout } = useAuth();
+  // MODIFIED: Getting multi-role info from the AuthContext
+  const { user, roles, currentRole, switchRole, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // --- NEW: Role Switcher Component ---
+  // This dropdown will only appear if the user has more than one role.
+  const RoleSwitcher = () => {
+    if (!roles || roles.length <= 1) {
+      // If no roles or only one, just display the current role text
+      return <div className="text-sm text-gray-500 capitalize">{currentRole || userType}</div>;
+    }
+    
+    return (
+      <select
+        value={currentRole}
+        onChange={(e) => switchRole(e.target.value)}
+        className="w-full text-sm text-gray-500 bg-transparent border-none focus:ring-0 p-0"
+        aria-label="Switch role"
+      >
+        {roles.map((role) => (
+          <option key={role} value={role} className="text-black">
+            {role.charAt(0).toUpperCase() + role.slice(1)} View
+          </option>
+        ))}
+      </select>
+    );
+  };
 
   const handleLogout = () => {
     logout();
-    window.location.href = '/';
+    // No need for window.location.href, AuthContext handles navigation
   };
 
   const getUserTypeColor = (type) => {
@@ -46,9 +71,11 @@ const DashboardLayout = ({
     ? `${user.firstName} ${user.lastName}` 
     : user?.email || 'User';
 
+  // Use currentRole from context if available, otherwise fall back to the userType prop
+  const displayRole = currentRole || userType;
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -56,14 +83,12 @@ const DashboardLayout = ({
         />
       )}
 
-      {/* Sidebar */}
       <div className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out 
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:static lg:translate-x-0 lg:flex-shrink-0
       `}>
-        {/* Sidebar Header */}
-        <div className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(userType)} text-white`}>
+        <div className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(displayRole)} text-white`}>
           <div className="font-bold text-lg">The Katha</div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -73,20 +98,20 @@ const DashboardLayout = ({
           </button>
         </div>
 
-        {/* User Info */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(userType)} rounded-full flex items-center justify-center text-white font-medium`}>
+            <div className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(displayRole)} rounded-full flex items-center justify-center text-white font-medium`}>
               {getInitials(user?.firstName, user?.lastName, user?.email)}
             </div>
             <div>
               <div className="font-medium">{displayName}</div>
-              <div className="text-sm text-gray-500 capitalize">{userType}</div>
+              {/* --- MODIFIED: Role switcher is now here --- */}
+              <RoleSwitcher />
             </div>
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation is unchanged and still controlled by props */}
         <nav className="flex-1 px-4 py-6">
           <ul className="space-y-2">
             {navigationItems.map((item) => {
@@ -103,7 +128,7 @@ const DashboardLayout = ({
                     className={`
                       w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
                       ${isActive 
-                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' 
+                        ? 'bg-blue-50 text-blue-600 font-semibold' 
                         : 'text-gray-600 hover:bg-gray-50'
                       }
                     `}
@@ -117,7 +142,6 @@ const DashboardLayout = ({
           </ul>
         </nav>
 
-        {/* Logout */}
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
@@ -129,9 +153,8 @@ const DashboardLayout = ({
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content area is unchanged */}
       <div className="flex-1 flex flex-col min-h-screen">
-        {/* Top Header */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
           <div className="flex items-center space-x-4">
             <button
@@ -147,14 +170,12 @@ const DashboardLayout = ({
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* Notifications can be added here */}
             <div className="text-sm text-gray-500">
-              {new Date().toLocaleDateString()}
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
         <main className="flex-1 p-6">
           {children}
         </main>
