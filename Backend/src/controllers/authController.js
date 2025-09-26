@@ -197,22 +197,41 @@ async function logout(req, res) {
 // ==============================
 // Get current user
 // ==============================
+// ==============================
+// Get current user
+// ==============================
 async function me(req, res) {
   try {
     const userId = req.user?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    const user = await User.findByPk(userId, {
-      include: [
-        { model: CoachProfile },
-        { model: ClientProfile }
-      ]
-    });
-    
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
-    const plainUser = user.get({ plain: true });
-    res.json({ user: plainUser });
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // ✅ THIS IS THE CRITICAL FIX
+    // We now dynamically build the roles array here, just like in the login function
+    const coachProfile = await CoachProfile.findOne({ where: { userId } });
+    const clientProfile = await ClientProfile.findOne({ where: { userId } });
+
+    const roles = [];
+    if (coachProfile) roles.push('coach');
+    if (clientProfile) roles.push('client');
+
+    const userPayload = {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phone: user.phone || null,
+      roles: roles, // Ensure roles are always included
+    };
+
+    res.status(200).json({ user: userPayload });
+
   } catch (err) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });

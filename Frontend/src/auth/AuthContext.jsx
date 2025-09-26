@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMe } from './authApi'; // ✅ IMPORT getMe to verify the session
+import { getMe } from './authApi'; // We need this to verify the session
 
 const AuthContext = createContext(null);
 
@@ -19,12 +19,13 @@ export const AuthProvider = ({ children }) => {
   }, [navigate]);
 
   const login = (data) => {
-    // This function handles setting the session after a successful login
     const { accessToken, user: userData } = data;
     localStorage.setItem('accessToken', accessToken);
     setUser(userData);
 
-    const defaultRole = userData.roles && userData.roles.length > 0 ? userData.roles[0] : null;
+    const roles = userData.roles || [];
+    const defaultRole = roles.length > 0 ? roles[0] : null;
+
     setCurrentRole(defaultRole);
     localStorage.setItem('currentRole', defaultRole);
 
@@ -43,31 +44,33 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ✅ This useEffect is now the single source of truth for checking if a user is logged in
   useEffect(() => {
     const initializeSession = async () => {
       const token = localStorage.getItem('accessToken');
       if (token) {
         try {
-          // We use getMe() to ask the backend if our token is still valid
+          // ✅ This is the most reliable way to check login status
           const response = await getMe();
-          const userData = response.data.user; // The user data from the backend
+          const userData = response.data.user;
           setUser(userData);
 
           const storedRole = localStorage.getItem('currentRole');
-          if (storedRole && userData.roles.includes(storedRole)) {
+          const userRoles = userData.roles || [];
+
+          if (storedRole && userRoles.includes(storedRole)) {
             setCurrentRole(storedRole);
-          } else if (userData.roles && userData.roles.length > 0) {
-            setCurrentRole(userData.roles[0]);
+          } else if (userRoles.length > 0) {
+            setCurrentRole(userRoles[0]);
+          } else {
+            setCurrentRole(null);
           }
         } catch (error) {
-          console.error("Session verification failed, logging out:", error);
-          logout(); // If the token is bad, we log the user out
+          console.error("Session verification failed, logging out.", error);
+          logout(); // If token is bad, logout cleanly
         }
       }
       setIsLoading(false);
     };
-
     initializeSession();
   }, [logout]);
 
