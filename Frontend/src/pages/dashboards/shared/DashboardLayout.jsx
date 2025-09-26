@@ -1,25 +1,21 @@
 import React, { useState } from 'react';
-// MODIFIED: Added more hooks from useAuth
 import { useAuth } from '../../../auth/AuthContext';
 import { LogOut, Menu, X } from 'lucide-react';
 
-const DashboardLayout = ({ 
-  children, 
-  navigationItems, 
-  activeTab, 
-  onTabChange, 
-  title, 
-  subtitle, 
-  userType 
+const DashboardLayout = ({
+  children,
+  navigationItems = [], // ✅ Default to empty array to avoid .map errors
+  activeTab,
+  onTabChange = () => {}, // ✅ Default no-op function
+  title,
+  subtitle,
+  userType
 }) => {
-  // MODIFIED: Destructured all necessary values from the auth context
-  const { user, roles, currentRole, switchRole, logout } = useAuth();
+  const { user, roles = [], currentRole, switchRole, logout } = useAuth() || {};
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
-    logout();
-    // MODIFIED: The logout function in the context already handles navigation.
-    // window.location.href = '/'; 
+    if (logout) logout();
   };
 
   const getUserTypeColor = (type) => {
@@ -35,7 +31,6 @@ const DashboardLayout = ({
     }
   };
 
-  // NEW: A helper function to get user initials correctly
   const getInitials = (firstName, lastName, email) => {
     if (firstName && lastName) {
       return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
@@ -46,14 +41,12 @@ const DashboardLayout = ({
     return 'U';
   };
 
-  // NEW: A helper to get the full display name
-  const displayName = user?.firstName && user?.lastName 
-    ? `${user.firstName} ${user.lastName}` 
-    : user?.email || 'User';
-  
-  // NEW: The RoleSwitcher component will only render if needed
+  const displayName =
+    (user?.firstName && user?.lastName
+      ? `${user.firstName} ${user.lastName}`
+      : user?.email) || 'User';
+
   const RoleSwitcher = () => {
-    // Only show the switcher if the user has more than one role
     if (!roles || roles.length <= 1) {
       return <div className="text-sm text-gray-500 capitalize">{currentRole || userType}</div>;
     }
@@ -61,7 +54,7 @@ const DashboardLayout = ({
     return (
       <select
         value={currentRole}
-        onChange={(e) => switchRole(e.target.value)}
+        onChange={(e) => switchRole && switchRole(e.target.value)}
         className="w-full text-sm text-gray-500 bg-transparent border-none focus:ring-0 p-0"
         aria-label="Switch role"
       >
@@ -73,26 +66,32 @@ const DashboardLayout = ({
       </select>
     );
   };
-  
-  // NEW: Determine the display role from context first, then the prop
+
   const displayRole = currentRole || userType;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {/* Overlay for small screens */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out 
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:static lg:translate-x-0 lg:flex-shrink-0
-      `}>
-        {/* MODIFIED: Uses the dynamic displayRole for color */}
-        <div className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(displayRole)} text-white`}>
+      {/* Sidebar */}
+      <div
+        className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out 
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:static lg:translate-x-0 lg:flex-shrink-0
+        `}
+      >
+        <div
+          className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(
+            displayRole
+          )} text-white`}
+        >
           <div className="font-bold text-lg">The Katha</div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -105,50 +104,57 @@ const DashboardLayout = ({
         {/* User Info */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            {/* MODIFIED: Uses dynamic displayRole for color and new getInitials function */}
-            <div className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(displayRole)} rounded-full flex items-center justify-center text-white font-medium`}>
+            <div
+              className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(
+                displayRole
+              )} rounded-full flex items-center justify-center text-white font-medium`}
+            >
               {getInitials(user?.firstName, user?.lastName, user?.email)}
             </div>
             <div>
-              {/* MODIFIED: Uses the new displayName */}
               <div className="font-medium">{displayName}</div>
-              {/* NEW: The RoleSwitcher is placed here */}
               <RoleSwitcher />
             </div>
           </div>
         </div>
 
-        {/* Navigation (This section is UNCHANGED and still uses props) */}
+        {/* Navigation */}
         <nav className="flex-1 px-4 py-6">
-          <ul className="space-y-2">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              
-              return (
-                <li key={item.id}>
-                  <button
-                    onClick={() => {
-                      onTabChange(item.id);
-                      setSidebarOpen(false);
-                    }}
-                    className={`
-                      w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
-                      ${isActive 
-                        ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600' 
-                        : 'text-gray-600 hover:bg-gray-50'
-                      }
-                    `}
-                  >
-                    <Icon size={20} />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {navigationItems.length > 0 ? (
+            <ul className="space-y-2">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+
+                return (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => {
+                        onTabChange(item.id);
+                        setSidebarOpen(false);
+                      }}
+                      className={`
+                        w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
+                        ${
+                          isActive
+                            ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      {Icon && <Icon size={20} />}
+                      <span className="font-medium">{item.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-gray-400 text-sm text-center">No navigation items</p>
+          )}
         </nav>
 
+        {/* Logout */}
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
@@ -160,6 +166,7 @@ const DashboardLayout = ({
         </div>
       </div>
 
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-h-screen">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
           <div className="flex items-center space-x-4">
@@ -176,15 +183,11 @@ const DashboardLayout = ({
           </div>
 
           <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">
-              {new Date().toLocaleDateString()}
-            </div>
+            <div className="text-sm text-gray-500">{new Date().toLocaleDateString()}</div>
           </div>
         </header>
 
-        <main className="flex-1 p-6">
-          {children}
-        </main>
+        <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
   );
