@@ -23,6 +23,7 @@ import CommunicationCenter from './components/CommunicationCenter';
 import ResourcesLibrary from './components/ResourcesLibrary';
 import CoachAnalytics from './components/CoachAnalytics';
 import CoachProfile from './components/CoachProfile';
+import AccountSettings from '../shared/AccountSettings'; // ✅ Import AccountSettings
 
 const CoachDashboard = () => {
   const navigate = useNavigate();
@@ -61,6 +62,8 @@ const CoachDashboard = () => {
         return <CoachAnalytics />;
       case 'profile':
         return <CoachProfile />;
+      case 'account-settings': // ✅ Add case for account-settings
+        return <AccountSettings />;
       default:
         return <CoachOverview />;
     }
@@ -81,11 +84,8 @@ const CoachDashboard = () => {
         navigationItems={navigationItems}
         activeTab={activeTab}
         onTabChange={(tabId) => {
-          if (tabId === 'account-settings') {
-            navigate('/dashboard/account-settings'); // ✅ Navigate to settings route
-          } else {
-            setActiveTab(tabId); // ✅ Switch tab for dashboard content
-          }
+          // ✅ Updated logic to handle tab change internally
+          setActiveTab(tabId);
         }}
         title="Coach Dashboard"
         subtitle="Manage your coaching business"

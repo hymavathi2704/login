@@ -4,9 +4,9 @@ import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import Icon from '../../../components/AppIcon';
-import * as authApi from '../../../auth/authApi'; // Import your auth API functions
 
-const RegistrationForm = ({ onSuccess }) => {
+// ✅ The form now takes 'onSubmit' and 'isLoading' props from its parent
+const RegistrationForm = ({ onSubmit, isLoading }) => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -16,8 +16,6 @@ const RegistrationForm = ({ onSuccess }) => {
   });
 
   const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState(''); // For displaying backend errors
-  const [isLoading, setIsLoading] = useState(false); // Manage loading state internally
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -72,36 +70,17 @@ const RegistrationForm = ({ onSuccess }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  // ✅ The submit handler no longer makes an API call.
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setApiError('');
     if (validateForm()) {
-      setIsLoading(true);
-      try {
-        const nameParts = formData.fullName.trim().split(' ');
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-
-        await authApi.register({
-          firstName,
-          lastName,
-          email: formData.email,
-          password: formData.password
-        });
-        
-        if (onSuccess) onSuccess();
-
-      } catch (err) {
-        setApiError(err.message || 'Registration failed. This email may already be in use.');
-      } finally {
-        setIsLoading(false);
-      }
+      // It just calls the onSubmit prop from the parent with the form data.
+      onSubmit(formData);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {apiError && <p className="text-center text-red-500">{apiError}</p>}
       <Input
         label="Full Name"
         type="text"

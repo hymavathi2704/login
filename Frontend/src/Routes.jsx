@@ -18,7 +18,6 @@ import Unauthorized from "./pages/Unauthorized";
 import ClientDashboard from "./pages/dashboards/client-dashboard";
 import CoachDashboard from "./pages/dashboards/coach-dashboard";
 import AdminDashboard from "./pages/dashboards/admin-dashboard";
-import AccountSettings from "./pages/dashboards/shared/AccountSettings"; // ✅ Corrected path
 
 const Routes = () => {
   return (
@@ -56,7 +55,7 @@ const Routes = () => {
           <Route path="client" element={<ClientDashboard />} />
           <Route path="coach" element={<CoachDashboard />} />
           <Route path="admin" element={<AdminDashboard />} />
-          <Route path="account-settings" element={<AccountSettings />} /> {/* ✅ New Route */}
+          {/* ❌ REMOVED: The separate route for account-settings is no longer needed */}
         </Route>
 
         {/* Catch-all route */}
