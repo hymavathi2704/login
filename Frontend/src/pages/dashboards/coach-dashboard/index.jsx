@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../shared/DashboardLayout';
 import { 
   Users, 
@@ -9,7 +9,7 @@ import {
   MessageSquare, 
   TrendingUp, 
   Settings,
-  User as UserIcon // Renamed to avoid conflict
+  User as UserIcon // Renamed to avoid conflicts
 } from 'lucide-react';
 
 // Import coach dashboard components
@@ -24,7 +24,7 @@ import CoachProfile from './components/CoachProfile';
 
 const CoachDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const navigate = useNavigate(); // Initialize navigate
+  const navigate = useNavigate();
 
   const navigationItems = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
@@ -34,9 +34,9 @@ const CoachDashboard = () => {
     { id: 'communication', label: 'Communication', icon: MessageSquare },
     { id: 'resources', label: 'Resources', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'profile', label: 'My Profile', icon: UserIcon },
+    { id: 'profile', label: 'Profile', icon: UserIcon },
     // --- NEW NAVIGATION ITEM ---
-    { id: 'settings', label: 'Account Settings', icon: Settings },
+    { id: 'settings', label: 'Account Settings', icon: Settings }
   ];
 
   const handleTabChange = (tabId) => {
@@ -82,7 +82,7 @@ const CoachDashboard = () => {
         userType="coach"
         navigationItems={navigationItems}
         activeTab={activeTab}
-        onTabChange={handleTabChange} // Use the updated handler
+        onTabChange={handleTabChange}
         title="Coach Dashboard"
         subtitle="Manage your coaching business"
       >

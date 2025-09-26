@@ -26,13 +26,13 @@ const ClientDashboard = () => {
     { id: 'communication', label: 'Messages', icon: MessageSquare },
     { id: 'profile', label: 'My Profile', icon: User },
     // --- NEW NAVIGATION ITEM ---
-    { id: 'settings', label: 'Account Settings', icon: Settings },
+    { id: 'settings', label: 'Account Settings', icon: Settings }
   ];
 
   const handleTabChange = (tabId) => {
     // MODIFIED: Navigate to settings page if 'settings' is clicked
     if (tabId === 'settings') {
-      navigate('/dashboard/settings'); 
+      navigate('/dashboard/settings');
     } else {
       setActiveTab(tabId);
     }
@@ -78,21 +78,35 @@ const ClientDashboard = () => {
   );
 };
 
-// ---UNCHANGED---
-const ClientOverview = ({ onTabChange }) => {
-    // ... your existing overview component code
+// Client Overview Component (Unchanged)
+const ClientOverview = () => {
+  const { user } = useAuth();
+  const fullName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : '';
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
+        <h2 className="text-2xl font-bold mb-2">Welcome back, {user?.firstName || 'Client'}!</h2>
+        <p className="text-blue-100">You have 2 upcoming sessions this week</p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Quick Stats content... */}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Other components... */}
+      </div>
+    </div>
+  );
 };
 
-// ---UPDATED ClientProfile Component---
+// Client Profile Component (Corrected Save Logic)
 const ClientProfile = () => {
-  // MODIFIED: Using refreshUserData from context
-  const { user, refreshUserData } = useAuth(); 
+  const { user, refreshUserData } = useAuth(); // Use refreshUserData
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    coachingGoals: '',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    coachingGoals: user?.ClientProfile?.coachingGoals || '',
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -116,20 +130,18 @@ const ClientProfile = () => {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      // MODIFIED: API payload now matches the backend structure
-      const payload = {
+      // MODIFIED: Correctly structure the payload for the API
+      const response = await authApi.updateProfile({
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
-        clientData: {
-          coachingGoals: formData.coachingGoals,
+        clientData: { // Nest client-specific data
+          coachingGoals: formData.coachingGoals
         }
-      };
-      await authApi.updateProfile(payload);
+      });
       
-      // MODIFIED: Correctly refresh user data across the app
-      await refreshUserData(); 
+      await refreshUserData(); // Refresh user data from context
       alert('Profile saved successfully!');
 
     } catch (err) {
@@ -141,9 +153,20 @@ const ClientProfile = () => {
   };
 
   return (
-    // ... your existing ClientProfile JSX remains unchanged
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Form content here */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-2xl font-bold mb-6">My Profile</h2>
+        {/* Form JSX remains unchanged... */}
+        <div className="mt-6 flex justify-end">
+          <button 
+            onClick={handleSave} 
+            disabled={isLoading}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            {isLoading ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
