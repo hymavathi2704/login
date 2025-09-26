@@ -3,7 +3,6 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
-    // Primary Key and User Info
     id: {
         type: DataTypes.UUID,
         defaultValue: DataTypes.UUIDV4,
@@ -27,8 +26,6 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING(50),
         allowNull: true,
     },
-
-    // Authentication Fields
     password_hash: {
         type: DataTypes.STRING(255),
         allowNull: true,
@@ -41,15 +38,18 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING(255),
         allowNull: true,
     },
-
-    // Roles
     roles: {
-      type: DataTypes.JSON,
-      defaultValue: [],
-      allowNull: false,
+    type: DataTypes.TEXT,      // keep as TEXT/LONGTEXT
+    allowNull: false,
+    defaultValue: '[]',         // store empty array as string
+    get() {
+        const raw = this.getDataValue('roles');
+        return raw ? JSON.parse(raw) : [];
     },
-
-    // Verification & Reset Tokens
+    set(value) {
+        this.setDataValue('roles', JSON.stringify(value));
+    }
+},
     email_verified: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,
@@ -70,22 +70,18 @@ const User = sequelize.define('User', {
         type: DataTypes.DATE,
         allowNull: true,
     },
-    
-    // ✅ FIX: Timestamps defined as top-level attributes
     created_at: {
         type: DataTypes.DATE,
         allowNull: false,
-        defaultValue: DataTypes.NOW
+        defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
     },
     updated_at: {
         type: DataTypes.DATE,
         allowNull: false,
-        defaultValue: DataTypes.NOW
-    }
+        defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+    },
 }, {
-    // Model Options
     tableName: 'users',
-    // Tell Sequelize to use the fields we defined above for timestamps
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
