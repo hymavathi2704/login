@@ -255,21 +255,49 @@ async function updateProfile(req, res) {
         const user = await User.findByPk(userId);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        const { firstName, lastName, phone, coachData, clientData } = req.body;
-        const email = req.body.email ? req.body.email.toLowerCase().trim() : undefined;
+        // Define fields for each model
+        const userFields = ['firstName', 'lastName', 'email', 'phone'];
+        const coachFields = ['title', 'bio', 'location', 'timezone', 'website', 'specialties', 'certifications', 'languages', 'sessionTypes', 'availability'];
+        const clientFields = ['coachingGoals'];
 
-        await user.update({ firstName, lastName, email, phone });
+        // Create objects to hold the data for each model
+        const userData = {};
+        const coachData = {};
+        const clientData = {};
 
-        if (coachData && Object.keys(coachData).length > 0) {
+        // Iterate over the request body and assign keys to the correct object
+        for (const key in req.body) {
+            if (userFields.includes(key)) {
+                userData[key] = req.body[key];
+            }
+            if (coachFields.includes(key)) {
+                coachData[key] = req.body[key];
+            }
+            if (clientFields.includes(key)) {
+                clientData[key] = req.body[key];
+            }
+        }
+        
+        // Sanitize email if present
+        if (userData.email) {
+            userData.email = userData.email.toLowerCase().trim();
+        }
+
+        // Update the User model
+        await user.update(userData);
+
+        // Update the CoachProfile if coach-specific data exists
+        if (Object.keys(coachData).length > 0) {
             const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
             await coachProfile.update(coachData);
         }
 
-        if (clientData && Object.keys(clientData).length > 0) {
+        // Update the ClientProfile if client-specific data exists
+        if (Object.keys(clientData).length > 0) {
             const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
             await clientProfile.update(clientData);
         }
-
+        
         const updatedUser = await User.findByPk(userId, {
             include: [
                 { model: CoachProfile },
@@ -277,6 +305,7 @@ async function updateProfile(req, res) {
             ]
         });
 
+        // Use .get({ plain: true }) to serialize the instance
         const plainUpdatedUser = updatedUser.get({ plain: true });
 
         res.status(200).json({ message: 'Profile updated successfully', user: plainUpdatedUser });

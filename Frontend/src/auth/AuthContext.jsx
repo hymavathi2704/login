@@ -86,12 +86,13 @@ export const AuthProvider = ({ children }) => {
     initializeSession();
   }, [logout]);
   
-  const value = { 
+   const value = { 
     user, 
+    setUser, // <--- ADD THIS LINE
     roles: user?.roles || [],
     currentRole, 
     isLoading,
-    isRefreshing, // 4. EXPORT REFRESHING STATE
+    isRefreshing,
     login, 
     logout, 
     switchRole, 
