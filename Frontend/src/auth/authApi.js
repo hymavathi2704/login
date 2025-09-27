@@ -48,12 +48,10 @@ export const getMe = () => {
   return axiosInstance.get("/api/auth/me");
 };
 
-// --- NEW FUNCTION ---
 // Creates a new profile (role) for the currently authenticated user.
 export const createProfile = (profileData) => {
   return axiosInstance.post('/api/auth/create-profile', profileData);
 };
-// --------------------
 
 // Email Verification (Updated for OTP system)
 export const verifyEmail = (payload) => {
@@ -66,7 +64,6 @@ export const resendVerificationEmail = (email) => {
 };
 
 // Forgot Password
-// ✅ FIX: Changed the function to accept a payload object directly
 export const forgotPassword = (payload) => {
   return axiosInstance.post('/api/auth/forgot-password', payload);
 };
@@ -76,10 +73,12 @@ export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
+// --- RENAMED FUNCTION ---
 // Update user profile
-export const updateProfile = (profileData) => {
+export const updateUserProfile = (profileData) => {
   return axiosInstance.put('/api/auth/profile', profileData);
 };
+// --------------------
 
 // Logout function
 export const logoutUser = () => {
@@ -88,17 +87,4 @@ export const logoutUser = () => {
   localStorage.removeItem("rememberMe");
 };
 
-const authApi = {
-  registerUser,
-  loginUser,
-  getMe,
-  verifyEmail,
-  resendVerificationEmail,
-  logoutUser,
-  forgotPassword,
-  resetPassword,
-  updateProfile,
-  createProfile,
-};
-
-export default authApi;
+// Removed the redundant default export to stick with named exports

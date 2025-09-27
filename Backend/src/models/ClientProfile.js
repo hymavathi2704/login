@@ -1,34 +1,47 @@
+// Backend/src/models/ClientProfile.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
-const User = require('./user');
+const db = require('../config/db');
 
-const ClientProfile = sequelize.define('ClientProfile', {
+const ClientProfile = db.define('client_profiles', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
   },
   userId: {
-    type: DataTypes.CHAR(36),
+    type: DataTypes.UUID,
+    allowNull: false,
+    unique: true,
     references: {
-      model: User,
+      model: 'users', // table name
       key: 'id',
     },
-    unique: true,
-    allowNull: false,
+    onDelete: 'CASCADE',
   },
   coachingGoals: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  // You can add more client-specific fields here
+  // --- NEW DEMOGRAPHIC FIELDS START ---
+  dateOfBirth: {
+    type: DataTypes.DATEONLY, // Stores date without time
+    allowNull: true,
+  },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  ethnicity: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  country: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  // --- NEW DEMOGRAPHIC FIELDS END ---
 }, {
-  tableName: 'client_profiles',
   timestamps: true,
 });
-
-// Define the association
-User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE' });
-ClientProfile.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = ClientProfile;

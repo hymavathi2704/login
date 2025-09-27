@@ -1,74 +1,64 @@
+// Backend/src/models/CoachProfile.js
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
-const User = require('./user');
+const db = require('../config/db');
 
-const CoachProfile = sequelize.define('CoachProfile', {
+const CoachProfile = db.define('coach_profiles', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
   },
   userId: {
-    type: DataTypes.CHAR(36),
+    type: DataTypes.UUID,
+    allowNull: false,
+    unique: true,
     references: {
-      model: User,
+      model: 'users',
       key: 'id',
     },
-    unique: true,
-    allowNull: false,
+    onDelete: 'CASCADE',
   },
   title: {
-    type: DataTypes.STRING(255),
+    type: DataTypes.STRING,
     allowNull: true,
   },
   bio: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  location: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
-  timezone: {
-    type: DataTypes.STRING(255),
-    allowNull: true,
-  },
   website: {
-    type: DataTypes.STRING(255),
+    type: DataTypes.STRING,
     allowNull: true,
   },
-  specialties: {
-    type: DataTypes.JSON,
+  // ... other existing fields
+  
+  // --- NEW DEMOGRAPHIC FIELDS START ---
+  dateOfBirth: {
+    type: DataTypes.DATEONLY,
     allowNull: true,
-    defaultValue: '[]',
   },
-  certifications: {
-    type: DataTypes.JSON,
+  gender: {
+    type: DataTypes.STRING,
     allowNull: true,
-    defaultValue: '[]',
   },
-  languages: {
-    type: DataTypes.JSON,
+  ethnicity: {
+    type: DataTypes.STRING,
     allowNull: true,
-    defaultValue: '[]',
   },
-  sessionTypes: {
-    type: DataTypes.JSON,
+  country: {
+    type: DataTypes.STRING,
     allowNull: true,
-    defaultValue: '[]',
   },
-  availability: {
-    type: DataTypes.JSON,
+  // --- NEW DEMOGRAPHIC FIELDS END ---
+
+  // --- NEW TARGET AUDIENCE FIELD ---
+  targetAudience: {
+    type: DataTypes.JSON, // Using JSON to store an array of strings
     allowNull: true,
-    defaultValue: '{}',
   },
+  // --- END ---
 }, {
-  tableName: 'coach_profiles',
   timestamps: true,
 });
-
-// Define the association
-User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE' });
-CoachProfile.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = CoachProfile;

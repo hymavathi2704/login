@@ -8,7 +8,8 @@ import ResetConfirmation from './components/ResetConfirmation';
 import NewPasswordForm from './components/NewPasswordForm';
 import SuccessMessage from './components/SuccessMessage';
 import RateLimitMessage from './components/RateLimitMessage';
-import authApi from '../../auth/authApi'; // Import authApi
+import { forgotPassword, resendVerificationEmail, resetPassword } from '../../auth/authApi';
+
 
 const PasswordResetPage = () => {
   const { token } = useParams(); // This line is the key change
@@ -59,45 +60,31 @@ const PasswordResetPage = () => {
 
   const handlePasswordResetRequest = async (formData) => {
     setLoading(true);
-    
     try {
-      // Use the actual backend API call for forgot password
-      const response = await authApi.forgotPassword({ email: formData.email });
+      // ✅ 2. CORRECTED FUNCTION CALL: Call the function directly
+      await forgotPassword({ email: formData.email });
       
-      // The backend returns a generic success message to prevent user enumeration
-      // We assume if the call is successful, the email was sent.
-      if (response.status === 200) {
-        setEmail(formData.email);
-        setCurrentStep('confirmation');
-      
-        // Start resend cooldown
-        setCanResend(false);
-        setTimeout(() => setCanResend(true), 60000); // 1 minute cooldown
-      }
+      setEmail(formData.email);
+      setCurrentStep('confirmation');
+      setCanResend(false);
+      setTimeout(() => setCanResend(true), 60000);
       
     } catch (error) {
       console.error('Password reset request failed:', error?.message);
-      // In a real app, you would show this error to the user,
-      // but for security, the backend's response is generic.
       alert(error?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResendEmail = async () => {
+   const handleResendEmail = async () => {
     if (!canResend) return;
-    
     setResendLoading(true);
-    
     try {
-      // Call the API to resend the verification email
-      await authApi.resendVerificationEmail(email);
-      
-      // Start new cooldown
+      // ✅ 3. CORRECTED FUNCTION CALL
+      await resendVerificationEmail(email);
       setCanResend(false);
-      setTimeout(() => setCanResend(true), 60000); // 1 minute cooldown
-      
+      setTimeout(() => setCanResend(true), 60000);
     } catch (error) {
       console.error('Resend failed:', error?.message);
       alert('Failed to resend email. Please try again.');
@@ -106,16 +93,14 @@ const PasswordResetPage = () => {
     }
   };
 
+
   const handleNewPasswordSubmit = async (formData) => {
     setLoading(true);
-    
     try {
-      // Call the API to reset the password with the new password and token
-      await authApi.resetPassword({ token: formData.token, newPassword: formData.password });
-      
+      // ✅ 4. CORRECTED FUNCTION CALL
+      await resetPassword({ token: formData.token, newPassword: formData.password });
       setCurrentStep('success');
-      
-    } catch (error) {
+    } catch (error)      {
       console.error('Password reset failed:', error?.message);
       alert(error?.message || 'Password reset failed. The link may be invalid or expired.');
     } finally {
