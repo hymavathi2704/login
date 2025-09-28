@@ -5,9 +5,10 @@ import { updateUserProfile } from '@/auth/authApi';
 import Input from "@/components/ui/Input";
 import Button from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
-import DemographicsFormSection from '../../shared/DemographicsFormSection'; // 1. IMPORT
-import TargetAudienceSelection from './TargetAudienceSelection'; // 2. IMPORT
-import { toast } from 'sonner'; 
+import DemographicsFormSection from '../../shared/DemographicsFormSection';
+import TargetAudienceSelection from './TargetAudienceSelection';
+import { toast } from 'sonner';
+
 const CoachProfile = () => {
   const { user, setUser } = useAuth();
   const [formData, setFormData] = useState({
@@ -18,14 +19,12 @@ const CoachProfile = () => {
     title: '',
     bio: '',
     website: '',
-    // --- 3. ADD DEMOGRAPHIC AND TARGET AUDIENCE STATE ---
     dateOfBirth: '',
     gender: '',
     ethnicity: '',
     country: '',
   });
   const [targetAudience, setTargetAudience] = useState([]);
-  // ----------------------------------------------------
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -35,18 +34,18 @@ const CoachProfile = () => {
         lastName: user.lastName || '',
         email: user.email || '',
         phone: user.phone || '',
-        title: user.coach_profile?.title || '',
-        bio: user.coach_profile?.bio || '',
-        website: user.coach_profile?.website || '',
-        // --- 4. PRE-FILL NEW DATA ---
-        dateOfBirth: user.coach_profile?.dateOfBirth || '',
-        gender: user.coach_profile?.gender || '',
-        ethnicity: user.coach_profile?.ethnicity || '',
-        country: user.coach_profile?.country || '',
+        // ✅ FIX: Changed all instances of `user.coach_profile` to `user.CoachProfile`
+        title: user.CoachProfile?.title || '',
+        // ✅ FIX: Corrected the typo from Coach-Profile to CoachProfile
+        bio: user.CoachProfile?.bio || '',
+        website: user.CoachProfile?.website || '',
+        dateOfBirth: user.CoachProfile?.dateOfBirth || '',
+        gender: user.CoachProfile?.gender || '',
+        ethnicity: user.CoachProfile?.ethnicity || '',
+        country: user.CoachProfile?.country || '',
       });
-      // Ensure targetAudience is always an array
-      setTargetAudience(user.coach_profile?.targetAudience || []);
-      // -----------------------------
+      // ✅ FIX: Also changed it here for targetAudience
+      setTargetAudience(user.CoachProfile?.targetAudience || []);
     }
   }, [user]);
 
@@ -56,23 +55,23 @@ const CoachProfile = () => {
   };
 
   const handleSaveProfile = async () => {
-  setIsLoading(true);
-  try {
-    const payload = {
-      ...formData,
-      targetAudience: targetAudience,
-    };
-    const response = await updateUserProfile(payload);
-    setUser(response.data.user);
-    toast.success('Profile updated successfully!'); // REPLACED ALERT
-  } catch (error) {
-    console.error('Failed to update profile:', error);
-    const errorMessage = error.response?.data?.error || 'Failed to save profile. Please try again.';
-    toast.error(errorMessage); // REPLACED ALERT
-  } finally {
-    setIsLoading(false);
-  }
-};
+    setIsLoading(true);
+    try {
+      const payload = {
+        ...formData,
+        targetAudience: targetAudience,
+      };
+      const response = await updateUserProfile(payload);
+      setUser(response.data.user);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to save profile. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (!user) {
     return <div>Loading coach profile...</div>;
@@ -100,10 +99,8 @@ const CoachProfile = () => {
         />
       </div>
 
-      {/* --- 6. RENDER THE NEW COMPONENTS --- */}
       <TargetAudienceSelection selectedAudiences={targetAudience} setSelectedAudiences={setTargetAudience} />
       <DemographicsFormSection formData={formData} handleChange={handleChange} />
-      {/* ------------------------------------ */}
 
       <div className="mt-8 flex justify-end">
         <Button onClick={handleSaveProfile} disabled={isLoading}>

@@ -1,8 +1,6 @@
-// Frontend/src/pages/dashboards/coach-dashboard/components/TargetAudienceSelection.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/Checkbox';
 import Input from "@/components/ui/Input";
-
 
 const predefinedAudiences = [
   'Life coaches',
@@ -15,6 +13,17 @@ const predefinedAudiences = [
 const TargetAudienceSelection = ({ selectedAudiences, setSelectedAudiences }) => {
   const [otherValue, setOtherValue] = useState('');
 
+  // ✅ ADD THIS HOOK to synchronize the 'otherValue' state with incoming props.
+  useEffect(() => {
+    const otherAudience = selectedAudiences.find(a => a.startsWith('Other: '));
+    if (otherAudience) {
+      // If an "Other" value exists, strip the prefix and set it to the input field's state.
+      setOtherValue(otherAudience.substring(7)); // "Other: ".length is 7
+    } else {
+      setOtherValue('');
+    }
+  }, [selectedAudiences]);
+
   const handleCheckboxChange = (audience) => {
     const isSelected = selectedAudiences.includes(audience);
     if (isSelected) {
@@ -25,12 +34,17 @@ const TargetAudienceSelection = ({ selectedAudiences, setSelectedAudiences }) =>
   };
 
   const handleOtherInputChange = (e) => {
-    setOtherValue(e.target.value);
-    // Remove the previous "Other:" value if it exists
+    const newOtherValue = e.target.value;
+    setOtherValue(newOtherValue);
+    
+    // Remove any previous "Other:" value
     const withoutOther = selectedAudiences.filter(item => !item.startsWith('Other:'));
-    if (e.target.value) {
-      setSelectedAudiences([...withoutOther, `Other: ${e.target.value}`]);
+    
+    if (newOtherValue) {
+      // Add the new value if the input is not empty
+      setSelectedAudiences([...withoutOther, `Other: ${newOtherValue}`]);
     } else {
+      // If the input is empty, just keep the other selections
       setSelectedAudiences(withoutOther);
     }
   };
@@ -59,12 +73,9 @@ const TargetAudienceSelection = ({ selectedAudiences, setSelectedAudiences }) =>
             checked={isOtherSelected}
             onCheckedChange={() => {
               if (isOtherSelected) {
-                // If "Other" is unchecked, remove the custom value
-                setSelectedAudiences(selectedAudiences.filter(item => !item.startsWith('Other:')));
-                setOtherValue('');
-              } else if (otherValue) {
-                // If "Other" is checked and there's text, add it
-                setSelectedAudiences([...selectedAudiences, `Other: ${otherValue}`]);
+                handleOtherInputChange({ target: { value: '' } }); // Clear on uncheck
+              } else {
+                setSelectedAudiences([...selectedAudiences, 'Other: ']); // Add placeholder on check
               }
             }}
           />

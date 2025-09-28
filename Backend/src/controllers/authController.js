@@ -247,6 +247,7 @@ async function logout(req, res) {
 // ==============================
 async function updateProfile(req, res) {
     try {
+      console.log('Received profile update request with body:', req.body);
         const userId = req.user?.userId;
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
@@ -257,9 +258,14 @@ async function updateProfile(req, res) {
 
         // Define fields for each model
         const userFields = ['firstName', 'lastName', 'email', 'phone'];
-        const coachFields = ['title', 'bio', 'location', 'timezone', 'website', 'specialties', 'certifications', 'languages', 'sessionTypes', 'availability'];
-        const clientFields = ['coachingGoals'];
-
+        const coachFields = [
+            'title', 'bio', 'location', 'timezone', 'website', 
+            'specialties', 'certifications', 'languages', 'sessionTypes', 
+            'availability', 'dateOfBirth', 'gender', 'ethnicity', 'country', 'targetAudience' // Add new fields here
+        ];       
+        const clientFields = [
+            'coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country' // Add new fields here
+        ];
         // Create objects to hold the data for each model
         const userData = {};
         const coachData = {};

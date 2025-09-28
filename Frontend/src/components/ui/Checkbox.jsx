@@ -1,3 +1,5 @@
+// Frontend/src/components/ui/Checkbox.jsx
+
 import React from "react";
 import { Check, Minus } from "lucide-react";
 import { cn } from "../../utils/cn";
@@ -6,6 +8,8 @@ const Checkbox = React.forwardRef(({
     className,
     id,
     checked,
+    // ✅ ADD onCheckedChange to the destructured props
+    onCheckedChange, 
     indeterminate = false,
     disabled = false,
     required = false,
@@ -15,10 +19,8 @@ const Checkbox = React.forwardRef(({
     size = "default",
     ...props
 }, ref) => {
-    // Generate unique ID if not provided
     const checkboxId = id || `checkbox-${Math.random()?.toString(36)?.substr(2, 9)}`;
 
-    // Size variants
     const sizeClasses = {
         sm: "h-4 w-4",
         default: "h-4 w-4",
@@ -36,6 +38,8 @@ const Checkbox = React.forwardRef(({
                     disabled={disabled}
                     required={required}
                     className="sr-only"
+                    // ✅ FIX: Use the standard onChange event and pass it the onCheckedChange function
+                    onChange={onCheckedChange}
                     {...props}
                 />
 
@@ -50,6 +54,7 @@ const Checkbox = React.forwardRef(({
                         disabled && "cursor-not-allowed opacity-50"
                     )}
                 >
+                    {/* ... rest of the label content is fine ... */}
                     {checked && !indeterminate && (
                         <Check className="h-3 w-3 text-current flex items-center justify-center" />
                     )}
@@ -58,6 +63,7 @@ const Checkbox = React.forwardRef(({
                     )}
                 </label>
             </div>
+            {/* ... rest of the component is fine ... */}
             {(label || description || error) && (
                 <div className="flex-1 space-y-1">
                     {label && (
@@ -92,7 +98,7 @@ const Checkbox = React.forwardRef(({
 
 Checkbox.displayName = "Checkbox";
 
-// Checkbox Group component
+// ... (CheckboxGroup component is fine) ...
 const CheckboxGroup = React.forwardRef(({
     className,
     children,
