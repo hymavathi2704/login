@@ -1,40 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, 
-  Calendar, 
-  Users, 
-  Search, 
-  Filter,
-  MapPin,
-  Clock,
-  Edit,
-  ExternalLink,
-  Copy,
-  Eye
+  Plus, Calendar, Users, Search, Filter, MapPin, 
+  Clock, Edit, Trash2, Eye, Copy 
 } from 'lucide-react';
-import { getMyEvents, createEvent } from '@/auth/authApi'; // Make sure this path is correct
+import { getMyEvents, createEvent, updateEvent, deleteEvent } from '@/auth/authApi';
 
 const EventManagement = () => {
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [filterType, setFilterType] = useState('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
   
-  // State for the new event form
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
     type: 'webinar',
     date: '',
     time: '',
-    duration: 90, // Default duration in minutes
+    duration: 90,
     price: '',
-    status: 'draft',
   });
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
 
-  // Fetch events from the backend when the component mounts
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -42,7 +34,6 @@ const EventManagement = () => {
         setEvents(response.data);
       } catch (error) {
         console.error("Failed to fetch events:", error);
-        // You could add a user-facing error message here
       } finally {
         setIsLoading(false);
       }
@@ -50,37 +41,65 @@ const EventManagement = () => {
     fetchEvents();
   }, []);
 
-  // Handle input changes in the create event form
-  const handleInputChange = (e) => {
+  const handleInputChange = (e, formType) => {
     const { name, value } = e.target;
-    setNewEvent(prev => ({ ...prev, [name]: value }));
+    if (formType === 'new') {
+      setNewEvent(prev => ({ ...prev, [name]: value }));
+    } else {
+      setSelectedEvent(prev => ({ ...prev, [name]: value }));
+    }
   };
 
-  // Handle the creation of a new event
+  const openEditModal = (event) => {
+    const formattedEvent = {
+        ...event,
+        date: event.date ? new Date(event.date).toISOString().split('T')[0] : ''
+    };
+    setSelectedEvent(formattedEvent);
+    setShowEditModal(true);
+  };
+
   const handleCreateEvent = async (status) => {
-    // Basic validation
     if (!newEvent.title || !newEvent.date || !newEvent.time || !newEvent.price || !newEvent.duration) {
       alert('Please fill in all required fields.');
       return;
     }
-    
     try {
-      const eventToCreate = { ...newEvent, status };
-      const response = await createEvent(eventToCreate);
-      setEvents(prev => [...prev, response.data]); // Add the new event to the list
-      setShowCreateEvent(false); // Close the modal
-      // Reset the form for the next event
-      setNewEvent({
-        title: '', description: '', type: 'webinar', date: '',
-        time: '', duration: 90, price: '', status: 'draft'
-      });
+      const response = await createEvent({ ...newEvent, status });
+      setEvents(prev => [...prev, response.data]);
+      setShowCreateModal(false);
+      setNewEvent({ title: '', description: '', type: 'webinar', date: '', time: '', duration: 90, price: '' });
     } catch (error) {
       console.error("Failed to create event:", error);
       alert('Failed to create event. Please check the console for details.');
     }
   };
 
-  // Filter events based on search and filter criteria
+  const handleUpdateEvent = async () => {
+    if (!selectedEvent) return;
+    try {
+      const response = await updateEvent(selectedEvent.id, selectedEvent);
+      setEvents(prev => prev.map(e => e.id === selectedEvent.id ? response.data : e));
+      setShowEditModal(false);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error("Failed to update event:", error);
+      alert('Failed to update event. Please check the console for details.');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId) => {
+    if (window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+        try {
+            await deleteEvent(eventId);
+            setEvents(prev => prev.filter(e => e.id !== eventId));
+        } catch (error) {
+            console.error("Failed to delete event:", error);
+            alert('Failed to delete event. Please check the console for details.');
+        }
+    }
+  };
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -108,103 +127,37 @@ const EventManagement = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="text-center py-12">
-        <p>Loading your events...</p>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="text-center py-12"><p>Loading your events...</p></div>;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Event Management</h2>
           <p className="text-gray-600">Create and manage your coaching events, workshops, and webinars</p>
         </div>
         <button
-          onClick={() => setShowCreateEvent(true)}
+          onClick={() => setShowCreateModal(true)}
           className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
         >
           <Plus size={20} />
           <span>Create Event</span>
         </button>
       </div>
-      
-      {/* Stats Cards - Note: These stats are now calculated from the live data */}
-       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-gray-200">
-          <div className="text-3xl font-bold text-blue-600 mb-2">
-            {events.filter(e => e.status === 'published').length}
-          </div>
-          <div className="text-gray-600">Published Events</div>
-        </div>
-        {/* Add other stat cards if needed, fetching registration data would be a next step */}
-      </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-          {/* ... existing search and filter JSX ... */}
-      </div>
-
-      {/* Events Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredEvents.map((event) => (
           <div key={event.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="relative">
-              <img
-                src="/api/placeholder/300/200" // Replace with event.image if you add image uploads
-                alt={event.title}
-                className="w-full h-48 object-cover bg-gray-200"
-              />
-              <div className="absolute top-4 left-4 flex space-x-2">
-                <span className={`px-2 py-1 text-xs rounded-full font-medium capitalize ${getStatusColor(event.status)}`}>
-                  {event.status}
-                </span>
-                <span className="bg-white/90 text-gray-800 px-2 py-1 text-xs rounded-full capitalize">
-                  {getTypeIcon(event.type)} {event.type}
-                </span>
-              </div>
-              {parseFloat(event.price) > 0 && (
-                <div className="absolute top-4 right-4 bg-green-500 text-white px-2 py-1 text-sm font-medium rounded">
-                  ${event.price}
-                </div>
-              )}
-              {parseFloat(event.price) === 0 && (
-                <div className="absolute top-4 right-4 bg-blue-500 text-white px-2 py-1 text-sm font-medium rounded">
-                  FREE
-                </div>
-              )}
-            </div>
-
-            <div className="p-6">
+             <div className="p-6">
               <h3 className="font-semibold text-lg line-clamp-2 mb-2">{event.title}</h3>
-              <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.description}</p>
-              
-              <div className="space-y-2 text-sm text-gray-600 mb-4">
-                <div className="flex items-center space-x-2">
-                  <Calendar size={16} />
-                  <span>{new Date(event.date).toLocaleDateString()} at {event.time}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Clock size={16} />
-                  <span>{event.duration} minutes</span>
-                </div>
-              </div>
-
-              {/* Actions */}
+              <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.description || 'No description'}</p>
               <div className="flex space-x-2">
-                <button className="flex-1 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-1 text-sm">
+                <button onClick={() => openEditModal(event)} className="flex-1 bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-1 text-sm">
                   <Edit size={16} />
                   <span>Edit</span>
                 </button>
-                <button className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                  <Copy size={16} />
-                </button>
-                <button className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                  <Eye size={16} />
+                <button onClick={() => handleDeleteEvent(event.id)} className="bg-red-100 text-red-700 p-2 rounded-lg hover:bg-red-200 transition-colors">
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
@@ -220,120 +173,52 @@ const EventManagement = () => {
         </div>
       )}
 
-      {/* Create Event Modal */}
-      {showCreateEvent && (
+      {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-xl font-semibold">Create New Event</h3>
-            </div>
-            
+            <div className="p-6 border-b"><h3 className="text-xl font-semibold">Create New Event</h3></div>
             <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Event Title *</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={newEvent.title}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="e.g., Leadership Skills Workshop"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                <textarea
-                  rows="4"
-                  name="description"
-                  value={newEvent.description}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="Describe your event..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Type *</label>
-                  <select 
-                    name="type"
-                    value={newEvent.type}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
+                <input name="title" value={newEvent.title} onChange={(e) => handleInputChange(e, 'new')} placeholder="Event Title" className="w-full px-3 py-2 border rounded-lg"/>
+                <textarea name="description" value={newEvent.description} onChange={(e) => handleInputChange(e, 'new')} placeholder="Description" className="w-full px-3 py-2 border rounded-lg"/>
+                <select name="type" value={newEvent.type} onChange={(e) => handleInputChange(e, 'new')} className="w-full px-3 py-2 border rounded-lg">
                     <option value="webinar">Webinar</option>
                     <option value="workshop">Workshop</option>
                     <option value="consultation">Consultation</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Price ($) *</label>
-                  <input
-                    type="number"
-                    name="price"
-                    min="0"
-                    step="0.01"
-                    value={newEvent.price}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="0 for a free event"
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
-                  <input
-                    type="date"
-                    name="date"
-                    value={newEvent.date}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Time *</label>
-                  <input
-                    type="time"
-                    name="time"
-                    value={newEvent.time}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration (min) *</label>
-                  <input
-                    type="number"
-                    name="duration"
-                    min="1"
-                    value={newEvent.duration}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              </div>
+                </select>
+                <input name="price" type="number" value={newEvent.price} onChange={(e) => handleInputChange(e, 'new')} placeholder="Price ($)" className="w-full px-3 py-2 border rounded-lg"/>
+                <input name="date" type="date" value={newEvent.date} onChange={(e) => handleInputChange(e, 'new')} className="w-full px-3 py-2 border rounded-lg"/>
+                <input name="time" type="time" value={newEvent.time} onChange={(e) => handleInputChange(e, 'new')} className="w-full px-3 py-2 border rounded-lg"/>
+                <input name="duration" type="number" value={newEvent.duration} onChange={(e) => handleInputChange(e, 'new')} placeholder="Duration (minutes)" className="w-full px-3 py-2 border rounded-lg"/>
             </div>
-            
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowCreateEvent(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button onClick={() => handleCreateEvent('draft')} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-                Save as Draft
-              </button>
-              <button
-                onClick={() => handleCreateEvent('published')}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-              >
-                Publish Event
-              </button>
+            <div className="p-6 border-t flex justify-end space-x-3">
+              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+              <button onClick={() => handleCreateEvent('draft')} className="px-4 py-2 bg-gray-600 text-white rounded-lg">Save as Draft</button>
+              <button onClick={() => handleCreateEvent('published')} className="px-4 py-2 bg-purple-600 text-white rounded-lg">Publish Event</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && selectedEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b"><h3 className="text-xl font-semibold">Edit Event</h3></div>
+            <div className="p-6 space-y-4">
+                <input name="title" value={selectedEvent.title} onChange={(e) => handleInputChange(e, 'edit')} placeholder="Event Title" className="w-full px-3 py-2 border rounded-lg"/>
+                <textarea name="description" value={selectedEvent.description} onChange={(e) => handleInputChange(e, 'edit')} placeholder="Description" className="w-full px-3 py-2 border rounded-lg"/>
+                <select name="type" value={selectedEvent.type} onChange={(e) => handleInputChange(e, 'edit')} className="w-full px-3 py-2 border rounded-lg">
+                    <option value="webinar">Webinar</option>
+                    <option value="workshop">Workshop</option>
+                    <option value="consultation">Consultation</option>
+                </select>
+                <input name="price" type="number" value={selectedEvent.price} onChange={(e) => handleInputChange(e, 'edit')} placeholder="Price ($)" className="w-full px-3 py-2 border rounded-lg"/>
+                <input name="date" type="date" value={selectedEvent.date} onChange={(e) => handleInputChange(e, 'edit')} className="w-full px-3 py-2 border rounded-lg"/>
+                <input name="time" type="time" value={selectedEvent.time} onChange={(e) => handleInputChange(e, 'edit')} className="w-full px-3 py-2 border rounded-lg"/>
+                <input name="duration" type="number" value={selectedEvent.duration} onChange={(e) => handleInputChange(e, 'edit')} placeholder="Duration (minutes)" className="w-full px-3 py-2 border rounded-lg"/>
+            </div>
+            <div className="p-6 border-t flex justify-end space-x-3">
+              <button onClick={() => setShowEditModal(false)} className="px-4 py-2 border rounded-lg">Cancel</button>
+              <button onClick={handleUpdateEvent} className="px-4 py-2 bg-purple-600 text-white rounded-lg">Save Changes</button>
             </div>
           </div>
         </div>

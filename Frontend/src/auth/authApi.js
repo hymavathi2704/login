@@ -3,7 +3,7 @@ import axios from "axios";
 // Load backend URL from .env (fallback to localhost)
 const API = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
 
-// Create an Axios instance for authentication-related requests
+// Create an Axios instance for API requests
 const axiosInstance = axios.create({
   baseURL: API,
   headers: {
@@ -11,7 +11,7 @@ const axiosInstance = axios.create({
   },
 });
 
-// Request interceptor (attach token automatically if present)
+// Request interceptor to automatically attach the auth token
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
   if (token) {
@@ -20,7 +20,7 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor (basic error handling)
+// Response interceptor for basic error handling
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,61 +33,53 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-// User Registration
+// --- AUTHENTICATION API ---
+
 export const registerUser = (userData) => {
   return axiosInstance.post("/api/auth/register", userData);
 };
 
-// User Login
 export const loginUser = (credentials) => {
   return axiosInstance.post("/api/auth/login", credentials);
 };
 
-// Get Current User Profile
 export const getMe = () => {
   return axiosInstance.get("/api/auth/me");
 };
 
-// Creates a new profile (role) for the currently authenticated user.
 export const createProfile = (profileData) => {
   return axiosInstance.post('/api/auth/create-profile', profileData);
 };
 
-// Email Verification (Updated for OTP system)
 export const verifyEmail = (payload) => {
   return axiosInstance.post(`/api/auth/verify-email`, payload);
 };
 
-// Resend Verification Email
 export const resendVerificationEmail = (email) => {
   return axiosInstance.post("/api/auth/send-verification", { email });
 };
 
-// Forgot Password
 export const forgotPassword = (payload) => {
   return axiosInstance.post('/api/auth/forgot-password', payload);
 };
 
-// Reset Password
 export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
-// --- RENAMED FUNCTION ---
-// Update user profile
 export const updateUserProfile = (profileData) => {
   return axiosInstance.put('/api/auth/profile', profileData);
 };
-// --------------------
 
-// Logout function
 export const logoutUser = () => {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("user");
   localStorage.removeItem("rememberMe");
 };
 
-// Removed the redundant default export to stick with named exports
+
+// --- EVENTS & BOOKINGS API ---
+
 // Fetch all published events for clients
 export const getEvents = () => {
   return axiosInstance.get("/api/events");
@@ -101,6 +93,16 @@ export const getMyEvents = () => {
 // Create a new event
 export const createEvent = (eventData) => {
   return axiosInstance.post("/api/events", eventData);
+};
+
+// Update an event by its ID
+export const updateEvent = (eventId, eventData) => {
+  return axiosInstance.put(`/api/events/${eventId}`, eventData);
+};
+
+// Delete an event by its ID
+export const deleteEvent = (eventId) => {
+  return axiosInstance.delete(`/api/events/${eventId}`);
 };
 
 // Book an event
