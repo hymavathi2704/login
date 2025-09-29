@@ -161,6 +161,9 @@ async function socialLogin(req, res) {
 // ==============================
 // Get current user
 // ==============================
+// ==============================
+// Get current user (with profiles)
+// ==============================
 async function me(req, res) {
   try {
     const userId = req.user?.userId;
@@ -168,22 +171,31 @@ async function me(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const user = await User.findByPk(userId);
+    // ✅ Fetch user with both profiles
+    const user = await User.findByPk(userId, {
+      include: [{ model: CoachProfile }, { model: ClientProfile }]
+    });
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // ✅ SIMPLIFIED: Send the roles array directly from the user object
-    const userPayload = {
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone || null,
-      roles: user.roles,
-    };
+    // Convert to plain JS object
+    const plainUser = user.get({ plain: true });
 
-    res.status(200).json({ user: userPayload });
+    // ✅ Normalize keys to match frontend expectations
+    if (plainUser.coach_profile) {
+      plainUser.CoachProfile = plainUser.coach_profile;
+      delete plainUser.coach_profile;
+    }
+    if (plainUser.client_profile) {
+      plainUser.ClientProfile = plainUser.client_profile;
+      delete plainUser.client_profile;
+    }
+
+    console.log("Sending /me user response:", plainUser);
+
+    res.status(200).json({ user: plainUser });
 
   } catch (err) {
     console.error('Error fetching /me:', err);
@@ -245,82 +257,93 @@ async function logout(req, res) {
 // ==============================
 // Update user profile
 // ==============================
+// ==============================
+// Update user profile
+// ==============================
 async function updateProfile(req, res) {
-    try {
-      console.log('Received profile update request with body:', req.body);
-        const userId = req.user?.userId;
-        if (!userId) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
+  try {
+    console.log('Received profile update request with body:', req.body);
 
-        const user = await User.findByPk(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
-
-        // Define fields for each model
-        const userFields = ['firstName', 'lastName', 'email', 'phone'];
-        const coachFields = [
-            'title', 'bio', 'location', 'timezone', 'website', 
-            'specialties', 'certifications', 'languages', 'sessionTypes', 
-            'availability', 'dateOfBirth', 'gender', 'ethnicity', 'country', 'targetAudience' // Add new fields here
-        ];       
-        const clientFields = [
-            'coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country' // Add new fields here
-        ];
-        // Create objects to hold the data for each model
-        const userData = {};
-        const coachData = {};
-        const clientData = {};
-
-        // Iterate over the request body and assign keys to the correct object
-        for (const key in req.body) {
-            if (userFields.includes(key)) {
-                userData[key] = req.body[key];
-            }
-            if (coachFields.includes(key)) {
-                coachData[key] = req.body[key];
-            }
-            if (clientFields.includes(key)) {
-                clientData[key] = req.body[key];
-            }
-        }
-        
-        // Sanitize email if present
-        if (userData.email) {
-            userData.email = userData.email.toLowerCase().trim();
-        }
-
-        // Update the User model
-        await user.update(userData);
-
-        // Update the CoachProfile if coach-specific data exists
-        if (Object.keys(coachData).length > 0) {
-            const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
-            await coachProfile.update(coachData);
-        }
-
-        // Update the ClientProfile if client-specific data exists
-        if (Object.keys(clientData).length > 0) {
-            const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
-            await clientProfile.update(clientData);
-        }
-        
-        const updatedUser = await User.findByPk(userId, {
-            include: [
-                { model: CoachProfile },
-                { model: ClientProfile }
-            ]
-        });
-
-        // Use .get({ plain: true }) to serialize the instance
-        const plainUpdatedUser = updatedUser.get({ plain: true });
-
-        res.status(200).json({ message: 'Profile updated successfully', user: plainUpdatedUser });
-    } catch (err) {
-        console.error('Update profile error:', err);
-        res.status(500).json({ error: 'Failed to update profile' });
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
     }
-}
 
+    const user = await User.findByPk(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Define fields for each model
+    const userFields = ['firstName', 'lastName', 'email', 'phone'];
+    const coachFields = [
+      'title', 'bio', 'location', 'timezone', 'website', 
+      'specialties', 'certifications', 'languages', 'sessionTypes', 
+      'availability', 'dateOfBirth', 'gender', 'ethnicity', 'country', 'targetAudience'
+    ];
+    const clientFields = [
+      'coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'
+    ];
+
+    // Prepare data containers
+    const userData = {};
+    const coachData = {};
+    const clientData = {};
+
+    // Assign request body values to appropriate objects
+    for (const key in req.body) {
+      if (userFields.includes(key)) userData[key] = req.body[key];
+      if (coachFields.includes(key)) coachData[key] = req.body[key];
+      if (clientFields.includes(key)) clientData[key] = req.body[key];
+    }
+
+    // Sanitize email if present
+    if (userData.email) {
+      userData.email = userData.email.toLowerCase().trim();
+    }
+
+    // Update User model
+    await user.update(userData);
+
+    // Update CoachProfile if data exists
+    if (Object.keys(coachData).length > 0) {
+      const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
+      await coachProfile.update(coachData);
+    }
+
+    // Update ClientProfile if data exists
+    if (Object.keys(clientData).length > 0) {
+      const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
+      await clientProfile.update(clientData);
+    }
+
+    // Fetch updated user with associations
+    const updatedUser = await User.findByPk(userId, {
+      include: [{ model: CoachProfile }, { model: ClientProfile }]
+    });
+
+    // Serialize instance to plain object
+    const plainUpdatedUser = updatedUser.get({ plain: true });
+
+    // ✅ Normalize keys to match frontend expectations
+    if (plainUpdatedUser.coach_profile) {
+      plainUpdatedUser.CoachProfile = plainUpdatedUser.coach_profile;
+      delete plainUpdatedUser.coach_profile;
+    }
+    if (plainUpdatedUser.client_profile) {
+      plainUpdatedUser.ClientProfile = plainUpdatedUser.client_profile;
+      delete plainUpdatedUser.client_profile;
+    }
+
+    console.log("Sending updated user response:", plainUpdatedUser);
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: plainUpdatedUser
+    });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+}
 
 // ==============================
 // Email & Password Reset

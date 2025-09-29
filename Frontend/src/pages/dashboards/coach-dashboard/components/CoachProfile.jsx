@@ -28,26 +28,34 @@ const CoachProfile = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        // ✅ FIX: Changed all instances of `user.coach_profile` to `user.CoachProfile`
-        title: user.CoachProfile?.title || '',
-        // ✅ FIX: Corrected the typo from Coach-Profile to CoachProfile
-        bio: user.CoachProfile?.bio || '',
-        website: user.CoachProfile?.website || '',
-        dateOfBirth: user.CoachProfile?.dateOfBirth || '',
-        gender: user.CoachProfile?.gender || '',
-        ethnicity: user.CoachProfile?.ethnicity || '',
-        country: user.CoachProfile?.country || '',
-      });
-      // ✅ FIX: Also changed it here for targetAudience
-      setTargetAudience(user.CoachProfile?.targetAudience || []);
+  if (user) {
+    setFormData({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      title: user.CoachProfile?.title || '',
+      bio: user.CoachProfile?.bio || '',
+      website: user.CoachProfile?.website || '',
+      dateOfBirth: user.CoachProfile?.dateOfBirth || '',
+      gender: user.CoachProfile?.gender || '',
+      ethnicity: user.CoachProfile?.ethnicity || '',
+      country: user.CoachProfile?.country || '',
+    });
+
+    // ✅ Safely parse targetAudience
+    let ta = user.CoachProfile?.targetAudience;
+    if (typeof ta === "string") {
+      try {
+        ta = JSON.parse(ta); // If stored as JSON string
+      } catch {
+        ta = []; // Fallback
+      }
     }
-  }, [user]);
+    if (!Array.isArray(ta)) ta = []; // Ensure always array
+    setTargetAudience(ta);
+  }
+}, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
