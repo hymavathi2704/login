@@ -1,8 +1,5 @@
-// Backend/src/models/Booking.js
 const { DataTypes } = require('sequelize');
 const db = require('../config/db');
-const User = require('./user');
-const Event = require('./Event');
 
 const Booking = db.define('booking', {
   id: {
@@ -11,21 +8,21 @@ const Booking = db.define('booking', {
     autoIncrement: true,
   },
   clientId: {
-        type: DataTypes.UUID, // This MUST match the User's id type
-        allowNull: false,
-        references: {
-            model: 'users', // Reference the table name as a string
-            key: 'id',
-        },
+    type: DataTypes.CHAR(36), // <-- CORRECTED
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id',
     },
-    eventId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'events', // Reference the table name as a string
-            key: 'id',
-        },
+  },
+  eventId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'events',
+      key: 'id',
     },
+  },
   status: {
     type: DataTypes.ENUM('confirmed', 'pending', 'cancelled'),
     defaultValue: 'pending',
@@ -37,7 +34,5 @@ const Booking = db.define('booking', {
 }, {
   timestamps: true,
 });
-
-
 
 module.exports = Booking;

@@ -4,7 +4,7 @@ const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
     id: {
-        type: DataTypes.UUID,
+        type: DataTypes.CHAR(36), // <-- CORRECTED
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
         allowNull: false,
@@ -39,17 +39,17 @@ const User = sequelize.define('User', {
         allowNull: true,
     },
     roles: {
-    type: DataTypes.TEXT,      // keep as TEXT/LONGTEXT
-    allowNull: false,
-    defaultValue: '[]',         // store empty array as string
-    get() {
-        const raw = this.getDataValue('roles');
-        return raw ? JSON.parse(raw) : [];
+        type: DataTypes.TEXT,
+        allowNull: false,
+        defaultValue: '[]',
+        get() {
+            const raw = this.getDataValue('roles');
+            return raw ? JSON.parse(raw) : [];
+        },
+        set(value) {
+            this.setDataValue('roles', JSON.stringify(value));
+        }
     },
-    set(value) {
-        this.setDataValue('roles', JSON.stringify(value));
-    }
-},
     email_verified: {
         type: DataTypes.BOOLEAN,
         defaultValue: false,

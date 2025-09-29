@@ -9,11 +9,11 @@ const ClientProfile = db.define('client_profiles', {
     autoIncrement: true,
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.CHAR(36), // <-- CORRECTED
     allowNull: false,
     unique: true,
     references: {
-      model: 'users', // table name
+      model: 'users',
       key: 'id',
     },
     onDelete: 'CASCADE',
@@ -22,9 +22,8 @@ const ClientProfile = db.define('client_profiles', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  // --- NEW DEMOGRAPHIC FIELDS START ---
   dateOfBirth: {
-    type: DataTypes.DATEONLY, // Stores date without time
+    type: DataTypes.DATEONLY,
     allowNull: true,
   },
   gender: {
@@ -39,7 +38,6 @@ const ClientProfile = db.define('client_profiles', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  // --- NEW DEMOGRAPHIC FIELDS END ---
 }, {
   timestamps: true,
 });

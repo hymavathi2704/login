@@ -9,7 +9,7 @@ const CoachProfile = db.define('coach_profiles', {
     autoIncrement: true,
   },
   userId: {
-    type: DataTypes.UUID,
+    type: DataTypes.CHAR(36), // <-- CORRECTED
     allowNull: false,
     unique: true,
     references: {
@@ -30,9 +30,6 @@ const CoachProfile = db.define('coach_profiles', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  // ... other existing fields
-  
-  // --- NEW DEMOGRAPHIC FIELDS START ---
   dateOfBirth: {
     type: DataTypes.DATEONLY,
     allowNull: true,
@@ -49,14 +46,10 @@ const CoachProfile = db.define('coach_profiles', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  // --- NEW DEMOGRAPHIC FIELDS END ---
-
-  // --- NEW TARGET AUDIENCE FIELD ---
   targetAudience: {
-    type: DataTypes.JSON, // Using JSON to store an array of strings
+    type: DataTypes.JSON,
     allowNull: true,
   },
-  // --- END ---
 }, {
   timestamps: true,
 });
