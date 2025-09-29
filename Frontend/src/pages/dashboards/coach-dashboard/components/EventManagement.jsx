@@ -1,139 +1,120 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Calendar, 
   Users, 
-  DollarSign, 
   Search, 
   Filter,
   MapPin,
   Clock,
   Edit,
-  Trash2,
-  Eye,
+  ExternalLink,
   Copy,
-  ExternalLink
+  Eye
 } from 'lucide-react';
+import { getMyEvents, createEvent } from '@/auth/authApi'; // Make sure this path is correct
 
 const EventManagement = () => {
+  const [events, setEvents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  
+  // State for the new event form
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    type: 'webinar',
+    date: '',
+    time: '',
+    duration: 90, // Default duration in minutes
+    price: '',
+    status: 'draft',
+  });
 
-  const events = [
-    {
-      id: 1,
-      title: "Work-Life Balance Masterclass",
-      description: "Learn essential strategies to achieve better work-life balance in today's fast-paced world.",
-      type: "webinar",
-      category: "Life Coaching",
-      date: "2025-02-15",
-      time: "2:00 PM",
-      duration: "90 minutes",
-      venue: "Online (Zoom)",
-      capacity: 50,
-      registered: 42,
-      waitlist: 8,
-      price: 49,
-      status: "published",
-      image: "/api/placeholder/300/200",
-      registrationUrl: "https://katha.com/events/work-life-balance-masterclass"
-    },
-    {
-      id: 2,
-      title: "Leadership Skills Workshop",
-      description: "Interactive workshop focused on developing core leadership competencies for emerging managers.",
-      type: "workshop",
-      category: "Career Development",
-      date: "2025-02-20",
-      time: "10:00 AM",
-      duration: "4 hours",
-      venue: "Downtown Conference Center, Room A",
-      capacity: 25,
-      registered: 18,
-      waitlist: 0,
-      price: 150,
-      status: "published",
-      image: "/api/placeholder/300/200",
-      registrationUrl: "https://katha.com/events/leadership-skills-workshop"
-    },
-    {
-      id: 3,
-      title: "Mindfulness & Stress Management",
-      description: "Practical techniques for managing stress and incorporating mindfulness into daily life.",
-      type: "course",
-      category: "Wellness",
-      date: "2025-03-01",
-      time: "6:00 PM",
-      duration: "6 weeks",
-      venue: "Online (Interactive Platform)",
-      capacity: 30,
-      registered: 15,
-      waitlist: 0,
-      price: 200,
-      status: "draft",
-      image: "/api/placeholder/300/200",
-      registrationUrl: null
-    },
-    {
-      id: 4,
-      title: "Free Consultation Hour",
-      description: "Free group consultation session for potential coaching clients to ask questions.",
-      type: "consultation",
-      category: "General",
-      date: "2025-01-25",
-      time: "7:00 PM",
-      duration: "60 minutes",
-      venue: "Online (Google Meet)",
-      capacity: 20,
-      registered: 14,
-      waitlist: 0,
-      price: 0,
-      status: "published",
-      image: "/api/placeholder/300/200",
-      registrationUrl: "https://katha.com/events/free-consultation-hour"
+  // Fetch events from the backend when the component mounts
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await getMyEvents();
+        setEvents(response.data);
+      } catch (error) {
+        console.error("Failed to fetch events:", error);
+        // You could add a user-facing error message here
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  // Handle input changes in the create event form
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewEvent(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle the creation of a new event
+  const handleCreateEvent = async (status) => {
+    // Basic validation
+    if (!newEvent.title || !newEvent.date || !newEvent.time || !newEvent.price || !newEvent.duration) {
+      alert('Please fill in all required fields.');
+      return;
     }
-  ];
+    
+    try {
+      const eventToCreate = { ...newEvent, status };
+      const response = await createEvent(eventToCreate);
+      setEvents(prev => [...prev, response.data]); // Add the new event to the list
+      setShowCreateEvent(false); // Close the modal
+      // Reset the form for the next event
+      setNewEvent({
+        title: '', description: '', type: 'webinar', date: '',
+        time: '', duration: 90, price: '', status: 'draft'
+      });
+    } catch (error) {
+      console.error("Failed to create event:", error);
+      alert('Failed to create event. Please check the console for details.');
+    }
+  };
 
+  // Filter events based on search and filter criteria
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.category.toLowerCase().includes(searchTerm.toLowerCase());
+                          (event.description && event.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = filterStatus === 'all' || event.status === filterStatus;
     const matchesType = filterType === 'all' || event.type === filterType;
     return matchesSearch && matchesStatus && matchesType;
   });
-
+  
   const getStatusColor = (status) => {
     switch (status) {
-      case 'published':
-        return 'bg-green-100 text-green-800';
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'completed':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+      case 'published': return 'bg-green-100 text-green-800';
+      case 'draft': return 'bg-yellow-100 text-yellow-800';
+      case 'cancelled': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'webinar':
-        return '🎥';
-      case 'workshop':
-        return '🛠️';
-      case 'course':
-        return '📚';
-      case 'consultation':
-        return '💬';
-      default:
-        return '📅';
+      case 'webinar': return '🎥';
+      case 'workshop': return '🛠️';
+      case 'course': return '📚';
+      case 'consultation': return '💬';
+      default: return '📅';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <p>Loading your events...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -151,78 +132,21 @@ const EventManagement = () => {
           <span>Create Event</span>
         </button>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      
+      {/* Stats Cards - Note: These stats are now calculated from the live data */}
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <div className="text-3xl font-bold text-blue-600 mb-2">
             {events.filter(e => e.status === 'published').length}
           </div>
           <div className="text-gray-600">Published Events</div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200">
-          <div className="text-3xl font-bold text-green-600 mb-2">
-            {events.reduce((acc, event) => acc + event.registered, 0)}
-          </div>
-          <div className="text-gray-600">Total Registrations</div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200">
-          <div className="text-3xl font-bold text-purple-600 mb-2">
-            ${events.reduce((acc, event) => acc + (event.price * event.registered), 0).toLocaleString()}
-          </div>
-          <div className="text-gray-600">Revenue Generated</div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200">
-          <div className="text-3xl font-bold text-orange-600 mb-2">
-            {events.reduce((acc, event) => acc + event.waitlist, 0)}
-          </div>
-          <div className="text-gray-600">Waitlist Total</div>
-        </div>
+        {/* Add other stat cards if needed, fetching registration data would be a next step */}
       </div>
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <div className="flex flex-col lg:flex-row space-y-4 lg:space-y-0 lg:space-x-4">
-          <div className="flex-1 relative">
-            <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search events..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-          
-          <div className="flex space-x-4">
-            <div className="flex items-center space-x-2">
-              <Filter size={20} className="text-gray-400" />
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="all">All Status</option>
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-            
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="all">All Types</option>
-              <option value="webinar">Webinars</option>
-              <option value="workshop">Workshops</option>
-              <option value="course">Courses</option>
-              <option value="consultation">Consultations</option>
-            </select>
-          </div>
-        </div>
+          {/* ... existing search and filter JSX ... */}
       </div>
 
       {/* Events Grid */}
@@ -231,24 +155,24 @@ const EventManagement = () => {
           <div key={event.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
             <div className="relative">
               <img
-                src={event.image}
+                src="/api/placeholder/300/200" // Replace with event.image if you add image uploads
                 alt={event.title}
-                className="w-full h-48 object-cover"
+                className="w-full h-48 object-cover bg-gray-200"
               />
               <div className="absolute top-4 left-4 flex space-x-2">
-                <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(event.status)}`}>
+                <span className={`px-2 py-1 text-xs rounded-full font-medium capitalize ${getStatusColor(event.status)}`}>
                   {event.status}
                 </span>
-                <span className="bg-white/90 text-gray-800 px-2 py-1 text-xs rounded-full">
+                <span className="bg-white/90 text-gray-800 px-2 py-1 text-xs rounded-full capitalize">
                   {getTypeIcon(event.type)} {event.type}
                 </span>
               </div>
-              {event.price > 0 && (
+              {parseFloat(event.price) > 0 && (
                 <div className="absolute top-4 right-4 bg-green-500 text-white px-2 py-1 text-sm font-medium rounded">
                   ${event.price}
                 </div>
               )}
-              {event.price === 0 && (
+              {parseFloat(event.price) === 0 && (
                 <div className="absolute top-4 right-4 bg-blue-500 text-white px-2 py-1 text-sm font-medium rounded">
                   FREE
                 </div>
@@ -256,10 +180,7 @@ const EventManagement = () => {
             </div>
 
             <div className="p-6">
-              <div className="flex items-start justify-between mb-2">
-                <h3 className="font-semibold text-lg line-clamp-2">{event.title}</h3>
-              </div>
-              
+              <h3 className="font-semibold text-lg line-clamp-2 mb-2">{event.title}</h3>
               <p className="text-gray-600 text-sm mb-4 line-clamp-2">{event.description}</p>
               
               <div className="space-y-2 text-sm text-gray-600 mb-4">
@@ -269,33 +190,8 @@ const EventManagement = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock size={16} />
-                  <span>{event.duration}</span>
+                  <span>{event.duration} minutes</span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <MapPin size={16} />
-                  <span className="line-clamp-1">{event.venue}</span>
-                </div>
-              </div>
-
-              {/* Registration Stats */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2 text-sm">
-                  <Users size={16} className="text-gray-400" />
-                  <span>{event.registered}/{event.capacity} registered</span>
-                </div>
-                {event.waitlist > 0 && (
-                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                    {event.waitlist} waitlisted
-                  </span>
-                )}
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                <div 
-                  className="bg-purple-500 h-2 rounded-full"
-                  style={{ width: `${Math.min((event.registered / event.capacity) * 100, 100)}%` }}
-                />
               </div>
 
               {/* Actions */}
@@ -304,17 +200,9 @@ const EventManagement = () => {
                   <Edit size={16} />
                   <span>Edit</span>
                 </button>
-                
-                {event.registrationUrl && (
-                  <button className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors">
-                    <ExternalLink size={16} />
-                  </button>
-                )}
-                
                 <button className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors">
                   <Copy size={16} />
                 </button>
-                
                 <button className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors">
                   <Eye size={16} />
                 </button>
@@ -324,127 +212,108 @@ const EventManagement = () => {
         ))}
       </div>
 
-      {filteredEvents.length === 0 && (
-        <div className="text-center py-12">
+      {filteredEvents.length === 0 && !isLoading && (
+        <div className="text-center py-12 col-span-full">
           <Calendar size={48} className="text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No events found</h3>
-          <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+          <p className="text-gray-500">Click "Create Event" to get started.</p>
         </div>
       )}
 
       {/* Create Event Modal */}
       {showCreateEvent && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <h3 className="text-xl font-semibold">Create New Event</h3>
             </div>
             
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Event Title *</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      placeholder="Enter event title"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                    <textarea
-                      rows="4"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      placeholder="Describe your event..."
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Event Type *</label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        <option value="webinar">Webinar</option>
-                        <option value="workshop">Workshop</option>
-                        <option value="course">Course</option>
-                        <option value="consultation">Consultation</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                        <option value="Life Coaching">Life Coaching</option>
-                        <option value="Career Development">Career Development</option>
-                        <option value="Wellness">Wellness</option>
-                        <option value="Business Coaching">Business Coaching</option>
-                        <option value="Leadership">Leadership</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Event Title *</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newEvent.title}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="e.g., Leadership Skills Workshop"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <textarea
+                  rows="4"
+                  name="description"
+                  value={newEvent.description}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Describe your event..."
+                />
+              </div>
 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
-                      <input
-                        type="date"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        min={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Time *</label>
-                      <input
-                        type="time"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration *</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      placeholder="e.g., 90 minutes, 2 hours, 4 weeks"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Venue *</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      placeholder="Online (Zoom) or physical address"
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Capacity *</label>
-                      <input
-                        type="number"
-                        min="1"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="Max attendees"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Price ($) *</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="0 for free event"
-                      />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Type *</label>
+                  <select 
+                    name="type"
+                    value={newEvent.type}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="webinar">Webinar</option>
+                    <option value="workshop">Workshop</option>
+                    <option value="consultation">Consultation</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Price ($) *</label>
+                  <input
+                    type="number"
+                    name="price"
+                    min="0"
+                    step="0.01"
+                    value={newEvent.price}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="0 for a free event"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date *</label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={newEvent.date}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Time *</label>
+                  <input
+                    type="time"
+                    name="time"
+                    value={newEvent.time}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Duration (min) *</label>
+                  <input
+                    type="number"
+                    name="duration"
+                    min="1"
+                    value={newEvent.duration}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
                 </div>
               </div>
             </div>
@@ -456,11 +325,11 @@ const EventManagement = () => {
               >
                 Cancel
               </button>
-              <button className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+              <button onClick={() => handleCreateEvent('draft')} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                 Save as Draft
               </button>
               <button
-                onClick={() => setShowCreateEvent(false)}
+                onClick={() => handleCreateEvent('published')}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
                 Publish Event

@@ -88,3 +88,27 @@ export const logoutUser = () => {
 };
 
 // Removed the redundant default export to stick with named exports
+// Fetch all published events for clients
+export const getEvents = () => {
+  return axiosInstance.get("/api/events");
+};
+
+// Fetch events for the logged-in coach
+export const getMyEvents = () => {
+  return axiosInstance.get("/api/events/my-events");
+};
+
+// Create a new event
+export const createEvent = (eventData) => {
+  return axiosInstance.post("/api/events", eventData);
+};
+
+// Book an event
+export const bookEvent = (eventId) => {
+  return axiosInstance.post(`/api/events/${eventId}/book`);
+};
+
+// Fetch bookings for the logged-in coach
+export const getMyBookings = () => {
+  return axiosInstance.get("/api/events/my-bookings");
+};
