@@ -1,5 +1,5 @@
 const express = require('express');
-const { Op } = require('sequelize');
+const { Op, fn, col, literal } = require('sequelize'); // Import additional helpers
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const User = require('../models/user');
@@ -8,37 +8,53 @@ const ClientProfile = require('../models/ClientProfile');
 const Subscription = require('../models/Subscription');
 const sequelize = require('../config/db');
 
-// GET /api/profiles/coaches - Get all coaches (for clients)
+// GET /api/profiles/coaches - Get all coaches with search and filtering
 router.get('/coaches', authenticate, async (req, res) => {
   try {
     const clientId = req.user.userId;
+    const { search, audience } = req.query;
 
+    const userWhereClause = {
+      roles: { [Op.like]: '%"coach"%' }
+    };
+
+    const coachProfileWhere = {};
+
+    // --- THIS IS THE FIX ---
+    if (audience) {
+      // Use a raw query part to correctly query the JSON array
+      coachProfileWhere[Op.and] = [
+        literal(`JSON_CONTAINS(targetAudience, '"${audience}"')`)
+      ];
+    }
+
+    // Add search functionality
+    if (search) {
+      const searchPattern = `%${search}%`;
+      userWhereClause[Op.or] = [
+        { firstName: { [Op.like]: searchPattern } },
+        { lastName: { [Op.like]: searchPattern } },
+        // Also allow searching by joining on the coach_profile title/bio
+        { '$coach_profile.title$': { [Op.like]: searchPattern } },
+        { '$coach_profile.bio$': { [Op.like]: searchPattern } }
+      ];
+    }
+    
     const coaches = await User.findAll({
-      where: { roles: { [Op.like]: '%"coach"%' } }, // Find users with 'coach' role
-      attributes: ['id', 'firstName', 'lastName', 'email'],
+      where: userWhereClause,
+      attributes: ['id', 'firstName', 'lastName', 'email',
+        [
+          literal(`EXISTS(SELECT 1 FROM subscriptions WHERE subscriptions.coachId = User.id AND subscriptions.clientId = '${clientId}')`),
+          'isSubscribed'
+        ]
+      ],
       include: [
         {
           model: CoachProfile,
-          attributes: ['bio', 'website', 'targetAudience'],
-        },
-        // Use a subquery to check if the current client is subscribed to each coach
-        {
-          model: Subscription,
-          as: 'Subscribers',
-          attributes: [],
-          where: { clientId },
-          required: false, // Use LEFT JOIN
-        },
+          where: coachProfileWhere,
+          required: true // INNER JOIN to only get users with a matching coach profile
+        }
       ],
-      // Add an attribute to show subscription status
-      attributes: {
-        include: [
-          [
-            sequelize.literal(`EXISTS(SELECT 1 FROM subscriptions WHERE subscriptions.coachId = User.id AND subscriptions.clientId = '${clientId}')`),
-            'isSubscribed'
-          ]
-        ]
-      }
     });
 
     res.json(coaches);
@@ -48,13 +64,13 @@ router.get('/coaches', authenticate, async (req, res) => {
   }
 });
 
+
 // POST /api/profiles/coaches/:coachId/subscribe - Subscribe to a coach
 router.post('/coaches/:coachId/subscribe', authenticate, async (req, res) => {
   try {
     const clientId = req.user.userId;
     const { coachId } = req.params;
 
-    // Prevent subscribing to oneself
     if (clientId === coachId) {
       return res.status(400).json({ error: 'You cannot subscribe to yourself.' });
     }
@@ -91,9 +107,7 @@ router.get('/my-clients', authenticate, async (req, res) => {
             }]
         });
 
-        // Flatten the response to be a list of clients
         const clients = subscriptions.map(sub => sub.client);
-
         res.json(clients);
     } catch (error) {
         console.error('Error fetching clients:', error);

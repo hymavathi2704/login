@@ -116,8 +116,14 @@ export const getMyBookings = () => {
 };
 
 // Get all coaches for clients to view
-export const getAllCoaches = () => {
-  return axiosInstance.get('/api/profiles/coaches');
+// Get all coaches for clients to view, with optional filters
+export const getAllCoaches = (searchTerm = '', audience = '') => {
+  return axiosInstance.get(`/api/profiles/coaches`, {
+    params: {
+      search: searchTerm,
+      audience: audience
+    }
+  });
 };
 
 // Subscribe to a coach
