@@ -131,6 +131,10 @@ export const subscribeToCoach = (coachId) => {
   return axiosInstance.post(`/api/profiles/coaches/${coachId}/subscribe`);
 };
 
+export const unsubscribeFromCoach = (coachId) => {
+  return axiosInstance.delete(`/api/profiles/coaches/${coachId}/unsubscribe`);
+};
+
 // Get a coach's list of subscribed clients
 export const getMySubscribedClients = () => {
   return axiosInstance.get('/api/profiles/my-clients');

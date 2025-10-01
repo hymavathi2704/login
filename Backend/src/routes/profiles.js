@@ -122,5 +122,27 @@ router.get('/my-clients', authenticate, async (req, res) => {
     }
 });
 
+// --- 🚀 NEW: Unsubscribe from a coach ---
+// DELETE /api/profiles/coaches/:coachId/unsubscribe
+router.delete('/coaches/:coachId/unsubscribe', authenticate, async (req, res) => {
+  try {
+    const clientId = req.user.userId;
+    const { coachId } = req.params;
+
+    const result = await Subscription.destroy({
+      where: { clientId, coachId },
+    });
+
+    if (result === 0) {
+      return res.status(404).json({ message: 'Subscription not found.' });
+    }
+
+    res.status(200).json({ message: 'Unsubscribed successfully.' });
+  } catch (error) {
+    console.error('Unsubscribe Error:', error);
+    res.status(500).json({ error: 'Failed to unsubscribe.' });
+  }
+});
+
 module.exports = router;
 
