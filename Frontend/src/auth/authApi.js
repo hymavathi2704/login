@@ -114,3 +114,18 @@ export const bookEvent = (eventId) => {
 export const getMyBookings = () => {
   return axiosInstance.get("/api/events/my-bookings");
 };
+
+// Get all coaches for clients to view
+export const getAllCoaches = () => {
+  return axiosInstance.get('/api/profiles/coaches');
+};
+
+// Subscribe to a coach
+export const subscribeToCoach = (coachId) => {
+  return axiosInstance.post(`/api/profiles/coaches/${coachId}/subscribe`);
+};
+
+// Get a coach's list of subscribed clients
+export const getMySubscribedClients = () => {
+  return axiosInstance.get('/api/profiles/my-clients');
+};

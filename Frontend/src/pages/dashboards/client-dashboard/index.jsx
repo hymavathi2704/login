@@ -3,9 +3,9 @@ import { Helmet } from 'react-helmet';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/AuthContext';
 import { updateUserProfile } from '@/auth/authApi';
-import Input from '@/components/ui/Input'; // ✅ Corrected Path
-import Button from '@/components/ui/Button'; // ✅ Corrected Path
-import { Calendar, BookOpen, User, MessageSquare, TrendingUp, Settings } from 'lucide-react';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
+import { Calendar, BookOpen, User, MessageSquare, TrendingUp, Settings, Search } from 'lucide-react'; // Added Search icon
 
 import DashboardLayout from '../shared/DashboardLayout';
 import ClientOverview from './components/ClientOverview';
@@ -15,6 +15,7 @@ import ProgressTracker from './components/ProgressTracker';
 import CoachCommunication from './components/CoachCommunication';
 import AccountSettings from '../shared/AccountSettings';
 import DemographicsFormSection from '../shared/DemographicsFormSection';
+import FindCoach from './components/FindCoach'; // 🚀 IMPORT THE NEW COMPONENT
 
 // This is the component for the "My Profile" tab
 const ClientProfileSection = () => {
@@ -89,6 +90,7 @@ const ClientDashboard = () => {
 
   const navigationItems = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
+    { id: 'find-coach', label: 'Find a Coach', icon: Search }, // 🚀 ADDED NEW NAV ITEM
     { id: 'sessions', label: 'Book Sessions', icon: Calendar },
     { id: 'resources', label: 'My Resources', icon: BookOpen },
     { id: 'progress', label: 'My Progress', icon: TrendingUp },
@@ -100,6 +102,7 @@ const ClientDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return <ClientOverview />;
+      case 'find-coach': return <FindCoach />; // 🚀 ADDED RENDER CASE
       case 'sessions': return <BookNewSession />;
       case 'resources': return <MyResources />;
       case 'progress': return <ProgressTracker />;
