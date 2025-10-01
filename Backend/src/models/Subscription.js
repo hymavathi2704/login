@@ -14,6 +14,7 @@ const Subscription = db.define('subscription', {
       model: 'users',
       key: 'id',
     },
+    onDelete: 'CASCADE', // Add this
   },
   coachId: {
     type: DataTypes.CHAR(36),
@@ -22,11 +23,11 @@ const Subscription = db.define('subscription', {
       model: 'users',
       key: 'id',
     },
+    onDelete: 'CASCADE', // Add this
   },
 }, {
   timestamps: true,
   indexes: [
-    // Create a unique index to prevent a client from subscribing to the same coach multiple times
     {
       unique: true,
       fields: ['clientId', 'coachId'],

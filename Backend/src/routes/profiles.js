@@ -1,5 +1,5 @@
 const express = require('express');
-const { Op, fn, col, literal } = require('sequelize'); // Import additional helpers
+const { Op, literal } = require('sequelize');
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const User = require('../models/user');
@@ -10,60 +10,54 @@ const sequelize = require('../config/db');
 
 // GET /api/profiles/coaches - Get all coaches with search and filtering
 router.get('/coaches', authenticate, async (req, res) => {
-  try {
-    const clientId = req.user.userId;
-    const { search, audience } = req.query;
+    try {
+        const clientId = req.user.userId;
+        const { search, audience } = req.query;
 
-    const userWhereClause = {
-      roles: { [Op.like]: '%"coach"%' }
-    };
+        const userWhereClause = {
+            roles: { [Op.like]: '%"coach"%' }
+        };
 
-    const coachProfileWhere = {};
-
-    // --- THIS IS THE FIX ---
-    if (audience) {
-      // Use a raw query part to correctly query the JSON array
-      coachProfileWhere[Op.and] = [
-        literal(`JSON_CONTAINS(targetAudience, '"${audience}"')`)
-      ];
-    }
-
-    // Add search functionality
-    if (search) {
-      const searchPattern = `%${search}%`;
-      userWhereClause[Op.or] = [
-        { firstName: { [Op.like]: searchPattern } },
-        { lastName: { [Op.like]: searchPattern } },
-        // Also allow searching by joining on the coach_profile title/bio
-        { '$coach_profile.title$': { [Op.like]: searchPattern } },
-        { '$coach_profile.bio$': { [Op.like]: searchPattern } }
-      ];
-    }
-    
-    const coaches = await User.findAll({
-      where: userWhereClause,
-      attributes: ['id', 'firstName', 'lastName', 'email',
-        [
-          literal(`EXISTS(SELECT 1 FROM subscriptions WHERE subscriptions.coachId = User.id AND subscriptions.clientId = '${clientId}')`),
-          'isSubscribed'
-        ]
-      ],
-      include: [
-        {
-          model: CoachProfile,
-          where: coachProfileWhere,
-          required: true // INNER JOIN to only get users with a matching coach profile
+        const coachProfileWhere = {};
+        if (audience) {
+            coachProfileWhere[Op.and] = [
+                literal(`JSON_CONTAINS(targetAudience, '"${audience}"')`)
+            ];
         }
-      ],
-    });
 
-    res.json(coaches);
-  } catch (error) {
-    console.error('Error fetching coaches:', error);
-    res.status(500).json({ error: 'Failed to fetch coaches' });
-  }
+        if (search) {
+            const searchPattern = `%${search}%`;
+            userWhereClause[Op.or] = [
+                { firstName: { [Op.like]: searchPattern } },
+                { lastName: { [Op.like]: searchPattern } },
+                { '$coach_profile.title$': { [Op.like]: searchPattern } },
+                { '$coach_profile.bio$': { [Op.like]: searchPattern } }
+            ];
+        }
+        
+        const coaches = await User.findAll({
+            where: userWhereClause,
+            attributes: ['id', 'firstName', 'lastName', 'email',
+                [
+                    literal(`EXISTS(SELECT 1 FROM subscriptions WHERE subscriptions.coachId = User.id AND subscriptions.clientId = '${clientId}')`),
+                    'isSubscribed'
+                ]
+            ],
+            include: [
+                {
+                    model: CoachProfile,
+                    where: coachProfileWhere,
+                    required: true
+                }
+            ],
+        });
+
+        res.json(coaches);
+    } catch (error) {
+        console.error('Error fetching coaches:', error);
+        res.status(500).json({ error: 'Failed to fetch coaches' });
+    }
 });
-
 
 // POST /api/profiles/coaches/:coachId/subscribe - Subscribe to a coach
 router.post('/coaches/:coachId/subscribe', authenticate, async (req, res) => {
@@ -94,20 +88,33 @@ router.get('/my-clients', authenticate, async (req, res) => {
     try {
         const coachId = req.user.userId;
 
+        // Step 1: Find all client IDs this coach is subscribed by
         const subscriptions = await Subscription.findAll({
             where: { coachId },
+            attributes: ['clientId']
+        });
+
+        if (subscriptions.length === 0) {
+            return res.json([]); // Return empty array if no subscribers
+        }
+
+        const clientIds = subscriptions.map(sub => sub.clientId);
+
+        // Step 2: Find all User details for those client IDs
+        const clients = await User.findAll({
+            where: {
+                id: {
+                    [Op.in]: clientIds
+                }
+            },
+            attributes: ['id', 'firstName', 'lastName', 'email'],
             include: [{
-                model: User,
-                as: 'client',
-                attributes: ['id', 'firstName', 'lastName', 'email'],
-                include: [{
-                    model: ClientProfile,
-                    attributes: ['coachingGoals']
-                }]
+                model: ClientProfile,
+                attributes: ['coachingGoals'],
+                required: false // LEFT JOIN is important here
             }]
         });
 
-        const clients = subscriptions.map(sub => sub.client);
         res.json(clients);
     } catch (error) {
         console.error('Error fetching clients:', error);
@@ -116,3 +123,4 @@ router.get('/my-clients', authenticate, async (req, res) => {
 });
 
 module.exports = router;
+
