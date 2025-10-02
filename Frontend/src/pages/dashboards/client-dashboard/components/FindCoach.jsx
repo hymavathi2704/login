@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, UserCheck, Eye, Filter, UserX } from 'lucide-react'; // Added UserX for unsubscribe
-import { getAllCoaches, subscribeToCoach, unsubscribeFromCoach } from '@/auth/authApi'; // Added unsubscribeFromCoach
+import { Search, UserCheck, Eye, Filter, UserX, Users, Star } from 'lucide-react';
+import { getAllCoaches, subscribeToCoach, unsubscribeFromCoach } from '@/auth/authApi';
 import CoachProfileModal from './CoachProfileModal';
 
 // A simple debounce hook to prevent excessive API calls while typing
@@ -10,9 +10,7 @@ const useDebounce = (value, delay) => {
         const handler = setTimeout(() => {
             setDebouncedValue(value);
         }, delay);
-        return () => {
-            clearTimeout(handler);
-        };
+        return () => { clearTimeout(handler); };
     }, [value, delay]);
     return debouncedValue;
 };
@@ -29,41 +27,43 @@ const FindCoach = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAudience, setSelectedAudience] = useState('');
   
+  // State to manage the view: 'all' or 'subscribed'
+  const [viewMode, setViewMode] = useState('all');
+  
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  // Function to fetch coaches from the backend
+  // Function to fetch coaches from the backend, now includes viewMode
   const fetchCoaches = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await getAllCoaches(debouncedSearchTerm, selectedAudience);
+      const showSubscribedOnly = viewMode === 'subscribed';
+      const response = await getAllCoaches(debouncedSearchTerm, selectedAudience, showSubscribedOnly);
       setCoaches(response.data);
     } catch (error) {
       console.error("Failed to fetch coaches:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearchTerm, selectedAudience]);
+  }, [debouncedSearchTerm, selectedAudience, viewMode]);
 
   useEffect(() => {
     fetchCoaches();
-  }, [fetchCoaches]);
+  }, [fetchCoaches]); // This effect re-runs whenever fetchCoaches changes (i.e., when viewMode changes)
 
-  // Handler for the subscribe action
   const handleSubscribe = async (coachId) => {
     try {
       await subscribeToCoach(coachId);
-      fetchCoaches(); // Refresh list to show the new "Subscribed" status
+      fetchCoaches(); 
     } catch (error) {
       alert(error.response?.data?.message || "Could not subscribe.");
     }
   };
 
-  // --- NEW: Handler for the unsubscribe action ---
   const handleUnsubscribe = async (coachId) => {
     if (window.confirm('Are you sure you want to unsubscribe from this coach?')) {
         try {
             await unsubscribeFromCoach(coachId);
-            fetchCoaches(); // Refresh list to show the updated status
+            fetchCoaches();
         } catch (error) {
             console.error("Failed to unsubscribe:", error);
             alert(error.response?.data?.message || "Could not unsubscribe.");
@@ -71,14 +71,32 @@ const FindCoach = () => {
     }
   };
 
-  if (isLoading && coaches.length === 0) return <p>Loading coaches...</p>;
-
   return (
     <>
       <div className="space-y-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Find a Coach</h2>
           <p className="text-gray-600">Browse and subscribe to coaches that fit your needs.</p>
+        </div>
+
+        {/* --- View Toggles --- */}
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+            <button
+                onClick={() => setViewMode('all')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'all' ? 'bg-white text-gray-900 shadow' : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+                <Users size={16} className="inline mr-2" /> All Coaches
+            </button>
+            <button
+                onClick={() => setViewMode('subscribed')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'subscribed' ? 'bg-white text-gray-900 shadow' : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+                <Star size={16} className="inline mr-2" /> My Subscriptions
+            </button>
         </div>
 
         {/* Search and Filter Bar */}
@@ -117,33 +135,46 @@ const FindCoach = () => {
         </div>
 
         {/* Coaches Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {coaches.map(coach => (
-            <div key={coach.id} className="bg-white p-6 rounded-xl border flex flex-col">
-                <div className="flex-grow">
-                  <h3 className="font-bold text-xl">{coach.firstName} {coach.lastName}</h3>
-                  <p className="text-sm text-purple-600 font-medium">{coach.coach_profile?.title || 'Coach'}</p>
-                  <p className="text-sm text-gray-600 mt-2 line-clamp-3">{coach.coach_profile?.bio || 'No bio available.'}</p>
-                </div>
-                <div className="mt-4 pt-4 border-t space-y-2">
-                    <button onClick={() => setViewingCoach(coach)} className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50">
-                        <Eye size={16} className="mr-2" /> View Profile
-                    </button>
-                    {coach.isSubscribed ? (
-                        <button onClick={() => handleUnsubscribe(coach.id)} className="w-full flex items-center justify-center py-2 px-4 border border-red-300 text-red-700 bg-red-50 rounded-md text-sm font-medium hover:bg-red-100">
-                            <UserX size={16} className="mr-2" /> Unsubscribe
+        {isLoading ? (
+            <p className="text-center py-8">Loading coaches...</p>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {coaches.length > 0 ? coaches.map(coach => (
+                <div key={coach.id} className="bg-white p-6 rounded-xl border flex flex-col">
+                    <div className="flex-grow">
+                      <h3 className="font-bold text-xl">{coach.firstName} {coach.lastName}</h3>
+                      <p className="text-sm text-purple-600 font-medium">{coach.coach_profile?.title || 'Coach'}</p>
+                      <p className="text-sm text-gray-600 mt-2 line-clamp-3">{coach.coach_profile?.bio || 'No bio available.'}</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t space-y-2">
+                        <button onClick={() => setViewingCoach(coach)} className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50">
+                            <Eye size={16} className="mr-2" /> View Profile
                         </button>
-                    ) : (
-                        <button onClick={() => handleSubscribe(coach.id)} className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">
-                            Subscribe
-                        </button>
-                    )}
+                        {coach.isSubscribed ? (
+                            <button onClick={() => handleUnsubscribe(coach.id)} className="w-full flex items-center justify-center py-2 px-4 border border-red-300 text-red-700 bg-red-50 rounded-md text-sm font-medium hover:bg-red-100">
+                                <UserX size={16} className="mr-2" /> Unsubscribe
+                            </button>
+                        ) : (
+                            <button onClick={() => handleSubscribe(coach.id)} className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">
+                                Subscribe
+                            </button>
+                        )}
+                    </div>
                 </div>
+                )) : (
+                    <div className="col-span-full text-center py-12">
+                        <h4 className="text-lg font-medium">No Coaches Found</h4>
+                        <p className="text-gray-500">
+                            {viewMode === 'subscribed' 
+                                ? "You haven't subscribed to any coaches yet." 
+                                : "Try adjusting your search or filters."
+                            }
+                        </p>
+                    </div>
+                )}
             </div>
-            ))}
-        </div>
+        )}
       </div>
-      {/* Profile Modal */}
       <CoachProfileModal coach={viewingCoach} onClose={() => setViewingCoach(null)} />
     </>
   );

@@ -144,5 +144,65 @@ router.delete('/coaches/:coachId/unsubscribe', authenticate, async (req, res) =>
   }
 });
 
+// GET /api/profiles/coaches - Updated to handle subscription filtering
+router.get('/coaches', authenticate, async (req, res) => {
+  try {
+    const clientId = req.user.userId;
+    const { search, audience, subscribedOnly } = req.query; // New 'subscribedOnly' param
+
+    const userWhereClause = { roles: { [Op.like]: '%"coach"%' } };
+    const coachProfileWhere = {};
+    
+    // --- THIS IS THE NEW LOGIC ---
+    // If 'subscribedOnly' is true, the subscription is a required part of the query (INNER JOIN)
+    const subscriptionRequired = subscribedOnly === 'true';
+
+    if (audience) {
+      coachProfileWhere[Op.and] = [
+        literal(`JSON_CONTAINS(targetAudience, '"${audience}"')`)
+      ];
+    }
+    if (search) {
+      const searchPattern = `%${search}%`;
+      userWhereClause[Op.or] = [
+        { firstName: { [Op.like]: searchPattern } },
+        { lastName: { [Op.like]: searchPattern } },
+        { '$coach_profile.title$': { [Op.like]: searchPattern } },
+        { '$coach_profile.bio$': { [Op.like]: searchPattern } }
+      ];
+    }
+    
+    const coaches = await User.findAll({
+      where: userWhereClause,
+      attributes: ['id', 'firstName', 'lastName', 'email',
+        [
+          literal(`EXISTS(SELECT 1 FROM subscriptions WHERE subscriptions.coachId = User.id AND subscriptions.clientId = '${clientId}')`),
+          'isSubscribed'
+        ]
+      ],
+      include: [
+        {
+          model: CoachProfile,
+          where: coachProfileWhere,
+          required: true
+        },
+        { // This join now conditionally filters for subscriptions
+          model: Subscription,
+          as: 'Subscribers',
+          where: { clientId },
+          required: subscriptionRequired, // The key change is here
+          attributes: []
+        }
+      ],
+      group: ['User.id', 'coach_profile.id']
+    });
+
+    res.json(coaches);
+  } catch (error) {
+    console.error('Error fetching coaches:', error);
+    res.status(500).json({ error: 'Failed to fetch coaches' });
+  }
+});
+
 module.exports = router;
 

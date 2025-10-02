@@ -117,16 +117,19 @@ export const getMyBookings = () => {
 
 // Get all coaches for clients to view
 // Get all coaches for clients to view, with optional filters
-export const getAllCoaches = (searchTerm = '', audience = '') => {
+export const getAllCoaches = (searchTerm = '', audience = '', subscribedOnly = false) => {
   return axiosInstance.get(`/api/profiles/coaches`, {
     params: {
       search: searchTerm,
-      audience: audience
+      audience: audience,
+      subscribedOnly: subscribedOnly
     }
   });
 };
 
 // Subscribe to a coach
+
+
 export const subscribeToCoach = (coachId) => {
   return axiosInstance.post(`/api/profiles/coaches/${coachId}/subscribe`);
 };
