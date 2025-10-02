@@ -3,7 +3,7 @@ import { Search, UserCheck, Eye, Filter, UserX, Users, Star } from 'lucide-react
 import { getAllCoaches, subscribeToCoach, unsubscribeFromCoach } from '@/auth/authApi';
 import CoachProfileModal from './CoachProfileModal';
 
-// A simple debounce hook to prevent excessive API calls while typing
+// Debounce hook
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
     useEffect(() => {
@@ -26,13 +26,10 @@ const FindCoach = () => {
   const [viewingCoach, setViewingCoach] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAudience, setSelectedAudience] = useState('');
-  
-  // State to manage the view: 'all' or 'subscribed'
   const [viewMode, setViewMode] = useState('all');
   
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-  // Function to fetch coaches from the backend, now includes viewMode
   const fetchCoaches = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -48,7 +45,7 @@ const FindCoach = () => {
 
   useEffect(() => {
     fetchCoaches();
-  }, [fetchCoaches]); // This effect re-runs whenever fetchCoaches changes (i.e., when viewMode changes)
+  }, [fetchCoaches]);
 
   const handleSubscribe = async (coachId) => {
     try {
@@ -79,7 +76,6 @@ const FindCoach = () => {
           <p className="text-gray-600">Browse and subscribe to coaches that fit your needs.</p>
         </div>
 
-        {/* --- View Toggles --- */}
         <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
             <button
                 onClick={() => setViewMode('all')}
@@ -99,7 +95,6 @@ const FindCoach = () => {
             </button>
         </div>
 
-        {/* Search and Filter Bar */}
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
@@ -134,7 +129,6 @@ const FindCoach = () => {
           </div>
         </div>
 
-        {/* Coaches Grid */}
         {isLoading ? (
             <p className="text-center py-8">Loading coaches...</p>
         ) : (
@@ -150,7 +144,8 @@ const FindCoach = () => {
                         <button onClick={() => setViewingCoach(coach)} className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50">
                             <Eye size={16} className="mr-2" /> View Profile
                         </button>
-                        {coach.isSubscribed ? (
+                        {/* --- ✅ THIS IS THE FIX --- */}
+                        {coach.isSubscribed === 1 ? (
                             <button onClick={() => handleUnsubscribe(coach.id)} className="w-full flex items-center justify-center py-2 px-4 border border-red-300 text-red-700 bg-red-50 rounded-md text-sm font-medium hover:bg-red-100">
                                 <UserX size={16} className="mr-2" /> Unsubscribe
                             </button>

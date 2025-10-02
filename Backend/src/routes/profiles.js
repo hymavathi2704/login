@@ -9,54 +9,76 @@ const Subscription = require('../models/Subscription');
 const sequelize = require('../config/db');
 
 // GET /api/profiles/coaches - Get all coaches with search and filtering
+// GET /api/profiles/coaches - UPDATED WITH MORE ROBUST FILTERING
 router.get('/coaches', authenticate, async (req, res) => {
-    try {
-        const clientId = req.user.userId;
-        const { search, audience } = req.query;
+  try {
+    const clientId = req.user.userId;
+    const { search, audience, subscribedOnly } = req.query;
 
-        const userWhereClause = {
-            roles: { [Op.like]: '%"coach"%' }
-        };
+    const userWhereClause = {
+      roles: { [Op.like]: '%"coach"%' }
+    };
 
-        const coachProfileWhere = {};
-        if (audience) {
-            coachProfileWhere[Op.and] = [
-                literal(`JSON_CONTAINS(targetAudience, '"${audience}"')`)
-            ];
-        }
+    const coachProfileWhere = {};
 
-        if (search) {
-            const searchPattern = `%${search}%`;
-            userWhereClause[Op.or] = [
-                { firstName: { [Op.like]: searchPattern } },
-                { lastName: { [Op.like]: searchPattern } },
-                { '$coach_profile.title$': { [Op.like]: searchPattern } },
-                { '$coach_profile.bio$': { [Op.like]: searchPattern } }
-            ];
-        }
-        
-        const coaches = await User.findAll({
-            where: userWhereClause,
-            attributes: ['id', 'firstName', 'lastName', 'email',
-                [
-                    literal(`EXISTS(SELECT 1 FROM subscriptions WHERE subscriptions.coachId = User.id AND subscriptions.clientId = '${clientId}')`),
-                    'isSubscribed'
-                ]
-            ],
-            include: [
-                {
-                    model: CoachProfile,
-                    where: coachProfileWhere,
-                    required: true
-                }
-            ],
-        });
-
-        res.json(coaches);
-    } catch (error) {
-        console.error('Error fetching coaches:', error);
-        res.status(500).json({ error: 'Failed to fetch coaches' });
+    // --- THIS IS THE FIX ---
+    // If filtering for subscribed coaches, first get their IDs.
+    if (subscribedOnly === 'true') {
+      const subscriptions = await Subscription.findAll({
+        where: { clientId },
+        attributes: ['coachId']
+      });
+      
+      if (subscriptions.length === 0) {
+        return res.json([]); // Return empty array if no subscriptions
+      }
+      
+      const coachIds = subscriptions.map(sub => sub.coachId);
+      userWhereClause.id = { [Op.in]: coachIds };
     }
+
+    if (audience) {
+      coachProfileWhere[Op.and] = [
+        literal(`JSON_CONTAINS(targetAudience, '"${audience}"')`)
+      ];
+    }
+
+    if (search) {
+      const searchPattern = `%${search}%`;
+      const searchOrConditions = [
+        { firstName: { [Op.like]: searchPattern } },
+        { lastName: { [Op.like]: searchPattern } },
+        { '$coach_profile.title$': { [Op.like]: searchPattern } },
+        { '$coach_profile.bio$': { [Op.like]: searchPattern } }
+      ];
+      // Append search conditions to the where clause
+      userWhereClause[Op.or] = userWhereClause[Op.or] 
+        ? [...userWhereClause[Op.or], ...searchOrConditions] 
+        : searchOrConditions;
+    }
+    
+    const coaches = await User.findAll({
+      where: userWhereClause,
+      attributes: ['id', 'firstName', 'lastName', 'email',
+        [
+          literal(`EXISTS(SELECT 1 FROM subscriptions WHERE subscriptions.coachId = User.id AND subscriptions.clientId = '${clientId}')`),
+          'isSubscribed'
+        ]
+      ],
+      include: [
+        {
+          model: CoachProfile,
+          where: coachProfileWhere,
+          required: true // Ensures we only get users that have a coach profile
+        }
+      ],
+    });
+
+    res.json(coaches);
+  } catch (error) {
+    console.error('Error fetching coaches:', error);
+    res.status(500).json({ error: 'Failed to fetch coaches' });
+  }
 });
 
 // POST /api/profiles/coaches/:coachId/subscribe - Subscribe to a coach
