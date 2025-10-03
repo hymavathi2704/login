@@ -15,9 +15,17 @@ const axiosInstance = axios.create({
 // Request interceptor to automatically attach the auth token
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
+
+  // --- 🚀 DIAGNOSTIC LOGGING ---
+  console.log(`[Frontend] Intercepting request to: ${config.url}`);
   if (token) {
+    console.log('[Frontend] Token found in localStorage. Attaching to headers.');
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    console.log('[Frontend] No token found in localStorage.');
   }
+  // --- END LOGGING ---
+  
   return config;
 });
 
@@ -81,37 +89,30 @@ export const logoutUser = () => {
 
 // --- EVENTS & BOOKINGS API ---
 
-// Fetch all published events (used in Find a Coach and Book a Session)
 export const getEvents = () => {
   return axiosInstance.get("/api/events");
 };
 
-// Fetch events for the logged-in coach
 export const getMyEvents = () => {
   return axiosInstance.get("/api/events/my-events");
 };
 
-// Create a new event
 export const createEvent = (eventData) => {
   return axiosInstance.post("/api/events", eventData);
 };
 
-// Update an event by its ID
 export const updateEvent = (eventId, eventData) => {
   return axiosInstance.put(`/api/events/${eventId}`, eventData);
 };
 
-// Delete an event by its ID
 export const deleteEvent = (eventId) => {
   return axiosInstance.delete(`/api/events/${eventId}`);
 };
 
-// Book an event
 export const bookEvent = (eventId) => {
   return axiosInstance.post(`/api/events/${eventId}/book`);
 };
 
-// Fetch bookings for the logged-in coach
 export const getMyBookings = () => {
   return axiosInstance.get("/api/events/my-bookings");
 };
@@ -131,4 +132,3 @@ export const getAllCoaches = (searchTerm = '', audience = '') => {
 export const getMyClients = () => {
   return axiosInstance.get('/api/profiles/my-clients');
 };
-

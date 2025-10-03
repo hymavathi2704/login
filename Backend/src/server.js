@@ -1,4 +1,6 @@
+// 🚀 IMPORTANT: Load environment variables at the very top
 require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -33,7 +35,14 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(helmet());
+
+// Configure Helmet to be less restrictive with cross-origin requests
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -54,8 +63,6 @@ Booking.belongsTo(User, { as: 'client', foreignKey: 'clientId' });
 
 Event.hasMany(Booking, { foreignKey: 'eventId' });
 Booking.belongsTo(Event, { foreignKey: 'eventId' });
-
-// REMOVED Subscription associations that were here
 
 // ==========================================
 // API Routes
