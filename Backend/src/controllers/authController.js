@@ -35,7 +35,7 @@ async function register(req, res) {
     const otp = generateOtp();
     const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
-    const newUser = await User.create({
+    await User.create({
       id,
       firstName,
       lastName,
@@ -45,9 +45,9 @@ async function register(req, res) {
       verification_token_expires: otp_expires_at,
       provider: 'email',
       email_verified: false,
-      roles: [], // ✅ Initialize with an empty roles array
+      roles: [],
     });
-    
+
     await sendVerificationEmail(email, otp).catch(console.error);
 
     res.status(201).json({ message: 'Registered. Please check email to verify.' });
@@ -70,15 +70,20 @@ async function login(req, res) {
     if (user.provider !== 'email')
       return res.status(400).json({ error: `Use ${user.provider} login` });
     if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
-    if (!user.password_hash)
-      return res.status(401).json({ error: 'Invalid credentials' });
 
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // ✅ SIMPLIFIED: Use the roles array directly from the user object
-    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles: user.roles });
-    const refreshToken = signAccessToken({ userId: user.id, email: user.email, type: 'refresh' });
+    const accessToken = signAccessToken({
+      userId: user.id,
+      email: user.email,
+      roles: user.roles,
+    });
+    const refreshToken = signAccessToken({
+      userId: user.id,
+      email: user.email,
+      type: 'refresh',
+    });
 
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
@@ -95,7 +100,7 @@ async function login(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
-        roles: user.roles, // ✅ Send the roles array to the frontend
+        roles: user.roles,
       },
     });
   } catch (err) {
@@ -121,7 +126,7 @@ async function socialLogin(req, res) {
     const userInfo = userInfoResponse.data;
     if (!userInfo.email)
       return res.status(400).json({ error: 'Email not returned by Auth0' });
-    
+
     const email = userInfo.email.toLowerCase().trim();
     let user = await User.findOne({ where: { email } });
 
@@ -130,17 +135,21 @@ async function socialLogin(req, res) {
         id: uuidv4(),
         firstName: userInfo.given_name || '',
         lastName: userInfo.family_name || '',
-        email: email,
+        email,
         email_verified: userInfo.email_verified || true,
         provider: userInfo.sub.split('|')[0],
         oauth_id: userInfo.sub,
-        roles: ['client'], // ✅ Default social logins to 'client' role
+        roles: ['client'],
       });
       await ClientProfile.create({ userId: user.id });
     }
 
-    // ✅ SIMPLIFIED: Use roles from the user object
-    const accessToken = signAccessToken({ userId: user.id, email: user.email, roles: user.roles });
+    const accessToken = signAccessToken({
+      userId: user.id,
+      email: user.email,
+      roles: user.roles,
+    });
+
     res.json({
       accessToken,
       user: {
@@ -149,7 +158,7 @@ async function socialLogin(req, res) {
         lastName: user.lastName,
         email: user.email,
         phone: user.phone || null,
-        roles: user.roles, // ✅ Send the roles array to the frontend
+        roles: user.roles,
       },
     });
   } catch (err) {
@@ -159,31 +168,21 @@ async function socialLogin(req, res) {
 }
 
 // ==============================
-// Get current user
-// ==============================
-// ==============================
 // Get current user (with profiles)
 // ==============================
 async function me(req, res) {
   try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    const userId = req.user?.userId; // ✅ now works (middleware puts token payload in req.user)
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ✅ Fetch user with both profiles
     const user = await User.findByPk(userId, {
-      include: [{ model: CoachProfile }, { model: ClientProfile }]
+      include: [{ model: CoachProfile }, { model: ClientProfile }],
     });
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Convert to plain JS object
     const plainUser = user.get({ plain: true });
 
-    // ✅ Normalize keys to match frontend expectations
     if (plainUser.coach_profile) {
       plainUser.CoachProfile = plainUser.coach_profile;
       delete plainUser.coach_profile;
@@ -193,10 +192,7 @@ async function me(req, res) {
       delete plainUser.client_profile;
     }
 
-    console.log("Sending /me user response:", plainUser);
-
     res.status(200).json({ user: plainUser });
-
   } catch (err) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
@@ -208,40 +204,31 @@ async function me(req, res) {
 // ==============================
 async function createProfile(req, res) {
   try {
-    const userId = req.user?.userId; // Correctly get userId from the token payload
+    const userId = req.user?.userId;
     const { role } = req.body;
 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    if (role !== 'client' && role !== 'coach')
+    if (!['client', 'coach'].includes(role))
       return res.status(400).json({ error: 'Invalid role specified' });
 
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // ✅ NEW LOGIC: Add the new role to the user's roles array if it doesn't exist
     if (!user.roles.includes(role)) {
       user.roles = [...user.roles, role];
       await user.save();
     }
 
-    // Still create the specific profile table for role-specific data
-    if (role === 'client') {
-      await ClientProfile.findOrCreate({ where: { userId } });
-    }
-    if (role === 'coach') {
-      await CoachProfile.findOrCreate({ where: { userId } });
-    }
+    if (role === 'client') await ClientProfile.findOrCreate({ where: { userId } });
+    if (role === 'coach') await CoachProfile.findOrCreate({ where: { userId } });
 
     res.status(201).json({ message: `${role} profile created successfully.` });
-
   } catch (err) {
     console.error('Create profile error:', err);
     res.status(500).json({ error: 'Failed to create profile' });
   }
-};
+}
 
-
-// ... (rest of the file remains the same: logout, updateProfile, verifyEmail, etc.)
 // ==============================
 // Logout
 // ==============================
@@ -257,73 +244,54 @@ async function logout(req, res) {
 // ==============================
 // Update user profile
 // ==============================
-// ==============================
-// Update user profile
-// ==============================
 async function updateProfile(req, res) {
   try {
     console.log('Received profile update request with body:', req.body);
 
     const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Define fields for each model
     const userFields = ['firstName', 'lastName', 'email', 'phone'];
     const coachFields = [
-      'title', 'bio', 'location', 'timezone', 'website', 
-      'specialties', 'certifications', 'languages', 'sessionTypes', 
-      'availability', 'dateOfBirth', 'gender', 'ethnicity', 'country', 'targetAudience'
+      'title', 'bio', 'location', 'timezone', 'website',
+      'specialties', 'certifications', 'languages', 'sessionTypes',
+      'availability', 'dateOfBirth', 'gender', 'ethnicity',
+      'country', 'targetAudience',
     ];
-    const clientFields = [
-      'coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'
-    ];
+    const clientFields = ['coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'];
 
-    // Prepare data containers
     const userData = {};
     const coachData = {};
     const clientData = {};
 
-    // Assign request body values to appropriate objects
     for (const key in req.body) {
       if (userFields.includes(key)) userData[key] = req.body[key];
       if (coachFields.includes(key)) coachData[key] = req.body[key];
       if (clientFields.includes(key)) clientData[key] = req.body[key];
     }
 
-    // Sanitize email if present
-    if (userData.email) {
-      userData.email = userData.email.toLowerCase().trim();
-    }
+    if (userData.email) userData.email = userData.email.toLowerCase().trim();
 
-    // Update User model
     await user.update(userData);
 
-    // Update CoachProfile if data exists
     if (Object.keys(coachData).length > 0) {
       const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
       await coachProfile.update(coachData);
     }
-
-    // Update ClientProfile if data exists
     if (Object.keys(clientData).length > 0) {
       const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
       await clientProfile.update(clientData);
     }
 
-    // Fetch updated user with associations
     const updatedUser = await User.findByPk(userId, {
-      include: [{ model: CoachProfile }, { model: ClientProfile }]
+      include: [{ model: CoachProfile }, { model: ClientProfile }],
     });
 
-    // Serialize instance to plain object
     const plainUpdatedUser = updatedUser.get({ plain: true });
 
-    // ✅ Normalize keys to match frontend expectations
     if (plainUpdatedUser.coach_profile) {
       plainUpdatedUser.CoachProfile = plainUpdatedUser.coach_profile;
       delete plainUpdatedUser.coach_profile;
@@ -333,11 +301,9 @@ async function updateProfile(req, res) {
       delete plainUpdatedUser.client_profile;
     }
 
-    console.log("Sending updated user response:", plainUpdatedUser);
-
     res.status(200).json({
       message: 'Profile updated successfully',
-      user: plainUpdatedUser
+      user: plainUpdatedUser,
     });
   } catch (err) {
     console.error('Update profile error:', err);
@@ -384,7 +350,6 @@ async function resendVerification(req, res) {
     await user.save();
 
     await sendVerificationEmail(email, otp);
-
     res.status(200).json({ message: 'Verification email resent' });
   } catch (err) {
     console.error('Resend verification error:', err);
@@ -398,19 +363,23 @@ async function forgotPassword(req, res) {
     const user = await User.findOne({ where: { email } });
 
     if (!user) {
-      return res.status(200).json({ message: 'If a matching email was found, a password reset link has been sent.' });
+      return res.status(200).json({
+        message: 'If a matching email was found, a password reset link has been sent.',
+      });
     }
 
     const token = signEmailToken({ userId: user.id });
     const tokenExpires = new Date(Date.now() + 1000 * 60 * 60);
-    
+
     user.reset_token = token;
     user.reset_token_expires = tokenExpires;
     await user.save();
 
     await sendResetPasswordEmail(email, token).catch(console.error);
 
-    res.status(200).json({ message: 'If a matching email was found, a password reset link has been sent.' });
+    res.status(200).json({
+      message: 'If a matching email was found, a password reset link has been sent.',
+    });
   } catch (err) {
     console.error('Forgot password error:', err);
     res.status(500).json({ error: 'Failed to process password reset request.' });
@@ -423,8 +392,8 @@ async function resetPassword(req, res) {
     const user = await User.findOne({
       where: {
         reset_token: token,
-        reset_token_expires: { [Op.gt]: new Date() }
-      }
+        reset_token_expires: { [Op.gt]: new Date() },
+      },
     });
 
     if (!user) {

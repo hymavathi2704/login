@@ -21,8 +21,7 @@ const UserLogin = () => {
   const [nextAttemptTime, setNextAttemptTime] = useState(0);
   const [showCaptcha, setShowCaptcha] = useState(false);
 
-  // REMOVED: No longer need to check for an intended role on this page.
-  // const intendedRole = location.state?.role;
+  
 
   useEffect(() => {
     let interval;
@@ -42,17 +41,7 @@ const UserLogin = () => {
     try {
       const response = await loginUser(formData);
       
-      // REMOVED: The conditional check for the user's role has been taken out.
-      /*
-      const userRoles = response?.data?.user?.roles || [];
-      if (intendedRole && !userRoles.includes(intendedRole)) {
-        setError(`Your account does not have the required '${intendedRole}' role.`);
-        setIsLoading(false);
-        return;
-      }
-      */
-      
-      // Use the login function from AuthContext to set the user state globally
+     
       login(response.data);
 
     } catch (err) {
@@ -76,8 +65,7 @@ const UserLogin = () => {
   const handleSocialLogin = (provider) => {
     loginWithRedirect({
       connection: provider === 'google' ? 'google-oauth2' : provider,
-      // REMOVED: No longer passing the intended role to the social login provider.
-      // appState: { intendedRole }
+      
     });
   };
 
