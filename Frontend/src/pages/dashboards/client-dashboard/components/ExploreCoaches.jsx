@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Eye, Filter, Users } from 'lucide-react';
+import { Search, Eye, Filter } from 'lucide-react';
 import { getAllCoaches } from '@/auth/authApi';
 import CoachProfileModal from './CoachProfileModal';
 

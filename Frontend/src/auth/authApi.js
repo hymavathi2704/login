@@ -6,6 +6,7 @@ const API = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
 // Create an Axios instance for API requests
 const axiosInstance = axios.create({
   baseURL: API,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -80,7 +81,7 @@ export const logoutUser = () => {
 
 // --- EVENTS & BOOKINGS API ---
 
-// Fetch all published events (used in original Find a Coach)
+// Fetch all published events (used in Find a Coach and Book a Session)
 export const getEvents = () => {
   return axiosInstance.get("/api/events");
 };
@@ -88,12 +89,6 @@ export const getEvents = () => {
 // Fetch events for the logged-in coach
 export const getMyEvents = () => {
   return axiosInstance.get("/api/events/my-events");
-};
-
-// --- THIS IS THE MISSING FUNCTION ---
-// Fetch events only from coaches the current client is subscribed to
-export const getSubscribedEvents = () => {
-  return axiosInstance.get("/api/events/subscribed");
 };
 
 // Create a new event
@@ -122,27 +117,18 @@ export const getMyBookings = () => {
 };
 
 
-// --- PROFILES & SUBSCRIPTIONS API ---
+// --- PROFILES API ---
 
-export const getAllCoaches = (searchTerm = '', audience = '', subscribedOnly = false) => {
+export const getAllCoaches = (searchTerm = '', audience = '') => {
   return axiosInstance.get(`/api/profiles/coaches`, {
     params: {
       search: searchTerm,
       audience: audience,
-      subscribedOnly: subscribedOnly
     }
   });
 };
 
-export const subscribeToCoach = (coachId) => {
-  return axiosInstance.post(`/api/profiles/coaches/${coachId}/subscribe`);
-};
-
-export const unsubscribeFromCoach = (coachId) => {
-  return axiosInstance.delete(`/api/profiles/coaches/${coachId}/unsubscribe`);
-};
-
-export const getMySubscribedClients = () => {
+export const getMyClients = () => {
   return axiosInstance.get('/api/profiles/my-clients');
 };
 

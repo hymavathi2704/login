@@ -3,13 +3,10 @@ import {
   Calendar, 
   Clock, 
   User, 
-  DollarSign, 
   Search, 
-  Filter,
-  Tag,
   Info
 } from 'lucide-react';
-import { getSubscribedEvents, bookEvent } from '@/auth/authApi'; // 🚀 UPDATED IMPORT
+import { getEvents, bookEvent } from '../../../../auth/authApi';
 
 const BookNewSession = () => {
   const [events, setEvents] = useState([]);
@@ -21,12 +18,10 @@ const BookNewSession = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        // --- THIS IS THE KEY CHANGE ---
-        // We now call the new function to get a filtered list of events
-        const response = await getSubscribedEvents();
+        const response = await getEvents();
         setEvents(response.data);
       } catch (err) {
-        console.error("Failed to fetch subscribed events:", err);
+        console.error("Failed to fetch events:", err);
         setError("Could not load available sessions.");
       } finally {
         setIsLoading(false);
@@ -45,7 +40,6 @@ const BookNewSession = () => {
         await bookEvent(selectedEvent.id);
         alert(`Successfully booked your spot for: ${selectedEvent.title}!`);
         setSelectedEvent(null); // Close the confirmation section
-        // Optionally, you could refetch the user's upcoming sessions here
       } catch (err) {
         console.error("Booking failed:", err);
         alert(err.message || "There was an issue booking this session. Please try again.");

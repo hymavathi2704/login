@@ -55,6 +55,8 @@ Booking.belongsTo(User, { as: 'client', foreignKey: 'clientId' });
 Event.hasMany(Booking, { foreignKey: 'eventId' });
 Booking.belongsTo(Event, { foreignKey: 'eventId' });
 
+// REMOVED Subscription associations that were here
+
 // ==========================================
 // API Routes
 // ==========================================
@@ -95,3 +97,4 @@ const PORT = process.env.PORT || 4028;
     process.exit(1);
   }
 })();
+

@@ -1,9 +1,14 @@
 const express = require('express');
-const { Op, literal } = require('sequelize');
+const { Op, literal, fn, col } = require('sequelize');
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const User = require('../models/user');
 const CoachProfile = require('../models/CoachProfile');
+const ClientProfile = require('../models/ClientProfile');
+const Booking = require('../models/Booking');
+const Event = require('../models/Event');
+const sequelize = require('../config/db');
+
 
 // GET /api/profiles/coaches - Get all coaches with search and filtering
 router.get('/coaches', authenticate, async (req, res) => {
@@ -30,10 +35,7 @@ router.get('/coaches', authenticate, async (req, res) => {
         { '$coach_profile.title$': { [Op.like]: searchPattern } },
         { '$coach_profile.bio$': { [Op.like]: searchPattern } }
       ];
-      // Append search conditions to the where clause
-      userWhereClause[Op.or] = userWhereClause[Op.or] 
-        ? [...userWhereClause[Op.or], ...searchOrConditions] 
-        : searchOrConditions;
+      userWhereClause[Op.or] = searchOrConditions;
     }
     
     const coaches = await User.findAll({
@@ -42,7 +44,7 @@ router.get('/coaches', authenticate, async (req, res) => {
       include: [
         {
           model: CoachProfile,
-          as: 'coach_profile', // Ensure alias matches model association
+          as: 'coach_profile',
           where: coachProfileWhere,
           required: true // Ensures we only get users that have a coach profile
         }
@@ -54,6 +56,51 @@ router.get('/coaches', authenticate, async (req, res) => {
     console.error('Error fetching coaches:', error);
     res.status(500).json({ error: 'Failed to fetch coaches' });
   }
+});
+
+
+// GET /api/profiles/my-clients - Get a coach's clients based on who has booked sessions
+router.get('/my-clients', authenticate, async (req, res) => {
+    try {
+        const coachId = req.user.userId;
+
+        // Find all unique client IDs who have booked an event with this coach
+        const bookings = await Booking.findAll({
+            attributes: [
+                [fn('DISTINCT', col('clientId')), 'clientId'],
+            ],
+            include: [{
+                model: Event,
+                attributes: [],
+                where: { coachId },
+                required: true
+            }]
+        });
+
+        if (bookings.length === 0) {
+            return res.json([]);
+        }
+
+        const clientIds = bookings.map(b => b.clientId);
+
+        // Fetch the user details for those client IDs
+        const clients = await User.findAll({
+            where: {
+                id: { [Op.in]: clientIds }
+            },
+            attributes: ['id', 'firstName', 'lastName', 'email'],
+            include: [{
+                model: ClientProfile,
+                attributes: ['coachingGoals'],
+                required: false
+            }]
+        });
+
+        res.json(clients);
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+        res.status(500).json({ error: 'Failed to fetch clients.' });
+    }
 });
 
 module.exports = router;

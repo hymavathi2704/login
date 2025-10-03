@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Search } from 'lucide-react';
-import { getMySubscribedClients } from '@/auth/authApi';
+import { getMyClients } from '@/auth/authApi';
 
 const ClientManagement = () => {
   const [clients, setClients] = useState([]);
@@ -10,7 +10,7 @@ const ClientManagement = () => {
   useEffect(() => {
     const fetchClients = async () => {
       try {
-        const response = await getMySubscribedClients();
+        const response = await getMyClients();
         setClients(response.data);
       } catch (error) {
         console.error("Failed to fetch clients:", error);
@@ -31,7 +31,7 @@ const ClientManagement = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">My Clients</h2>
-        <p className="text-gray-600">View and manage clients who have subscribed to you.</p>
+        <p className="text-gray-600">View and manage clients who have booked sessions with you.</p>
       </div>
 
       <div className="relative">
@@ -57,7 +57,7 @@ const ClientManagement = () => {
             )}
           </div>
         )) : (
-          <p className="col-span-full text-center text-gray-500">No clients have subscribed to you yet.</p>
+          <p className="col-span-full text-center text-gray-500">No clients have booked a session with you yet.</p>
         )}
       </div>
     </div>
@@ -65,3 +65,4 @@ const ClientManagement = () => {
 };
 
 export default ClientManagement;
+

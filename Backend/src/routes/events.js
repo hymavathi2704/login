@@ -1,74 +1,128 @@
 const express = require('express');
 const { Op } = require('sequelize');
 const router = express.Router();
-
-// Correctly import middleware and models
-const { authenticate, isCoach } = require('../middleware/authMiddleware');
+const { authenticate } = require('../middleware/authMiddleware');
 const Event = require('../models/Event');
 const Booking = require('../models/Booking');
 const User = require('../models/user');
 
-// GET /api/events/my-events - Fetches events created by the logged-in coach
-router.get('/my-events', authenticate, isCoach, async (req, res) => {
+// GET /api/events - Get all published events (for clients)
+router.get('/', authenticate, async (req, res) => {
   try {
-    const coachId = req.user.userId;
     const events = await Event.findAll({
-      where: { coachId },
-      include: [{
-        model: Booking,
-        as: 'bookings',
-        attributes: ['id', 'status'],
-      }],
-      order: [['startTime', 'ASC']],
+      where: { status: 'published' },
+      include: { model: User, as: 'coach', attributes: ['firstName', 'lastName'] }
     });
     res.json(events);
   } catch (error) {
-    console.error('Failed to fetch coach events:', error);
-    res.status(500).json({ error: 'Failed to retrieve events.' });
+    res.status(500).json({ error: 'Failed to fetch events.' });
   }
 });
 
-// POST /api/events - Creates a new event for the logged-in coach
-router.post('/', authenticate, isCoach, async (req, res) => {
-  try {
-    const coachId = req.user.userId;
-    const { title, description, startTime, endTime, type, capacity } = req.body;
-    
-    const newEvent = await Event.create({
-      coachId,
-      title,
-      description,
-      startTime,
-      endTime,
-      type,
-      capacity,
-    });
-
-    res.status(201).json(newEvent);
-  } catch (error) {
-    console.error('Failed to create event:', error);
-    res.status(500).json({ error: 'Failed to create event.' });
-  }
-});
-
-// GET /api/events/available - Fetches available events for clients
-router.get('/available', authenticate, async (req, res) => {
+// GET /api/events/my-events - Get events for the logged-in coach
+router.get('/my-events', authenticate, async (req, res) => {
     try {
-        const events = await Event.findAll({
-            where: {
-                startTime: { [Op.gt]: new Date() },
-            },
-            include: [{
-                model: User,
-                as: 'coach',
-                attributes: ['id', 'firstName', 'lastName'],
-            }],
-            order: [['startTime', 'ASC']],
-        });
+        const coachId = req.user.userId;
+        const events = await Event.findAll({ where: { coachId } });
         res.json(events);
     } catch (error) {
-        console.error('Failed to fetch available events:', error);
-        res.status(500).json({ error: 'Failed to retrieve available events.' });
+        res.status(500).json({ error: 'Failed to fetch your events.' });
+    }
+});
+
+// POST /api/events - Create a new event
+router.post('/', authenticate, async (req, res) => {
+    try {
+        const coachId = req.user.userId;
+        const newEvent = await Event.create({ ...req.body, coachId });
+        res.status(201).json(newEvent);
+    } catch (error) {
+        console.error("Event Creation Error:", error);
+        res.status(500).json({ error: 'Failed to create event.' });
+    }
+});
+
+// PUT /api/events/:eventId - Update an existing event
+router.put('/:eventId', authenticate, async (req, res) => {
+    try {
+        const { eventId } = req.params;
+        const coachId = req.user.userId;
+
+        const event = await Event.findOne({ where: { id: eventId, coachId } });
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found or you do not have permission to edit it.' });
+        }
+
+        const updatedEvent = await event.update(req.body);
+        res.json(updatedEvent);
+    } catch (error) {
+        console.error("Event Update Error:", error);
+        res.status(500).json({ error: 'Failed to update event.' });
+    }
+});
+
+// DELETE /api/events/:eventId - Delete an event
+router.delete('/:eventId', authenticate, async (req, res) => {
+    try {
+        const { eventId } = req.params;
+        const coachId = req.user.userId;
+
+        const event = await Event.findOne({ where: { id: eventId, coachId } });
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found or you do not have permission to delete it.' });
+        }
+
+        await event.destroy();
+        res.status(204).send(); // 204 No Content
+    } catch (error) {
+        console.error("Event Deletion Error:", error);
+        res.status(500).json({ error: 'Failed to delete event.' });
+    }
+});
+
+
+// POST /api/events/:eventId/book - Client books an event
+router.post('/:eventId/book', authenticate, async (req, res) => {
+    try {
+        const clientId = req.user.userId;
+        const { eventId } = req.params;
+        
+        const event = await Event.findByPk(eventId);
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found.' });
+        }
+
+        const booking = await Booking.create({ clientId, eventId, status: 'confirmed' });
+        res.status(201).json(booking);
+    } catch (error) {
+        console.error("Booking Error:", error);
+        res.status(500).json({ error: 'Failed to book event.' });
+    }
+});
+
+// GET /api/events/my-bookings - Get a coach's bookings
+router.get('/my-bookings', authenticate, async (req, res) => {
+    try {
+        const coachId = req.user.userId;
+        const bookings = await Booking.findAll({
+            include: [
+                {
+                    model: Event,
+                    where: { coachId },
+                    attributes: ['title', 'date', 'time']
+                },
+                {
+                    model: User,
+                    as: 'client',
+                    attributes: ['firstName', 'lastName', 'email']
+                }
+            ]
+        });
+        res.json(bookings);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch bookings.' });
     }
 });
 

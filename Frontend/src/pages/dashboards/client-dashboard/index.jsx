@@ -15,7 +15,7 @@ import ProgressTracker from './components/ProgressTracker';
 import CoachCommunication from './components/CoachCommunication';
 import AccountSettings from '../shared/AccountSettings';
 import DemographicsFormSection from '../shared/DemographicsFormSection';
-import ExploreCoaches from './components/ExploreCoaches'; // Corrected import
+import ExploreCoaches from './components/ExploreCoaches';
 
 // This is the component for the "My Profile" tab
 const ClientProfileSection = () => {
@@ -90,7 +90,7 @@ const ClientDashboard = () => {
 
   const navigationItems = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
-    { id: 'explore-coaches', label: 'Explore Coaches', icon: Compass }, // Updated nav item
+    { id: 'explore-coaches', label: 'Explore Coaches', icon: Compass },
     { id: 'sessions', label: 'Book Sessions', icon: Calendar },
     { id: 'resources', label: 'My Resources', icon: BookOpen },
     { id: 'progress', label: 'My Progress', icon: TrendingUp },
@@ -102,7 +102,7 @@ const ClientDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return <ClientOverview />;
-      case 'explore-coaches': return <ExploreCoaches />; // Updated render case
+      case 'explore-coaches': return <ExploreCoaches />;
       case 'sessions': return <BookNewSession />;
       case 'resources': return <MyResources />;
       case 'progress': return <ProgressTracker />;

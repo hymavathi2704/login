@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Mail, Globe, UserCheck } from 'lucide-react';
+import { X, Mail, Globe } from 'lucide-react';
 
 const CoachProfileModal = ({ coach, onClose }) => {
   if (!coach) return null;
@@ -30,12 +30,12 @@ const CoachProfileModal = ({ coach, onClose }) => {
           </div>
           {coach.coach_profile?.targetAudience && (
             <div>
-                <h4 className="font-semibold mb-2">Specializes In:</h4>
-                <div className="flex flex-wrap gap-2">
-                    {JSON.parse(coach.coach_profile.targetAudience).map(audience => (
-                        <span key={audience} className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{audience}</span>
-                    ))}
-                </div>
+              <h4 className="font-semibold mb-2">Specializes In:</h4>
+              <div className="flex flex-wrap gap-2">
+                  {JSON.parse(coach.coach_profile.targetAudience).map(audience => (
+                      <span key={audience} className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">{audience}</span>
+                  ))}
+              </div>
             </div>
           )}
         </div>
