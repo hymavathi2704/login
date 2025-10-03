@@ -1,76 +1,52 @@
-require("dotenv").config();
-const { expressjwt: jwt } = require("express-jwt");
-const jwksRsa = require("jwks-rsa");
+const { expressjwt } = require('express-jwt');
+const User = require('../models/user');
 
-// ==============================
-// Middleware for Local JWT (HS256)
-// ==============================
-const authenticateLocal = jwt({
+// Middleware to verify JWT token from cookie
+const authenticate = expressjwt({
   secret: process.env.JWT_SECRET,
-  algorithms: ["HS256"],
-  requestProperty: "user", // decoded payload will be stored in req.user
+  algorithms: ['HS256'],
   getToken: (req) => {
-    if (req.headers.authorization && req.headers.authorization.split(" ")[0] === "Bearer") {
-      return req.headers.authorization.split(" ")[1];
+    if (req.cookies.token) {
+      return req.cookies.token;
     }
     return null;
   },
+  requestProperty: 'auth' // Decoded token is attached to req.auth
 });
 
-// ==============================
-// Middleware for Auth0 JWT (RS256)
-// ==============================
-const authenticateAuth0 = jwt({
-  secret: jwksRsa.expressJwtSecret({
-    cache: true,
-    rateLimit: true,
-    jwksRequestsPerMinute: 5,
-    jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
-  }),
-  audience: process.env.AUTH0_AUDIENCE,
-  issuer: `https://${process.env.AUTH0_DOMAIN}/`,
-  algorithms: ["RS256"],
-  requestProperty: "auth", // decoded token will be stored in req.auth
-  getToken: (req) => {
-    if (req.headers.authorization && req.headers.authorization.split(" ")[0] === "Bearer") {
-      return req.headers.authorization.split(" ")[1];
-    }
-    return null;
-  },
-});
-
-// ==============================
-// Combined Middleware
-// ==============================
-const authenticate = (req, res, next) => {
-  authenticateLocal(req, res, (err) => {
-    if (!err) {
-      // Local JWT verified successfully
-      if (!req.user.id && req.user.userId) {
-        req.user.id = req.user.userId; // normalize key
-      }
-      return next();
-    }
-
-    authenticateAuth0(req, res, (err2) => {
-      if (err2) {
-        // Both failed → unauthorized
-        return res.status(401).json({
-          error: "Unauthorized: Invalid or missing token",
-          details: process.env.NODE_ENV === "development" ? err2.message : undefined,
-        });
-      }
-
-      // Normalize Auth0 payload to req.user
-      req.user = {
-        id: req.auth.sub, // use `id` consistently
-        email: req.auth.email,
-        name: req.auth.name || "",
-      };
-
+// Middleware to check if the user has the 'coach' role
+const isCoach = async (req, res, next) => {
+  try {
+    // We use req.auth.userId because that's what the JWT payload contains
+    const user = await User.findByPk(req.auth.userId);
+    if (user && user.role === 'coach') {
       next();
-    });
-  });
+    } else {
+      res.status(403).json({ error: 'Forbidden: Access denied. User is not a coach.' });
+    }
+  } catch (error) {
+    console.error("isCoach middleware error:", error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
 };
 
-module.exports = { authenticate, authenticateLocal, authenticateAuth0 };
+// Middleware to check if the user has the 'client' role
+const isClient = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.auth.userId);
+    if (user && user.role === 'client') {
+      next();
+    } else {
+      res.status(403).json({ error: 'Forbidden: Access denied. User is not a client.' });
+    }
+  } catch (error) {
+    console.error("isClient middleware error:", error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+module.exports = {
+  authenticate,
+  isCoach,
+  isClient
+};

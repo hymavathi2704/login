@@ -14,14 +14,13 @@ const CoachProfile = require('./models/CoachProfile');
 const ClientProfile = require('./models/ClientProfile');
 const Event = require('./models/Event');
 const Booking = require('./models/Booking');
-const Subscription = require('./models/Subscription');
 
 // ==========================================
 // Route Imports
 // ==========================================
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
-const profileRoutes = require('./routes/profiles'); // <<< FIX IS HERE
+const profileRoutes = require('./routes/profiles');
 
 const app = express();
 
@@ -56,18 +55,12 @@ Booking.belongsTo(User, { as: 'client', foreignKey: 'clientId' });
 Event.hasMany(Booking, { foreignKey: 'eventId' });
 Booking.belongsTo(Event, { foreignKey: 'eventId' });
 
-// Subscription associations
-User.hasMany(Subscription, { foreignKey: 'coachId', as: 'Subscribers' });
-User.hasMany(Subscription, { foreignKey: 'clientId', as: 'Subscriptions' });
-Subscription.belongsTo(User, { as: 'client', foreignKey: 'clientId' });
-Subscription.belongsTo(User, { as: 'coach', foreignKey: 'coachId' });
-
 // ==========================================
 // API Routes
 // ==========================================
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
-app.use('/api/profiles', profileRoutes); // This line will now work
+app.use('/api/profiles', profileRoutes);
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
