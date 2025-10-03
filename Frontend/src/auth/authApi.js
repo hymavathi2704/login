@@ -80,7 +80,7 @@ export const logoutUser = () => {
 
 // --- EVENTS & BOOKINGS API ---
 
-// Fetch all published events for clients
+// Fetch all published events (used in original Find a Coach)
 export const getEvents = () => {
   return axiosInstance.get("/api/events");
 };
@@ -88,6 +88,12 @@ export const getEvents = () => {
 // Fetch events for the logged-in coach
 export const getMyEvents = () => {
   return axiosInstance.get("/api/events/my-events");
+};
+
+// --- THIS IS THE MISSING FUNCTION ---
+// Fetch events only from coaches the current client is subscribed to
+export const getSubscribedEvents = () => {
+  return axiosInstance.get("/api/events/subscribed");
 };
 
 // Create a new event
@@ -115,8 +121,9 @@ export const getMyBookings = () => {
   return axiosInstance.get("/api/events/my-bookings");
 };
 
-// Get all coaches for clients to view
-// Get all coaches for clients to view, with optional filters
+
+// --- PROFILES & SUBSCRIPTIONS API ---
+
 export const getAllCoaches = (searchTerm = '', audience = '', subscribedOnly = false) => {
   return axiosInstance.get(`/api/profiles/coaches`, {
     params: {
@@ -127,9 +134,6 @@ export const getAllCoaches = (searchTerm = '', audience = '', subscribedOnly = f
   });
 };
 
-// Subscribe to a coach
-
-
 export const subscribeToCoach = (coachId) => {
   return axiosInstance.post(`/api/profiles/coaches/${coachId}/subscribe`);
 };
@@ -138,7 +142,7 @@ export const unsubscribeFromCoach = (coachId) => {
   return axiosInstance.delete(`/api/profiles/coaches/${coachId}/unsubscribe`);
 };
 
-// Get a coach's list of subscribed clients
 export const getMySubscribedClients = () => {
   return axiosInstance.get('/api/profiles/my-clients');
 };
+

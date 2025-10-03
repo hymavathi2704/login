@@ -9,7 +9,7 @@ import {
   Tag,
   Info
 } from 'lucide-react';
-import { getEvents, bookEvent } from '@/auth/authApi'; // Make sure this path is correct
+import { getSubscribedEvents, bookEvent } from '@/auth/authApi'; // 🚀 UPDATED IMPORT
 
 const BookNewSession = () => {
   const [events, setEvents] = useState([]);
@@ -21,13 +21,13 @@ const BookNewSession = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await getEvents();
-        // Sort events by date, soonest first
-        const sortedEvents = response.data.sort((a, b) => new Date(a.date) - new Date(b.date));
-        setEvents(sortedEvents);
+        // --- THIS IS THE KEY CHANGE ---
+        // We now call the new function to get a filtered list of events
+        const response = await getSubscribedEvents();
+        setEvents(response.data);
       } catch (err) {
-        console.error("Failed to fetch events:", err);
-        setError("Could not load available sessions. Please try again later.");
+        console.error("Failed to fetch subscribed events:", err);
+        setError("Could not load available sessions.");
       } finally {
         setIsLoading(false);
       }
@@ -35,6 +35,7 @@ const BookNewSession = () => {
 
     fetchEvents();
   }, []);
+
 
   const handleBookSession = async () => {
     if (!selectedEvent) return;
