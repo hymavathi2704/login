@@ -9,10 +9,7 @@ const auth = require('../controllers/authController');
 const coachProfileController = require('../controllers/coachProfileController'); 
 
 // VITAL MIDDLEWARE (Destructuring for clarity)
-const { 
-    authenticate, 
-    protect // Assumed named export for protecting routes
-} = require('../middleware/authMiddleware'); 
+const { authenticate, authorize } = require('../middleware/authMiddleware');  
 const { authLimiter } = require('../middleware/rateLimiter');
 const uploadMiddleware = require('../middleware/upload'); 
 
@@ -87,7 +84,7 @@ router.post('/create-profile', authenticate, auth.createProfile);
 // NOTE: General PUT /profile route was removed to fix server crash.
 router.post(
   '/profile/upload-picture', 
-  protect, 
+  authenticate, 
   uploadMiddleware, 
   coachProfileController.uploadProfilePicture 
 );
