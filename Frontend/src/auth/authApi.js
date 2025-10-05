@@ -144,8 +144,10 @@ export const getAllCoaches = (searchTerm = '', audience = '') => {
 };
 
 export const getCoachById = (coachId) => {
-  return axiosInstance.get(`/api/profiles/coaches/${coachId}`);
+  // We established the route /api/coach/public/:coachId for public profiles
+  return axiosInstance.get(`/api/coach/public/${coachId}`); 
 };
+
 
 export const getMyClients = () => {
   return axiosInstance.get('/api/profiles/my-clients');

@@ -25,6 +25,7 @@ const Testimonial = require('./models/Testimonial');
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
 const coachProfileRoutes = require('./routes/coachProfile');
+const profileRoutes = require('./routes/fetchCoachProfiles'); // <<< NEW IMPORT
 
 const app = express();
 
@@ -84,6 +85,7 @@ Booking.belongsTo(Event, { foreignKey: 'eventId' });
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/coach', coachProfileRoutes); // Correctly mounts the coach routes
+app.use('/api/profiles', profileRoutes); // <<< NEW ROUTE MOUNTED HERE
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================

@@ -1,12 +1,12 @@
 const User = require('../models/user');
 const CoachProfile = require('../models/CoachProfile');
-const ClientProfile = require(('../models/ClientProfile'));
-const path = require('path'); // Required for file paths
-const fs = require('fs');   // Required for file system operations
-
-// Define the root directory for uploads, used for disk cleanup
+const ClientProfile = require('../models/ClientProfile');
+const Event = require('../models/Event'); // Import Event model
+const Testimonial = require('../models/Testimonial'); // Import Testimonial model
+const { Op } = require('sequelize');
+const path = require('path');
+const fs = require('fs');
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
-
 
 // Helper function to safely parse potential JSON strings (from FE or BE)
 const safeParse = (value) => {
@@ -21,7 +21,6 @@ const safeParse = (value) => {
     }
     return value;
 };
-
 // ==============================
 // GET Coach Profile (FIXED FETCH)
 // ==============================
@@ -193,9 +192,87 @@ const uploadProfilePicture = async (req, res) => {
     }
 };
 
+// ==============================
+// GET Public Coach Profile by ID (New Function)
+// ==============================
+const getPublicCoachProfile = async (req, res) => {
+    try {
+        const { coachId } = req.params;
+
+        const user = await User.findByPk(coachId, {
+            attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'],
+            include: [
+                { 
+                    model: CoachProfile, 
+                    as: 'CoachProfile', 
+                    attributes: { exclude: ['id', 'userId', 'createdAt', 'updatedAt'] },
+                    include: [
+                         {
+                            model: Testimonial,
+                            as: 'Testimonials', // NOTE: Alias should match server.js (Testimonial model)
+                            required: false,
+                            attributes: ['id', 'clientName', 'clientTitle', 'clientAvatar', 'rating', 'content', 'date', 'sessionType'],
+                        }
+                    ]
+                },
+                {
+                    model: Event,
+                    as: 'Events', // Alias should match server.js
+                    where: { status: 'published' },
+                    required: false,
+                    attributes: ['id', 'title', 'description', 'type', 'date', 'time', 'duration', 'price'],
+                },
+            ],
+        });
+
+        if (!user || !user.CoachProfile) {
+            return res.status(404).json({ error: 'Coach profile not found' });
+        }
+
+        const plainUser = user.get({ plain: true });
+
+        // Construct the final flattened profile object to match frontend expectations
+        const profile = {
+            id: plainUser.id,
+            name: `${plainUser.firstName} ${plainUser.lastName}`,
+            email: plainUser.email,
+            phone: plainUser.phone,
+            profileImage: plainUser.profilePicture, // Use profilePicture from User model
+            ...plainUser.CoachProfile,
+            sessions: safeParse(plainUser.CoachProfile.sessionTypes) || [], 
+            events: plainUser.Events || [],
+            testimonials: plainUser.CoachProfile.Testimonials || [], // Use the correct nested alias
+            
+            // Map/Mock fields for frontend component compatibility (from mock data)
+            title: plainUser.CoachProfile.professionalTitle, 
+            rating: 4.9, 
+            totalReviews: plainUser.CoachProfile.Testimonials?.length || 0,
+            totalClients: 0, 
+            yearsExperience: plainUser.CoachProfile.yearsOfExperience || 0,
+            shortBio: plainUser.CoachProfile.bio?.substring(0, 150) + '...' || '',
+            fullBio: plainUser.CoachProfile.bio || '',
+            isAvailable: true, 
+            avgResponseTime: plainUser.CoachProfile.responseTime || 'within-4h', 
+            timezone: plainUser.CoachProfile.availability?.timezone || 'UTC',
+            startingPrice: plainUser.CoachProfile.pricing?.individual || 0,
+            
+        };
+        
+        delete profile.CoachProfile; 
+        delete profile.sessionTypes; 
+        delete profile.Events;
+
+        res.status(200).json({ coach: profile });
+
+    } catch (error) {
+        console.error('Error fetching public coach profile:', error.stack);
+        res.status(500).json({ error: 'Failed to fetch public profile' });
+    }
+};
 
 module.exports = {
     getCoachProfile,
     updateCoachProfile,
     uploadProfilePicture, // <<< EXPORT NEW FUNCTION
+    getPublicCoachProfile, // <<< EXPORT NEW FUNCTION
 };
