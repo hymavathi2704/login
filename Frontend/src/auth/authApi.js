@@ -129,6 +129,11 @@ export const getAllCoaches = (searchTerm = '', audience = '') => {
   });
 };
 
+export const getCoachById = (coachId) => {
+  return axiosInstance.get(`/api/profiles/coaches/${coachId}`);
+};
+
 export const getMyClients = () => {
   return axiosInstance.get('/api/profiles/my-clients');
 };
+

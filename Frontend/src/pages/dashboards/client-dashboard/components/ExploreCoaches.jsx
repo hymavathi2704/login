@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Eye, Filter } from 'lucide-react';
 import { getAllCoaches } from '@/auth/authApi';
-import CoachProfileModal from './CoachProfileModal';
+import CoachProfileDetail from './CoachProfileDetail'; // <-- Import the new component
 
 // Debounce hook
 const useDebounce = (value, delay) => {
@@ -23,7 +23,7 @@ const predefinedAudiences = [
 const ExploreCoaches = () => {
   const [coaches, setCoaches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewingCoach, setViewingCoach] = useState(null);
+  const [selectedCoach, setSelectedCoach] = useState(null); // <-- State to manage which coach profile is open
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAudience, setSelectedAudience] = useState('');
   
@@ -44,6 +44,10 @@ const ExploreCoaches = () => {
   useEffect(() => {
     fetchCoaches();
   }, [fetchCoaches]);
+
+  if (selectedCoach) {
+    return <CoachProfileDetail coach={selectedCoach} onBack={() => setSelectedCoach(null)} />;
+  }
 
   return (
     <>
@@ -110,7 +114,7 @@ const ExploreCoaches = () => {
                       <div className="text-sm text-purple-600">{coach.coach_profile?.title || 'Coach'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => setViewingCoach(coach)} className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50">
+                      <button onClick={() => setSelectedCoach(coach)} className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50">
                         <Eye size={16} className="mr-2" /> View Profile
                       </button>
                     </td>
@@ -127,7 +131,6 @@ const ExploreCoaches = () => {
           </div>
         )}
       </div>
-      <CoachProfileModal coach={viewingCoach} onClose={() => setViewingCoach(null)} />
     </>
   );
 };

@@ -58,6 +58,42 @@ router.get('/coaches', authenticate, async (req, res) => {
   }
 });
 
+// NEW ENDPOINT: GET /api/profiles/coaches/:id - Get a single coach's public profile
+router.get('/coaches/:id', authenticate, async (req, res) => {
+  try {
+    const coachId = req.params.id;
+
+    const coach = await User.findOne({
+      where: { 
+        id: coachId,
+        roles: { [Op.like]: '%"coach"%' }
+      },
+      attributes: ['id', 'firstName', 'lastName', 'email'],
+      include: [
+        {
+          model: CoachProfile,
+          as: 'coach_profile',
+          required: true,
+        },
+        {
+          model: Event,
+          where: { status: 'published' },
+          required: false, // Use required: false to still get coach if they have no events
+        }
+      ]
+    });
+
+    if (!coach) {
+      return res.status(404).json({ error: 'Coach not found.' });
+    }
+
+    res.json(coach);
+  } catch (error) {
+    console.error('Error fetching single coach:', error);
+    res.status(500).json({ error: 'Failed to fetch coach profile.' });
+  }
+});
+
 
 // GET /api/profiles/my-clients - Get a coach's clients based on who has booked sessions
 router.get('/my-clients', authenticate, async (req, res) => {
@@ -104,3 +140,4 @@ router.get('/my-clients', authenticate, async (req, res) => {
 });
 
 module.exports = router;
+
