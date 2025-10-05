@@ -24,7 +24,6 @@ const Testimonial = require('./models/Testimonial'); // 👈 ADDED
 // ==========================================
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
-const profileRoutes = require('./routes/profiles');
 
 const app = express();
 
@@ -79,7 +78,6 @@ Booking.belongsTo(Event, { foreignKey: 'eventId' });
 // ==========================================
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
-app.use('/api/profiles', profileRoutes);
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
