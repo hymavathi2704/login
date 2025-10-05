@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../auth/AuthContext';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, ChevronRight } from 'lucide-react';
 
 const DashboardLayout = ({
   children,
-  navigationItems = [], // ✅ Default to empty array to avoid .map errors
+  navigationItems = [],
   activeTab,
-  onTabChange = () => {}, // ✅ Default no-op function
+  onTabChange = () => {},
   title,
   subtitle,
-  userType
+  userType,
+  breadcrumb, // <-- NEW PROP for breadcrumbs
 }) => {
   const { user, roles = [], currentRole, switchRole, logout } = useAuth() || {};
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -71,14 +72,6 @@ const DashboardLayout = ({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Overlay for small screens */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Sidebar */}
       <div
         className={`
@@ -93,12 +86,6 @@ const DashboardLayout = ({
           )} text-white`}
         >
           <div className="font-bold text-lg">The Katha</div>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 hover:bg-white/20 rounded"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* User Info */}
@@ -120,7 +107,6 @@ const DashboardLayout = ({
 
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6">
-          {navigationItems.length > 0 ? (
             <ul className="space-y-2">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
@@ -137,7 +123,7 @@ const DashboardLayout = ({
                         w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
                         ${
                           isActive
-                            ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                            ? 'bg-blue-50 text-blue-600 font-semibold'
                             : 'text-gray-600 hover:bg-gray-50'
                         }
                       `}
@@ -149,9 +135,6 @@ const DashboardLayout = ({
                 );
               })}
             </ul>
-          ) : (
-            <p className="text-gray-400 text-sm text-center">No navigation items</p>
-          )}
         </nav>
 
         {/* Logout */}
@@ -177,8 +160,20 @@ const DashboardLayout = ({
               <Menu size={20} />
             </button>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-              {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+              {breadcrumb ? (
+                <div className="flex items-center text-sm">
+                  <button onClick={breadcrumb.onBack} className="text-gray-500 hover:text-gray-700">
+                    {breadcrumb.parent}
+                  </button>
+                  <ChevronRight size={16} className="text-gray-400 mx-1" />
+                  <span className="font-semibold text-gray-800">{breadcrumb.current}</span>
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+                  {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+                </>
+              )}
             </div>
           </div>
 

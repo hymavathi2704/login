@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { toast } from 'sonner';
 import { useAuth } from '@/auth/AuthContext';
@@ -87,6 +87,7 @@ const ClientProfileSection = () => {
 // This is the main component for the page
 const ClientDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [breadcrumb, setBreadcrumb] = useState(null); // <-- Add this line
 
   const navigationItems = [
     { id: 'overview', label: 'Overview', icon: TrendingUp },
@@ -98,11 +99,17 @@ const ClientDashboard = () => {
     { id: 'profile', label: 'My Profile', icon: User },
     { id: 'settings', label: 'Account Settings', icon: Settings },
   ];
+  
+  // Add this handler function
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setBreadcrumb(null); // Reset breadcrumb when changing main tabs
+  };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'overview': return <ClientOverview />;
-      case 'explore-coaches': return <ExploreCoaches />;
+      case 'explore-coaches': return <ExploreCoaches setBreadcrumb={setBreadcrumb} />; // Pass down the setter
       case 'sessions': return <BookNewSession />;
       case 'resources': return <MyResources />;
       case 'progress': return <ProgressTracker />;
@@ -123,9 +130,10 @@ const ClientDashboard = () => {
         userType="client"
         navigationItems={navigationItems}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange} // Use the new handler
         title="Client Dashboard"
         subtitle="Manage your coaching journey"
+        breadcrumb={breadcrumb} // Pass the breadcrumb state
       >
         {renderContent()}
       </DashboardLayout>
@@ -134,3 +142,4 @@ const ClientDashboard = () => {
 };
 
 export default ClientDashboard;
+
