@@ -16,6 +16,8 @@ const CoachProfile = require('./models/CoachProfile');
 const ClientProfile = require('./models/ClientProfile');
 const Event = require('./models/Event');
 const Booking = require('./models/Booking');
+const Session = require('./models/Session'); // 👈 ADDED
+const Testimonial = require('./models/Testimonial'); // 👈 ADDED
 
 // ==========================================
 // Route Imports
@@ -54,6 +56,14 @@ ClientProfile.belongsTo(User, { foreignKey: 'userId' });
 
 User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE' });
 CoachProfile.belongsTo(User, { foreignKey: 'userId' });
+
+// 👇 ADDED new associations for Sessions and Testimonials
+CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE' });
+Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId' });
+
+CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE' });
+Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId' });
+// 👆 END of new associations
 
 User.hasMany(Event, { foreignKey: 'coachId' });
 Event.belongsTo(User, { as: 'coach', foreignKey: 'coachId' });
@@ -95,7 +105,9 @@ const PORT = process.env.PORT || 4028;
     await sequelize.authenticate();
     console.log('✅ Database connected');
     
-    await sequelize.sync({ alter: true }); 
+    // Using { alter: true } is great for development as it tries to update
+    // tables to match the models without dropping them.
+    await sequelize.sync({ force: true }); 
     console.log('✅ Database synchronized');
 
     app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
@@ -104,4 +116,3 @@ const PORT = process.env.PORT || 4028;
     process.exit(1);
   }
 })();
-

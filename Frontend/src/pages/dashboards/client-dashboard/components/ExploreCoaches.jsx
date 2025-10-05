@@ -2,14 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Eye, Filter } from 'lucide-react';
 import { getAllCoaches } from '@/auth/authApi';
 import CoachPublicProfile from '../../shared/coach-public-profile';
+import { useBreadcrumb } from '@/components/ui/BreadcrumbNavigation'; // 1. Import the hook
 
-const ExploreCoaches = ({ setBreadcrumb }) => {
+const ExploreCoaches = () => { // 3. Remove { setBreadcrumb } from props
+  const { setBreadcrumb } = useBreadcrumb(); // 2. Get setBreadcrumb from the context
   const [coaches, setCoaches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCoach, setSelectedCoach] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAudience, setSelectedAudience] = useState('');
-  
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const fetchCoaches = useCallback(async () => {
@@ -38,8 +39,8 @@ const ExploreCoaches = ({ setBreadcrumb }) => {
   }, [fetchCoaches, selectedCoach, setBreadcrumb]);
 
   if (selectedCoach) {
-    return <CoachPublicProfile coachId={selectedCoach.id} />;
-  }
+    return <CoachPublicProfile coachId={selectedCoach._id} />;
+}
 
   return (
     <div className="space-y-6">
