@@ -1,6 +1,6 @@
 const User = require('../models/user');
 const CoachProfile = require('../models/CoachProfile');
-const ClientProfile = require('../models/ClientProfile');
+const ClientProfile = require(('../models/ClientProfile'));
 const path = require('path'); // Required for file paths
 const fs = require('fs');   // Required for file system operations
 
@@ -68,7 +68,7 @@ const updateCoachProfile = async (req, res) => {
             email: req.body.email?.toLowerCase().trim(),
             phone: req.body.phone,
             // NOTE: profilePicture is handled by the dedicated upload route,
-            // but if the FE still sends it, it will be ignored here or handled by the User model.
+            // and should not be passed or processed here.
         };
 
         // Coach Profile Data
@@ -120,7 +120,7 @@ const updateCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// POST Profile Picture Upload (STABLE FILE SOLUTION)
+// POST Profile Picture Upload (FIXED PERSISTENCE)
 // ==============================
 /**
  * @desc    Uploads a new profile picture and updates the user record
@@ -145,8 +145,11 @@ const uploadProfilePicture = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // --- OPTIONAL: Clean up the OLD profile picture file on the server's disk ---
-        const oldPublicPath = user.profilePicture; // e.g., /uploads/old-file.jpg
+        // 1. Fetch the CoachProfile record (FindOrCreate handles cases where it might not exist yet)
+        let [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
+
+        // --- Clean up the OLD profile picture file on the server's disk ---
+        const oldPublicPath = coachProfile.profilePicture; // <-- GET PATH FROM CORRECT MODEL
         const newFilename = req.file.filename;
 
         if (oldPublicPath && oldPublicPath.startsWith('/uploads/')) {
@@ -158,7 +161,6 @@ const uploadProfilePicture = async (req, res) => {
                     fs.unlinkSync(fullOldPath);
                 }
             } catch (err) {
-                // Log the deletion error but continue with the update
                 console.warn('Error deleting old profile picture:', err.message);
             }
         }
@@ -168,14 +170,15 @@ const uploadProfilePicture = async (req, res) => {
         // The path saved to the database is the public URL path
         const publicPath = `/uploads/${newFilename}`;
         
-        // Update the user record with the new file path
-        user.profilePicture = publicPath;
-        await user.save(); 
+        // 🔑 CRITICAL FIX: Update the CoachProfile record with the new file path
+        coachProfile.profilePicture = publicPath;
+        await coachProfile.save(); 
 
         // Respond with the new path so the frontend can display it
+        // The frontend uses this value to update AuthContext state and force re-render.
         res.json({
             message: 'Profile picture uploaded successfully',
-            profilePicture: user.profilePicture, 
+            profilePicture: publicPath, // Return the publicPath directly
         });
 
     } catch (error) {

@@ -4,10 +4,24 @@ import { useAuth } from '@/auth/AuthContext';
 import BreadcrumbNavigation, { BreadcrumbProvider } from '@/components/ui/BreadcrumbNavigation';
 import { cn } from '@/utils/cn';
 
+// Load backend URL from .env (fallback to localhost:4028)
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
+
+// Helper to construct the full image source URL
+const getFullImageSrc = (pathOrBase64) => {
+  // If the string is a backend path (starting with /uploads/), prepend the full API URL
+  if (typeof pathOrBase64 === 'string' && pathOrBase64.startsWith('/uploads/')) {
+      return `${API_BASE_URL}${pathOrBase64}`;
+  }
+  // Otherwise, it's a Base64 URI, a full URL, or null, so return it as is
+  return pathOrBase64;
+};
+
 /**
  * A hook to detect clicks outside a specified element.
  */
 function useOutsideAlerter(handler) {
+// ... (omitted useOutsideAlerter logic)
   const ref = useRef(null);
   useEffect(() => {
     function handleClickOutside(event) {
@@ -54,6 +68,9 @@ const DashboardLayout = ({
 
   const displayName = (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email) || 'User';
   const displayRole = currentRole || userType;
+
+  // 🔑 FIX: Get profilePicture from the nested CoachProfile, as the backend saves it there.
+  const profilePictureSource = user?.CoachProfile?.profilePicture || user?.profilePicture || null;
 
   // Dummy notifications data
   const notifications = [
@@ -210,7 +227,8 @@ const DashboardLayout = ({
                  <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setUserDropdownOpen(!userDropdownOpen)}>
                    <img
                      className="w-9 h-9 rounded-full"
-                     src={user?.profilePicture || `https://ui-avatars.com/api/?name=${displayName.replace(' ', '+')}&background=random`}
+                     // 🔑 FIXED: Use the helper and the correctly resolved profile picture source
+                     src={getFullImageSrc(profilePictureSource) || `https://ui-avatars.com/api/?name=${displayName.replace(' ', '+')}&background=random`}
                      alt="User Avatar"
                    />
                    <div className="hidden sm:block">
@@ -248,4 +266,3 @@ const DashboardLayout = ({
 };
 
 export default DashboardLayout;
-
