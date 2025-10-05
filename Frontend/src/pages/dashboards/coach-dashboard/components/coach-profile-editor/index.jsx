@@ -4,8 +4,8 @@ import PersonalInfoSection from './components/PersonalInfoSection';
 import ProfessionalSection from './components/ProfessionalSection';
 import ServiceSection from './components/ServiceSection';
 import ContactSection from './components/ContactSection';
-import Button from '@/components/ui/Button';
-import { cn } from '@/utils/cn';
+import Button from '../../../../../components/ui/Button';
+import { cn } from '../../../../../utils/cn';
 
 const CoachProfileEditor = () => {
   const [activeTab, setActiveTab] = useState('personal');
@@ -170,45 +170,57 @@ const CoachProfileEditor = () => {
   };
 
   return (
-    // FIX: The component is now just a content section.
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Edit Your Profile</h1>
         <p className="text-gray-600 mt-2">
-          Keep your profile updated to get the best matches with coaches.
+          Keep your profile updated to attract the right clients.
         </p>
       </div>
-      <div className="flex flex-col md:flex-row gap-8">
-        <aside className="w-full md:w-1/4">
-          <nav className="space-y-2">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {React.cloneElement(tab.icon, { className: 'w-5 h-5' })}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
-        <main className="flex-1">
-          {renderTabContent()}
-        </main>
+
+      {/* START: Updated top navigation */}
+      <div className="border-b border-gray-200 mb-8">
+        <nav className="flex space-x-4 -mb-px" aria-label="Tabs">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm',
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              )}
+            >
+              {React.cloneElement(tab.icon, { className: 'w-5 h-5 mr-2' })}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
       </div>
-      {/* FIX: Footer with action buttons */}
+      {/* END: Updated top navigation */}
+      
+      {/* Main content area for the tabs */}
+      <main>
+        {renderTabContent()}
+      </main>
+
+      {/* Footer with action buttons */}
       <footer className="mt-8 pt-6 border-t border-gray-200 flex items-center justify-end space-x-4">
-        {unsavedChanges && (<div className="flex items-center text-sm text-yellow-600"><AlertTriangle className="w-4 h-4 mr-2" />You have unsaved changes.</div>)}
-        <Button onClick={handleSave} disabled={isLoading || !unsavedChanges} size="lg"><Save className="w-5 h-5 mr-2" />{isLoading ? 'Saving...' : 'Save Changes'}</Button>
+        {unsavedChanges && (
+          <div className="flex items-center text-sm text-yellow-600">
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            You have unsaved changes.
+          </div>
+        )}
+        <Button onClick={handleSave} disabled={isLoading || !unsavedChanges} size="lg">
+          <Save className="w-5 h-5 mr-2" />
+          {isLoading ? 'Saving...' : 'Save Changes'}
+        </Button>
       </footer>
     </div>
   );
 };
 
-
 export default CoachProfileEditor;
+
