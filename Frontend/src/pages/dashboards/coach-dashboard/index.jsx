@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '../shared/DashboardLayout';
 import {
   Users,
@@ -9,9 +8,7 @@ import {
   MessageSquare,
   TrendingUp,
   Settings,
-  DollarSign,
   Clock,
-  Plus
 } from 'lucide-react';
 
 // Import coach dashboard components
@@ -22,14 +19,10 @@ import BookingManagement from './components/BookingManagement';
 import CommunicationCenter from './components/CommunicationCenter';
 import ResourcesLibrary from './components/ResourcesLibrary';
 import CoachAnalytics from './components/CoachAnalytics';
-import CoachProfile from './components/CoachProfile';
-import AccountSettings from '../shared/AccountSettings'; // ✅ Import AccountSettings
+import AccountSettings from '../shared/AccountSettings';
+import CoachProfileEditor from './components/CoachProfileEditor'; // <-- IMPORTING THE NEW EDITOR
 
 const CoachDashboard = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Determine active tab based on URL query or fallback to overview
   const [activeTab, setActiveTab] = useState('overview');
 
   const navigationItems = [
@@ -41,7 +34,7 @@ const CoachDashboard = () => {
     { id: 'resources', label: 'Resources', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
     { id: 'profile', label: 'Profile', icon: Settings },
-    { id: 'account-settings', label: 'Account Settings', icon: Settings }, // ✅ New item
+    { id: 'account-settings', label: 'Account Settings', icon: Settings },
   ];
 
   const renderContent = () => {
@@ -61,8 +54,8 @@ const CoachDashboard = () => {
       case 'analytics':
         return <CoachAnalytics />;
       case 'profile':
-        return <CoachProfile />;
-      case 'account-settings': // ✅ Add case for account-settings
+        return <CoachProfileEditor />; // <-- USING THE NEW EDITOR
+      case 'account-settings':
         return <AccountSettings />;
       default:
         return <CoachOverview />;
@@ -83,10 +76,7 @@ const CoachDashboard = () => {
         userType="coach"
         navigationItems={navigationItems}
         activeTab={activeTab}
-        onTabChange={(tabId) => {
-          // ✅ Updated logic to handle tab change internally
-          setActiveTab(tabId);
-        }}
+        onTabChange={setActiveTab}
         title="Coach Dashboard"
         subtitle="Manage your coaching business"
       >
