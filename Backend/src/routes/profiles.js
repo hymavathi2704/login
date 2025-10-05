@@ -58,7 +58,7 @@ router.get('/coaches', authenticate, async (req, res) => {
   }
 });
 
-// NEW ENDPOINT: GET /api/profiles/coaches/:id - Get a single coach's public profile
+// GET /api/profiles/coaches/:id - Get a single coach's public profile
 router.get('/coaches/:id', authenticate, async (req, res) => {
   try {
     const coachId = req.params.id;
@@ -78,7 +78,7 @@ router.get('/coaches/:id', authenticate, async (req, res) => {
         {
           model: Event,
           where: { status: 'published' },
-          required: false, // Use required: false to still get coach if they have no events
+          required: false, 
         }
       ]
     });
@@ -95,44 +95,59 @@ router.get('/coaches/:id', authenticate, async (req, res) => {
 });
 
 
-// GET /api/profiles/my-clients - Get a coach's clients based on who has booked sessions
+// GET /api/profiles/my-clients - Get a coach's clients
+// FIX: Rewrote this function to be more stable.
 router.get('/my-clients', authenticate, async (req, res) => {
     try {
         const coachId = req.user.userId;
 
-        // Find all unique client IDs who have booked an event with this coach
+        // 1. Find all events created by the coach
+        const coachEvents = await Event.findAll({
+            where: { coachId },
+            attributes: ['id']
+        });
+
+        if (coachEvents.length === 0) {
+            return res.json([]);
+        }
+        const eventIds = coachEvents.map(e => e.id);
+
+        // 2. Find all unique client IDs who booked those events
         const bookings = await Booking.findAll({
+            where: { eventId: { [Op.in]: eventIds } },
             attributes: [
-                [fn('DISTINCT', col('clientId')), 'clientId'],
-            ],
-            include: [{
-                model: Event,
-                attributes: [],
-                where: { coachId },
-                required: true
-            }]
+                [sequelize.fn('DISTINCT', sequelize.col('clientId')), 'clientId']
+            ]
         });
 
         if (bookings.length === 0) {
             return res.json([]);
         }
-
         const clientIds = bookings.map(b => b.clientId);
 
-        // Fetch the user details for those client IDs
+        // 3. Fetch the user details for those client IDs
         const clients = await User.findAll({
-            where: {
-                id: { [Op.in]: clientIds }
-            },
+            where: { id: { [Op.in]: clientIds } },
             attributes: ['id', 'firstName', 'lastName', 'email'],
             include: [{
                 model: ClientProfile,
+                as: 'client_profile',
                 attributes: ['coachingGoals'],
                 required: false
             }]
         });
 
-        res.json(clients);
+        // 4. Process clients to match frontend data structure expectations
+        const processedClients = clients.map(client => {
+            const plainClient = client.get({ plain: true });
+            if (plainClient.client_profile) {
+                plainClient.ClientProfile = plainClient.client_profile;
+                delete plainClient.client_profile;
+            }
+            return plainClient;
+        });
+
+        res.json(processedClients);
     } catch (error) {
         console.error('Error fetching clients:', error);
         res.status(500).json({ error: 'Failed to fetch clients.' });
@@ -140,4 +155,3 @@ router.get('/my-clients', authenticate, async (req, res) => {
 });
 
 module.exports = router;
-

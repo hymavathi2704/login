@@ -1,61 +1,61 @@
-import React, { useState } from 'react';
-import { Helmet } from 'react-helmet';
-import DashboardLayout from '../shared/DashboardLayout';
+import React, { useState } from "react";
 import {
+  LayoutDashboard,
   Users,
   Calendar,
-  BookOpen,
   MessageSquare,
-  TrendingUp,
+  BookOpen,
+  PieChart,
   Settings,
-  Clock,
-} from 'lucide-react';
-
-// Import coach dashboard components
-import CoachOverview from './components/CoachOverview';
-import ClientManagement from './components/ClientManagement';
-import EventManagement from './components/EventManagement';
-import BookingManagement from './components/BookingManagement';
-import CommunicationCenter from './components/CommunicationCenter';
-import ResourcesLibrary from './components/ResourcesLibrary';
-import CoachAnalytics from './components/CoachAnalytics';
-import AccountSettings from '../shared/AccountSettings';
-import CoachProfileEditor from './components/CoachProfileEditor'; // <-- IMPORTING THE NEW EDITOR
+  User,
+  Star,
+  Zap,
+} from "lucide-react";
+import DashboardLayout from "../shared/DashboardLayout";
+import CoachOverview from "./components/CoachOverview";
+import ClientManagement from "./components/ClientManagement";
+import BookingManagement from "./components/BookingManagement";
+import CommunicationCenter from "./components/CommunicationCenter";
+import ResourcesLibrary from "./components/ResourcesLibrary";
+import CoachAnalytics from "./components/CoachAnalytics";
+import AccountSettings from "../shared/AccountSettings";
+import CoachProfileEditor from "./components/coach-profile-editor";
+import EventManagement from "./components/EventManagement";
 
 const CoachDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
 
   const navigationItems = [
-    { id: 'overview', label: 'Overview', icon: TrendingUp },
-    { id: 'clients', label: 'Clients', icon: Users },
-    { id: 'events', label: 'Events', icon: Calendar },
-    { id: 'bookings', label: 'Bookings', icon: Clock },
-    { id: 'communication', label: 'Communication', icon: MessageSquare },
-    { id: 'resources', label: 'Resources', icon: BookOpen },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-    { id: 'profile', label: 'Profile', icon: Settings },
-    { id: 'account-settings', label: 'Account Settings', icon: Settings },
+    { id: "overview", label: "Overview", icon: LayoutDashboard },
+    { id: "clients", label: "Client Management", icon: Users },
+    { id: "bookings", label: "Bookings", icon: Calendar },
+    { id: "communication", label: "Communication", icon: MessageSquare },
+    { id: "resources", label: "Resources", icon: BookOpen },
+    { id: "analytics", label: "Analytics", icon: PieChart },
+    { id: "profile", label: "Edit Profile", icon: User },
+    { id: "events", label: "Events", icon: Zap },
+    { id: "settings", label: "Settings", icon: Settings },
   ];
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'overview':
+      case "overview":
         return <CoachOverview />;
-      case 'clients':
+      case "clients":
         return <ClientManagement />;
-      case 'events':
-        return <EventManagement />;
-      case 'bookings':
+      case "bookings":
         return <BookingManagement />;
-      case 'communication':
+      case "communication":
         return <CommunicationCenter />;
-      case 'resources':
+      case "resources":
         return <ResourcesLibrary />;
-      case 'analytics':
+      case "analytics":
         return <CoachAnalytics />;
-      case 'profile':
-        return <CoachProfileEditor />; // <-- USING THE NEW EDITOR
-      case 'account-settings':
+      case "profile":
+        return <CoachProfileEditor />;
+      case "events":
+        return <EventManagement />;
+      case "settings":
         return <AccountSettings />;
       default:
         return <CoachOverview />;
@@ -63,26 +63,15 @@ const CoachDashboard = () => {
   };
 
   return (
-    <>
-      <Helmet>
-        <title>Coach Dashboard - The Katha</title>
-        <meta
-          name="description"
-          content="Manage your coaching business, clients, and sessions."
-        />
-      </Helmet>
-
-      <DashboardLayout
-        userType="coach"
-        navigationItems={navigationItems}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        title="Coach Dashboard"
-        subtitle="Manage your coaching business"
-      >
-        {renderContent()}
-      </DashboardLayout>
-    </>
+    <DashboardLayout
+      navigationItems={navigationItems}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      userName="Coach Emily"
+      userType="coach"
+    >
+      {renderContent()}
+    </DashboardLayout>
   );
 };
 

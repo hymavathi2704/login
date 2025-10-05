@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, Target, TrendingUp, Clock, CheckCircle } from 'lucide-react';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 
 const GoalsSection = ({ data, errors, updateData, updateNestedData, setUnsavedChanges }) => {
   const [newShortTermGoal, setNewShortTermGoal] = useState('');

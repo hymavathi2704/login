@@ -1,6 +1,6 @@
 import React from 'react';
 import { Bell, Shield, CreditCard, Eye, EyeOff, Star, Users } from 'lucide-react';
-import Button from '../../../components/ui/Button';
+import Button from '@/components/ui/Button';
 
 const AccountSection = ({ data, errors, updateData, updateNestedData, setUnsavedChanges }) => {
   

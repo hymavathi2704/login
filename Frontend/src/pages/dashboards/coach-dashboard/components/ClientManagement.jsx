@@ -50,9 +50,10 @@ const ClientManagement = () => {
           <div key={client.id} className="bg-white p-6 rounded-xl border">
             <h3 className="font-bold text-lg">{client.firstName} {client.lastName}</h3>
             <p className="text-sm text-gray-500">{client.email}</p>
-            {client.client_profile && (
+            {/* FIX: Changed client.client_profile to client.ClientProfile */}
+            {client.ClientProfile && (
               <p className="text-sm text-gray-700 mt-2 italic">
-                Goals: {client.client_profile.coachingGoals || 'Not set'}
+                Goals: {client.ClientProfile.coachingGoals || 'Not set'}
               </p>
             )}
           </div>
@@ -65,4 +66,3 @@ const ClientManagement = () => {
 };
 
 export default ClientManagement;
-

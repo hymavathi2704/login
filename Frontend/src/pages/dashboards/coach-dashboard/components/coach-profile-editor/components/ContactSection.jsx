@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Globe, Phone, Mail, ExternalLink } from 'lucide-react';
-import Input from '../../../components/ui/Input';
-import Button from '../../../components/ui/Button';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
 
 const ContactSection = ({ data, errors, updateData, setUnsavedChanges }) => {
   const [emailVerified, setEmailVerified] = useState(false);

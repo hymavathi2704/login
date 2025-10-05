@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { LogOut, Menu, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../../auth/AuthContext';
-import { LogOut, Menu, X, ChevronRight } from 'lucide-react';
+import BreadcrumbNavigation, { BreadcrumbProvider } from '@/components/ui/BreadcrumbNavigation';
 
 const DashboardLayout = ({
   children,
@@ -10,7 +11,6 @@ const DashboardLayout = ({
   title,
   subtitle,
   userType,
-  breadcrumb, // <-- NEW PROP for breadcrumbs
 }) => {
   const { user, roles = [], currentRole, switchRole, logout } = useAuth() || {};
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -71,120 +71,111 @@ const DashboardLayout = ({
   const displayRole = currentRole || userType;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div
-        className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out 
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:static lg:translate-x-0 lg:flex-shrink-0
-        `}
-      >
+    // FIX: Wrap the layout in BreadcrumbProvider to make the context available
+    <BreadcrumbProvider>
+      <div className="flex min-h-screen bg-gray-50">
+        {/* Sidebar */}
         <div
-          className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(
-            displayRole
-          )} text-white`}
+          className={`
+            fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out 
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:static lg:translate-x-0 lg:flex-shrink-0
+          `}
         >
-          <div className="font-bold text-lg">The Katha</div>
-        </div>
-
-        {/* User Info */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div
-              className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(
-                displayRole
-              )} rounded-full flex items-center justify-center text-white font-medium`}
-            >
-              {getInitials(user?.firstName, user?.lastName, user?.email)}
-            </div>
-            <div>
-              <div className="font-medium">{displayName}</div>
-              <RoleSwitcher />
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-6">
-            <ul className="space-y-2">
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-
-                return (
-                  <li key={item.id}>
-                    <button
-                      onClick={() => {
-                        onTabChange(item.id);
-                        setSidebarOpen(false);
-                      }}
-                      className={`
-                        w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
-                        ${
-                          isActive
-                            ? 'bg-blue-50 text-blue-600 font-semibold'
-                            : 'text-gray-600 hover:bg-gray-50'
-                        }
-                      `}
-                    >
-                      {Icon && <Icon size={20} />}
-                      <span className="font-medium">{item.label}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-        </nav>
-
-        {/* Logout */}
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+          <div
+            className={`h-16 flex items-center justify-between px-6 bg-gradient-to-r ${getUserTypeColor(
+              displayRole
+            )} text-white`}
           >
-            <LogOut size={20} />
-            <span className="font-medium">Logout</span>
-          </button>
-        </div>
-      </div>
+            <div className="font-bold text-lg">The Katha</div>
+          </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
-            >
-              <Menu size={20} />
-            </button>
-            <div>
-              {breadcrumb ? (
-                <div className="flex items-center text-sm">
-                  <button onClick={breadcrumb.onBack} className="text-gray-500 hover:text-gray-700">
-                    {breadcrumb.parent}
-                  </button>
-                  <ChevronRight size={16} className="text-gray-400 mx-1" />
-                  <span className="font-semibold text-gray-800">{breadcrumb.current}</span>
-                </div>
-              ) : (
-                <>
-                  <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-                  {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
-                </>
-              )}
+          {/* User Info */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div
+                className={`w-10 h-10 bg-gradient-to-r ${getUserTypeColor(
+                  displayRole
+                )} rounded-full flex items-center justify-center text-white font-medium`}
+              >
+                {getInitials(user?.firstName, user?.lastName, user?.email)}
+              </div>
+              <div>
+                <div className="font-medium">{displayName}</div>
+                <RoleSwitcher />
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-gray-500">{new Date().toLocaleDateString()}</div>
-          </div>
-        </header>
+          {/* Navigation */}
+          <nav className="flex-1 px-4 py-6">
+              <ul className="space-y-2">
+                {navigationItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
 
-        <main className="flex-1 p-6">{children}</main>
+                  return (
+                    <li key={item.id}>
+                      <button
+                        onClick={() => {
+                          onTabChange(item.id);
+                          setSidebarOpen(false);
+                        }}
+                        className={`
+                          w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors
+                          ${
+                            isActive
+                              ? 'bg-blue-50 text-blue-600 font-semibold'
+                              : 'text-gray-600 hover:bg-gray-50'
+                          }
+                        `}
+                      >
+                        {Icon && <Icon size={20} />}
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+          </nav>
+
+          {/* Logout */}
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-3 px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+            >
+              <LogOut size={20} />
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-h-screen">
+          <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <Menu size={20} />
+              </button>
+              <div>
+                {/* FIX: Use the BreadcrumbNavigation component here instead of a separate logic */}
+                <BreadcrumbNavigation />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500">{new Date().toLocaleDateString()}</div>
+            </div>
+          </header>
+
+          <main className="flex-1 p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </BreadcrumbProvider>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, Award, GraduationCap, Tag } from 'lucide-react';
-import Input from '../../../components/ui/Input';
-import Button from '../../../components/ui/Button';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
 
 const ProfessionalSection = ({ data, errors, updateData, updateNestedData, setUnsavedChanges }) => {
   const [newSpecialty, setNewSpecialty] = useState('');

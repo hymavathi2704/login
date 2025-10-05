@@ -1,12 +1,11 @@
-import React, { useState, useCallback } from 'react';
-import { ChevronLeft, Save, X } from 'lucide-react';
-import Button from '../../components/ui/Button';
-
+import React, { useState, useEffect, useCallback } from 'react';
+import { User, Briefcase, DollarSign, Phone, Save, AlertTriangle, ChevronLeft, X } from 'lucide-react';
 import PersonalInfoSection from './components/PersonalInfoSection';
-import ContactSection from './components/ContactSection';
 import ProfessionalSection from './components/ProfessionalSection';
 import ServiceSection from './components/ServiceSection';
-import { cn } from '../../utils/cn';
+import ContactSection from './components/ContactSection';
+import Button from '@/components/ui/Button';
+import { cn } from '@/utils/cn';
 
 const CoachProfileEditor = () => {
   const [activeTab, setActiveTab] = useState('personal');
@@ -54,10 +53,10 @@ const CoachProfileEditor = () => {
   const [errors, setErrors] = useState({});
 
   const tabs = [
-    { id: 'personal', label: 'Personal Info', icon: '👤' },
-    { id: 'contact', label: 'Contact', icon: '📧' },
-    { id: 'professional', label: 'Professional', icon: '🎓' },
-    { id: 'services', label: 'Services', icon: '⚡' }
+    { id: 'personal', label: 'Personal Info', icon: <User /> },
+    { id: 'contact', label: 'Contact', icon: <Phone /> },
+    { id: 'professional', label: 'Professional', icon: <Briefcase /> },
+    { id: 'services', label: 'Services', icon: <DollarSign /> }
   ];
 
   const updateFormData = useCallback((section, data) => {
@@ -171,139 +170,45 @@ const CoachProfileEditor = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => window.history?.back()}
-                className="text-gray-600 hover:text-gray-900"
+    // FIX: The component is now just a content section.
+    <div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">Edit Your Profile</h1>
+        <p className="text-gray-600 mt-2">
+          Keep your profile updated to get the best matches with coaches.
+        </p>
+      </div>
+      <div className="flex flex-col md:flex-row gap-8">
+        <aside className="w-full md:w-1/4">
+          <nav className="space-y-2">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
               >
-                <ChevronLeft className="w-5 h-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Coach Profile Editor</h1>
-                <p className="text-sm text-gray-600">Manage your coaching profile information</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              {unsavedChanges && (
-                <span className="text-sm text-orange-600 font-medium">
-                  Unsaved changes
-                </span>
-              )}
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isLoading}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isLoading}
-                loading={isLoading}
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save Changes
-              </Button>
-            </div>
-          </div>
-
-          {/* Success Message */}
-          {showSaveConfirm && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-md">
-              Profile saved successfully!
-            </div>
-          )}
-        </div>
-      </header>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-sm">
-          {/* Desktop Tabs */}
-          <div className="hidden md:block border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6">
-              {tabs?.map((tab) => (
-                <button
-                  key={tab?.id}
-                  onClick={() => setActiveTab(tab?.id)}
-                  className={cn(
-                    "py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center space-x-2",
-                    activeTab === tab?.id
-                      ? "border-blue-500 text-blue-600" :"border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  )}
-                >
-                  <span>{tab?.icon}</span>
-                  <span>{tab?.label}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Mobile Accordion */}
-          <div className="md:hidden">
-            {tabs?.map((tab) => (
-              <div key={tab?.id} className="border-b border-gray-200">
-                <button
-                  onClick={() => setActiveTab(activeTab === tab?.id ? '' : tab?.id)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50"
-                >
-                  <div className="flex items-center space-x-3">
-                    <span className="text-lg">{tab?.icon}</span>
-                    <span className="font-medium text-gray-900">{tab?.label}</span>
-                  </div>
-                  <ChevronLeft 
-                    className={cn(
-                      "w-5 h-5 text-gray-400 transition-transform",
-                      activeTab === tab?.id && "-rotate-90"
-                    )}
-                  />
-                </button>
-                {activeTab === tab?.id && (
-                  <div className="px-6 pb-6">
-                    {renderTabContent()}
-                  </div>
-                )}
-              </div>
+                {React.cloneElement(tab.icon, { className: 'w-5 h-5' })}
+                <span>{tab.label}</span>
+              </button>
             ))}
-          </div>
-
-          {/* Desktop Content */}
-          <div className="hidden md:block p-6">
-            {renderTabContent()}
-          </div>
-        </div>
+          </nav>
+        </aside>
+        <main className="flex-1">
+          {renderTabContent()}
+        </main>
       </div>
-      {/* Sticky Save Bar - Mobile */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
-        <div className="flex space-x-3">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isLoading}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isLoading}
-            loading={isLoading}
-            className="flex-1"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            Save
-          </Button>
-        </div>
-      </div>
+      {/* FIX: Footer with action buttons */}
+      <footer className="mt-8 pt-6 border-t border-gray-200 flex items-center justify-end space-x-4">
+        {unsavedChanges && (<div className="flex items-center text-sm text-yellow-600"><AlertTriangle className="w-4 h-4 mr-2" />You have unsaved changes.</div>)}
+        <Button onClick={handleSave} disabled={isLoading || !unsavedChanges} size="lg"><Save className="w-5 h-5 mr-2" />{isLoading ? 'Saving...' : 'Save Changes'}</Button>
+      </footer>
     </div>
   );
 };
+
 
 export default CoachProfileEditor;

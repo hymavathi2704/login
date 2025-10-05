@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Upload, X, Camera } from 'lucide-react';
-import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
-import { cn } from '../../../utils/cn';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import { cn } from '@/utils/cn';
 
 const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) => {
   const fileInputRef = useRef(null);

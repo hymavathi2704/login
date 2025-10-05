@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, DollarSign, Clock, Calendar, Users } from 'lucide-react';
-import Input from '../../../components/ui/Input';
-import Button from '../../../components/ui/Button';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
 
 const ServiceSection = ({ data, errors, updateData, updateNestedData, setUnsavedChanges }) => {
   const [newSessionType, setNewSessionType] = useState({
@@ -20,11 +20,11 @@ const ServiceSection = ({ data, errors, updateData, updateNestedData, setUnsaved
   ];
 
   const sessionFormats = [
-    { value: 'individual', label: '1-on-1 Individual', icon: '👤' },
-    { value: 'group', label: 'Group Sessions', icon: '👥' },
-    { value: 'workshop', label: 'Workshops', icon: '🎯' },
-    { value: 'online', label: 'Online Only', icon: '💻' },
-    { value: 'in-person', label: 'In-Person', icon: '🏢' }
+    { value: 'individual', label: '1-on-1 Individual', icon: '側' },
+    { value: 'group', label: 'Group Sessions', icon: '則' },
+    { value: 'workshop', label: 'Workshops', icon: '識' },
+    { value: 'online', label: 'Online Only', icon: '捗' },
+    { value: 'in-person', label: 'In-Person', icon: '召' }
   ];
 
   // Session Types Management
@@ -88,7 +88,7 @@ const ServiceSection = ({ data, errors, updateData, updateNestedData, setUnsaved
             <div key={session?.id} className="flex items-start justify-between p-4 border border-gray-200 rounded-lg">
               <div className="flex items-start space-x-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
-                  {sessionFormats?.find(f => f?.value === session?.format)?.icon || '💼'}
+                  {sessionFormats?.find(f => f?.value === session?.format)?.icon || '直'}
                 </div>
                 <div className="flex-1">
                   <h4 className="font-medium text-gray-900">{session?.name}</h4>
@@ -237,7 +237,7 @@ const ServiceSection = ({ data, errors, updateData, updateNestedData, setUnsaved
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
           <p className="text-sm text-yellow-800">
-            💡 <strong>Pricing Tip:</strong> Research competitors in your area and specialty. 
+            庁 <strong>Pricing Tip:</strong> Research competitors in your area and specialty. 
             Consider offering introductory rates for new clients or package discounts for committed clients.
           </p>
         </div>
