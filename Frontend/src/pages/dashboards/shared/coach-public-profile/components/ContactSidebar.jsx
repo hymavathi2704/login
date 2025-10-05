@@ -1,6 +1,6 @@
 import React from 'react';
-import Icon from '../../../components/AppIcon';
-import Button from '../../../components/ui/Button';
+import Icon from '@/components/AppIcon';
+import Button from '@/components/ui/Button';
 
 const ContactSidebar = ({ coach, onContact, onBookSession }) => {
   const availabilityStatus = coach?.isAvailable ? 'Available' : 'Busy';

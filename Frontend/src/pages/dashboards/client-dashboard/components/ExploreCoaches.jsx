@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Eye, Filter } from 'lucide-react';
 import { getAllCoaches } from '@/auth/authApi';
-import CoachProfileDetail from './CoachProfileDetail'; // <-- Import the new component
+import CoachProfileModal from '../../shared/coach-public-profile';
 
 // Debounce hook
 const useDebounce = (value, delay) => {
@@ -23,7 +23,7 @@ const predefinedAudiences = [
 const ExploreCoaches = () => {
   const [coaches, setCoaches] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCoach, setSelectedCoach] = useState(null); // <-- State to manage which coach profile is open
+  const [viewingCoachId, setViewingCoachId] = useState(null); // State to manage the modal
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAudience, setSelectedAudience] = useState('');
   
@@ -44,10 +44,6 @@ const ExploreCoaches = () => {
   useEffect(() => {
     fetchCoaches();
   }, [fetchCoaches]);
-
-  if (selectedCoach) {
-    return <CoachProfileDetail coach={selectedCoach} onBack={() => setSelectedCoach(null)} />;
-  }
 
   return (
     <>
@@ -107,14 +103,17 @@ const ExploreCoaches = () => {
                 {coaches.length > 0 ? coaches.map(coach => (
                   <tr key={coach.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <img className="h-10 w-10 rounded-full" src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=4&w=256&h=256&q=60" alt="" />
+                      <img className="h-10 w-10 rounded-full" src={`https://ui-avatars.com/api/?name=${coach.firstName}+${coach.lastName}&background=random`} alt="" />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{coach.firstName} {coach.lastName}</div>
                       <div className="text-sm text-purple-600">{coach.coach_profile?.title || 'Coach'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => setSelectedCoach(coach)} className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50">
+                      <button 
+                        onClick={() => setViewingCoachId(coach.id)} // <-- This now opens the modal
+                        className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50"
+                      >
                         <Eye size={16} className="mr-2" /> View Profile
                       </button>
                     </td>
@@ -131,6 +130,9 @@ const ExploreCoaches = () => {
           </div>
         )}
       </div>
+
+      {/* Conditionally render the modal */}
+      {viewingCoachId && <CoachProfileModal coachId={viewingCoachId} onClose={() => setViewingCoachId(null)} />}
     </>
   );
 };

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Header from '../../components/ui/Header';
-import BreadcrumbNavigation from '../../components/ui/BreadcrumbNavigation';
-import NavigationLoadingStates from '../../components/ui/NavigationLoadingStates';
+import Header from '@/components/ui/Header';
+import BreadcrumbNavigation from '@/components/ui/BreadcrumbNavigation';
+import NavigationLoadingStates from '@/components/ui/NavigationLoadingStates';
 import ProfileHeader from './components/ProfileHeader';
 import AboutSection from './components/AboutSection';
 import ServicesSection from './components/ServicesSection';
