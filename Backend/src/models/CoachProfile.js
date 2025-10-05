@@ -1,3 +1,4 @@
+// Backend/src/models/CoachProfile.js
 const { DataTypes, UUIDV4 } = require('sequelize');
 const db = require('../config/db');
 
@@ -18,86 +19,54 @@ const CoachProfile = db.define('coach_profiles', {
     },
     onDelete: 'CASCADE',
   },
-  headline: { // Renamed from 'title' to match mock data
+  // Personal Info
+  professionalTitle: {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  profilePicture: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  // Contact Info
+  websiteUrl: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  // Professional Info
   bio: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  phone: { // Added from mock data
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  website: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  dateOfBirth: {
-    type: DataTypes.DATEONLY,
-    allowNull: true,
-  },
-  gender: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  ethnicity: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  country: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  targetAudience: {
+  specialties: {
     type: DataTypes.JSON,
     allowNull: true,
   },
-  specializations: { // Added from mock data
+  certifications: {
     type: DataTypes.JSON,
     allowNull: true,
   },
-  languages: { // Added from mock data
+  education: {
     type: DataTypes.JSON,
     allowNull: true,
   },
-  coachingApproach: { // Added from mock data
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
-  certifications: { // Added from mock data
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
-  rating: { // Added from mock data
-    type: DataTypes.DECIMAL(3, 2),
-    allowNull: true,
-  },
-  totalReviews: { // Added from mock data
+  yearsOfExperience: {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
-  totalClients: { // Added from mock data
-    type: DataTypes.INTEGER,
+  // Services
+  sessionTypes: {
+    type: DataTypes.JSON,
     allowNull: true,
   },
-  yearsExperience: { // Added from mock data
-    type: DataTypes.INTEGER,
+  pricing: {
+    type: DataTypes.JSON,
     allowNull: true,
   },
-  isAvailable: { // Added from mock data
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
-  },
-  avgResponseTime: { // Added from mock data
-    type: DataTypes.STRING,
+  availability: {
+    type: DataTypes.JSON,
     allowNull: true,
-  },
-  startingPrice: { // Added from mock data
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-  },
+  }
 }, {
   timestamps: true,
 });

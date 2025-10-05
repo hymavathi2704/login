@@ -76,9 +76,23 @@ export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
-export const updateUserProfile = (profileData) => {
-  return axiosInstance.put('/api/auth/profile', profileData);
+// <<< NEW STABLE IMAGE UPLOAD FUNCTION >>>
+export const uploadProfilePicture = (file) => {
+  const formData = new FormData();
+  // 'profilePicture' must match the multer field name in the backend
+  formData.append('profilePicture', file); 
+
+  // Create a separate axios instance to correctly handle file headers
+  return axios.create({
+    baseURL: API,
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'multipart/form-data', 
+      'Authorization': `Bearer ${localStorage.getItem("accessToken")}`,
+    },
+  }).post('/api/auth/profile/upload-picture', formData);
 };
+// <<< END NEW FUNCTION >>>
 
 export const logoutUser = () => {
   localStorage.removeItem("accessToken");
@@ -137,3 +151,13 @@ export const getMyClients = () => {
   return axiosInstance.get('/api/profiles/my-clients');
 };
 
+// FIX 1: UPDATE PROFILE TO USE DEDICATED COACH ROUTE
+export const updateUserProfile = (profileData) => {
+  // MUST use the dedicated coach endpoint to save data
+  return axiosInstance.put('/api/coach/profile', profileData);
+};
+
+// FIX 2: ADD DEDICATED FETCH FUNCTION
+export const getCoachProfile = () => {
+  return axiosInstance.get("/api/coach/profile");
+};

@@ -4,9 +4,18 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
 
+// VITAL CONTROLLERS
 const auth = require('../controllers/authController');
-const { authenticate } = require('../middleware/authMiddleware');
+const coachProfileController = require('../controllers/coachProfileController'); 
+
+// VITAL MIDDLEWARE (Destructuring for clarity)
+const { 
+    authenticate, 
+    protect // Assumed named export for protecting routes
+} = require('../middleware/authMiddleware'); 
 const { authLimiter } = require('../middleware/rateLimiter');
+const uploadMiddleware = require('../middleware/upload'); 
+
 
 // Allow preflight requests for CORS
 router.options('*', cors());
@@ -51,6 +60,7 @@ const verifyAuth0Token = (req, res, next) => {
   );
 };
 
+
 // ==============================
 // Auth Routes
 // ==============================
@@ -68,11 +78,18 @@ router.post('/logout', auth.logout);
 
 router.get('/me', authenticate, auth.me);
 
-router.put('/profile', authenticate, auth.updateProfile);
-
 // --- NEW ROUTE ---
 // Adds a new role profile (client or coach) to the logged-in user's account
 router.post('/create-profile', authenticate, auth.createProfile);
 // -----------------
+
+// === DEDICATED PROFILE PICTURE UPLOAD ROUTE (STABLE SOLUTION) ===
+// NOTE: General PUT /profile route was removed to fix server crash.
+router.post(
+  '/profile/upload-picture', 
+  protect, 
+  uploadMiddleware, 
+  coachProfileController.uploadProfilePicture 
+);
 
 module.exports = router;

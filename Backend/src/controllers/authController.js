@@ -172,25 +172,20 @@ async function socialLogin(req, res) {
 // ==============================
 async function me(req, res) {
   try {
-    const userId = req.user?.userId; // ✅ now works (middleware puts token payload in req.user)
+    const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
+    // FIX: Use the 'as' alias for both profiles to match server.js association and desired output.
     const user = await User.findByPk(userId, {
-      include: [{ model: CoachProfile }, { model: ClientProfile }],
+      include: [
+        { model: CoachProfile, as: 'CoachProfile' }, 
+        { model: ClientProfile, as: 'ClientProfile' }
+      ],
     });
 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const plainUser = user.get({ plain: true });
-
-    if (plainUser.coach_profile) {
-      plainUser.CoachProfile = plainUser.coach_profile;
-      delete plainUser.coach_profile;
-    }
-    if (plainUser.client_profile) {
-      plainUser.ClientProfile = plainUser.client_profile;
-      delete plainUser.client_profile;
-    }
 
     res.status(200).json({ user: plainUser });
   } catch (err) {
@@ -242,7 +237,7 @@ async function logout(req, res) {
 }
 
 // ==============================
-// Update user profile
+// Update user profile <<< RESTORED FUNCTION DEFINITION >>>
 // ==============================
 async function updateProfile(req, res) {
   try {
@@ -259,7 +254,7 @@ async function updateProfile(req, res) {
       'title', 'bio', 'location', 'timezone', 'website',
       'specialties', 'certifications', 'languages', 'sessionTypes',
       'availability', 'dateOfBirth', 'gender', 'ethnicity',
-      'country', 'targetAudience',
+      'country', 'targetAudience', 'profilePicture', // Ensure profilePicture is included here for non-file updates
     ];
     const clientFields = ['coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'];
 
@@ -271,6 +266,12 @@ async function updateProfile(req, res) {
       if (userFields.includes(key)) userData[key] = req.body[key];
       if (coachFields.includes(key)) coachData[key] = req.body[key];
       if (clientFields.includes(key)) clientData[key] = req.body[key];
+    }
+    
+    // If the frontend sends profilePicture in the main PUT request, update the User model
+    if (coachData.profilePicture !== undefined) {
+        userData.profilePicture = coachData.profilePicture;
+        delete coachData.profilePicture;
     }
 
     if (userData.email) userData.email = userData.email.toLowerCase().trim();
@@ -287,20 +288,14 @@ async function updateProfile(req, res) {
     }
 
     const updatedUser = await User.findByPk(userId, {
-      include: [{ model: CoachProfile }, { model: ClientProfile }],
+      include: [
+          { model: CoachProfile, as: 'CoachProfile' }, 
+          { model: ClientProfile, as: 'ClientProfile' }
+      ],
     });
 
     const plainUpdatedUser = updatedUser.get({ plain: true });
-
-    if (plainUpdatedUser.coach_profile) {
-      plainUpdatedUser.CoachProfile = plainUpdatedUser.coach_profile;
-      delete plainUpdatedUser.coach_profile;
-    }
-    if (plainUpdatedUser.client_profile) {
-      plainUpdatedUser.ClientProfile = plainUpdatedUser.client_profile;
-      delete plainUpdatedUser.client_profile;
-    }
-
+    
     res.status(200).json({
       message: 'Profile updated successfully',
       user: plainUpdatedUser,
@@ -310,6 +305,7 @@ async function updateProfile(req, res) {
     res.status(500).json({ error: 'Failed to update profile' });
   }
 }
+
 
 // ==============================
 // Email & Password Reset
@@ -414,7 +410,7 @@ async function resetPassword(req, res) {
 }
 
 // ==============================
-// Exports
+// Exports <<< FIXED EXPORT LIST >>>
 // ==============================
 module.exports = {
   register,
@@ -426,6 +422,6 @@ module.exports = {
   resendVerification,
   forgotPassword,
   resetPassword,
-  updateProfile,
   createProfile,
+  updateProfile, // <<< ADDED BACK THE MISSING EXPORT
 };
