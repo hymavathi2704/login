@@ -4,18 +4,7 @@ import { Plus, X, Tag } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
-// NOTE: This component now accepts onAddListItem and onRemoveListItem from the parent index.jsx
-const ProfessionalSection = ({ 
-    data, 
-    errors, 
-    updateData, 
-    setUnsavedChanges, 
-    onAddListItem, // NEW: API handler for adding (Certifications, Education, Specialties)
-    onRemoveListItem, // NEW: API handler for removing
-    // editItem and updateNestedData will still be used for local list editing and main form fields
-    updateNestedData,
-    editItem // NOTE: This function is not used for Cert/Edu lists because we need the item ID for API calls.
-}) => {
+const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges, onAddListItem, onRemoveListItem }) => {
   const [newSpecialty, setNewSpecialty] = useState('');
   const [newCertification, setNewCertification] = useState({ name: '', issuer: '', year: '', expiryYear: '' });
   const [newEducation, setNewEducation] = useState({ degree: '', institution: '', year: '', field: '' });
@@ -26,62 +15,62 @@ const ProfessionalSection = ({
     'Performance Coaching', 'Financial Coaching', 'Mindfulness & Meditation'
   ];
 
+  // *** CRITICAL FIX: Ensure all arrays are treated defensively ***
+  const currentSpecialties = Array.isArray(data.specialties) ? data.specialties : [];
+  const currentCertifications = Array.isArray(data.certifications) ? data.certifications : [];
+  const currentEducation = Array.isArray(data.education) ? data.education : [];
+
+
   // ===== Helpers =====
   const handleChange = (field, value) => {
     updateData({ [field]: value });
     setUnsavedChanges(true);
   };
-  
-  // NOTE: We are removing the local addItem/removeItem functions and using the API handlers passed from the parent.
 
-  // The local editItem function needs to be slightly modified to update the data structure
   const editItemInLocalState = (field, id, key, value) => {
+    // Only updates the item locally for a better UX while the main save is pending
+    const currentList = Array.isArray(data[field]) ? data[field] : [];
     updateData({
-      [field]: data[field].map(x => x.id === id ? { ...x, [key]: value } : x)
+      [field]: currentList.map(x => x.id === id ? { ...x, [key]: value } : x)
     });
     setUnsavedChanges(true);
   };
+  
+  // Uses API handler passed from index.jsx
+  const removeListItem = (field, id) => {
+      onRemoveListItem(field, id); 
+  }
 
-  // ===== Specialties =====
+
+  // ===== Specialties - Uses API Handler =====
   const addSpecialty = (specialty) => {
     const trimmed = specialty.trim();
-    if (trimmed && !data.specialties.includes(trimmed)) {
-      // API call for specialties is different as specialties is a simple string array
-      // We will handle specialties as a simple array for now and rely on main save,
-      // but for certs/edu we must use the dedicated API.
-      // NOTE: Specialties should be saved via the main save function (or use the API if implemented for strings).
-      // Given the backend `addItem` expects a structured object, we'll keep specialties simple for now
-      // and rely on the main "Save Changes" button, unless it also requires the API.
-      // Since the backend's `addItem` handles specialties, we should use the API for consistency.
-      onAddListItem('specialties', trimmed); // Calls API wrapper
+    if (trimmed && !currentSpecialties.includes(trimmed)) {
+      // NOTE: Specialties array is managed via API to ensure persistence
+      onAddListItem('specialties', trimmed); 
       setNewSpecialty('');
     }
   };
 
-  // ===== Certifications - NOW USES API HANDLER =====
+  // ===== Certifications - Uses API Handler =====
   const addCertification = () => {
     const { name, issuer } = newCertification;
     if (name.trim() && issuer.trim()) {
-      // Call API helper function. API generates the ID and saves to DB.
+      // NOTE: Certifications array is managed via API
       onAddListItem('certifications', newCertification); 
       setNewCertification({ name: '', issuer: '', year: '', expiryYear: '' });
     }
   };
 
-  // ===== Education - NOW USES API HANDLER =====
+  // ===== Education - Uses API Handler =====
   const addEducation = () => {
     const { degree, institution } = newEducation;
     if (degree.trim() && institution.trim()) {
-      // Call API helper function. API generates the ID and saves to DB.
+      // NOTE: Education array is managed via API
       onAddListItem('education', newEducation);
       setNewEducation({ degree: '', institution: '', year: '', field: '' });
     }
   };
-  
-  const removeListItem = (field, id) => {
-      onRemoveListItem(field, id); // Calls API wrapper
-  }
-
 
   return (
     <div className="space-y-8">
@@ -103,21 +92,15 @@ const ProfessionalSection = ({
         </div>
       </div>
 
-      {/* Specialties - NOTE: Specialties should ideally use the main save button, but if it relies on addItem, we call the API */}
+      {/* Specialties */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Coaching Specialties</h3>
         <div className="flex flex-wrap gap-2">
-          {/* We must filter by index for specialty removal since they don't have an ID */}
-          {data.specialties.map((s, i) => ( 
+          {/* Use currentSpecialties for safe mapping */}
+          {currentSpecialties.map((s, i) => (
             <span key={i} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
               <Tag className="w-3 h-3 mr-1" /> {s}
-              <button 
-                // NOTE: This will only work if specialties are simple strings in the array and the API is configured for it.
-                // Assuming `onRemoveListItem` can handle the string value as an 'id' for specialty array removal, or we fall back to local filter.
-                // Let's assume the backend API expects the actual item to remove for specialties. 
-                onClick={() => onRemoveListItem('specialties', s)} 
-                className="ml-2 text-blue-600 hover:text-blue-800"
-              >
+              <button onClick={() => onRemoveListItem('specialties', s)} className="ml-2 text-blue-600 hover:text-blue-800">
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -163,10 +146,11 @@ const ProfessionalSection = ({
         />
       </div>
 
-      {/* Certifications - FIXED: Use editItemInLocalState for edits, API for removal */}
+      {/* Certifications */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Certifications</h3>
-        {data.certifications.map(cert => (
+        {/* Use currentCertifications for safe mapping */}
+        {currentCertifications.map(cert => (
           <div key={cert.id} className="flex items-start justify-between p-4 border border-gray-200 rounded-lg">
             <div className="flex flex-col space-y-2 w-full">
               <Input
@@ -233,10 +217,11 @@ const ProfessionalSection = ({
         </div>
       </div>
 
-      {/* Education - FIXED: Use editItemInLocalState for edits, API for removal */}
+      {/* Education */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Education</h3>
-        {data.education.map(edu => (
+        {/* Use currentEducation for safe mapping */}
+        {currentEducation.map(edu => (
           <div key={edu.id} className="flex items-start justify-between p-4 border border-gray-200 rounded-lg">
             <div className="flex flex-col space-y-2 w-full">
               <Input
