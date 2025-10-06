@@ -1,7 +1,9 @@
 // Frontend/src/pages/dashboards/shared/coach-public-profile/index.jsx
 
 import React, { useState, useEffect } from 'react';
-import { getCoachById } from '@/auth/authApi'; // 1. Import the API function
+// IMPORT FIX: Import useParams to read the ID from the URL
+import { useParams } from 'react-router-dom';
+import { getCoachById } from '@/auth/authApi'; 
 
 // Corrected imports using the '@' alias for your UI components
 import NavigationLoadingStates from '@/components/ui/NavigationLoadingStates';
@@ -11,21 +13,24 @@ import ServicesSection from './components/ServicesSection';
 import TestimonialsSection from './components/TestimonialsSection';
 import ContactSidebar from './components/ContactSidebar';
 
-// This component now receives `coachId` as a prop instead of using useParams
-const CoachPublicProfile = ({ coachId }) => {
+// This component now uses the ID from the URL params
+const CoachPublicProfile = () => {
+  // FIX: Use useParams to extract the 'id' from the URL
+  const { id } = useParams(); 
+  const coachId = id; // Rename for clarity in the rest of the component
+    
   const [coach, setCoach] = useState(null);
   const [testimonials, setTestimonials] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // --- REMOVE MOCK DATA DEFINITION AND LOGIC ---
-  
   const fetchCoachData = async () => {
     setLoading(true);
     setError(null);
     try {
+      // Use the coachId derived from the URL
       if (!coachId) {
-        throw new Error('Coach ID is missing');
+        throw new Error('Coach ID is missing from the URL.');
       }
       
       // 2. Call the actual backend API
@@ -49,8 +54,9 @@ const CoachPublicProfile = ({ coachId }) => {
   };
 
   useEffect(() => {
+    // Re-run fetch when coachId changes (which happens once on load)
     fetchCoachData();
-  }, [coachId]);
+  }, [coachId]); 
 
   // --- Handlers for interactivity ---
   const handleBookSession = () => alert('Booking functionality would be implemented here');

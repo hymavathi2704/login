@@ -1,7 +1,7 @@
 // Frontend/src/pages/dashboards/shared/DemographicsFormSection.jsx
 import React from 'react';
 import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select'; // Corrected import
+// NOTE: The Radix Select component is too complex for this simple use case; using native select.
 
 const DemographicsFormSection = ({ formData, handleChange }) => {
   const genderOptions = [
@@ -30,18 +30,25 @@ const DemographicsFormSection = ({ formData, handleChange }) => {
           />
         </div>
 
-        {/* Gender Selection */}
+        {/* Gender Selection - Using native select for simplicity */}
         <div>
           <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
             Gender
           </label>
-          <Select
+          <select
+            id="gender"
             name="gender"
-            options={genderOptions}
             value={formData.gender || ''}
-            onChange={(value) => handleChange({ target: { name: 'gender', value } })}
-            placeholder="Select gender..."
-          />
+            onChange={handleChange}
+            className="w-full rounded-md border-gray-300 py-2 px-3 text-sm focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Select gender...</option>
+            {genderOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Ethnicity Input */}

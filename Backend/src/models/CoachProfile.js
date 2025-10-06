@@ -1,3 +1,4 @@
+// Backend/src/models/CoachProfile.js
 const { DataTypes, UUIDV4 } = require('sequelize');
 const db = require('../config/db');
 
@@ -51,6 +52,43 @@ const CoachProfile = db.define('coach_profiles', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
+  
+  // === NEW FIELDS: Social Links ===
+  linkedinUrl: { 
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  twitterUrl: { 
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  instagramUrl: { 
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  facebookUrl: { 
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  
+  // === NEW FIELDS: Demographics ===
+  dateOfBirth: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  ethnicity: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  country: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  
   // Services Info
   sessionTypes: {
     type: DataTypes.JSON,

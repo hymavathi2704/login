@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Briefcase, DollarSign, Phone, Save, AlertTriangle } from 'lucide-react';
+// ADDED EYE ICON
+import { User, Briefcase, DollarSign, Phone, Save, AlertTriangle, Eye } from 'lucide-react';
 import PersonalInfoSection from './components/PersonalInfoSection';
 import ProfessionalSection from './components/ProfessionalSection';
 import ServiceSection from './components/ServiceSection';
 import ContactSection from './components/ContactSection';
+// ADDED IMPORTS: SocialLinksSection and DemographicsFormSection
+import SocialLinksSection from './components/SocialLinksSection'; 
+import DemographicsFormSection from "../../../shared/DemographicsFormSection";
 import Button from '../../../../../components/ui/Button';
 import { cn } from '../../../../../utils/cn';
 import { useAuth } from '@/auth/AuthContext';
 import { getCoachProfile, updateUserProfile } from '../../../../../auth/authApi';
 import { toast } from 'sonner';
+// ADDED IMPORT: Link for navigation
+import { Link } from 'react-router-dom';
 
 const parseCorruptedState = (value) => {
   if (typeof value === 'string' && (value.trim().startsWith('[') || value.trim().startsWith('{'))) {
@@ -49,13 +55,23 @@ const CoachProfileEditor = () => {
     profilePicture: null,
     websiteUrl: '',
     bio: '',
+    yearsOfExperience: 0,
     specialties: [],
     certifications: [],
     education: [],
-    yearsOfExperience: 0,
     sessionTypes: [],
     pricing: defaultPricing,
     availability: defaultAvailability,
+    // RE-ADDED: Demographics (from previous steps)
+    dateOfBirth: '',
+    gender: '',
+    ethnicity: '',
+    country: '',
+    // RE-ADDED: Social Links (from previous steps)
+    linkedinUrl: '',
+    twitterUrl: '',
+    instagramUrl: '',
+    facebookUrl: '',
   });
 
   const [initialData, setInitialData] = useState({});
@@ -81,6 +97,16 @@ const CoachProfileEditor = () => {
       education: ensureUniqueIds(safeParseAndDefault(coachProfile.education, [])),
       pricing: safeParseAndDefault(coachProfile.pricing, defaultPricing),
       availability: safeParseAndDefault(coachProfile.availability, defaultAvailability),
+      // RE-ADDED: Demographics mapping
+      dateOfBirth: coachProfile.dateOfBirth || '',
+      gender: coachProfile.gender || '',
+      ethnicity: coachProfile.ethnicity || '',
+      country: coachProfile.country || '',
+      // RE-ADDED: Social Links mapping
+      linkedinUrl: coachProfile.linkedinUrl || '',
+      twitterUrl: coachProfile.twitterUrl || '',
+      instagramUrl: coachProfile.instagramUrl || '',
+      facebookUrl: coachProfile.facebookUrl || '',
     };
   }, []);
 
@@ -108,6 +134,9 @@ const CoachProfileEditor = () => {
   const tabs = [
     { id: 'personal', label: 'Personal Info', icon: <User /> },
     { id: 'contact', label: 'Contact', icon: <Phone /> },
+    // RE-ADDED TAB: Social Links
+    { id: 'social', label: 'Social Links', icon: <User /> },
+    // END RE-ADDED TAB
     { id: 'professional', label: 'Professional', icon: <Briefcase /> },
     { id: 'services', label: 'Services', icon: <DollarSign /> }
   ];
@@ -155,6 +184,17 @@ const CoachProfileEditor = () => {
       websiteUrl: formData.websiteUrl,
       bio: formData.bio,
       yearsOfExperience: parseInt(formData.yearsOfExperience) || 0,
+      
+      // RE-ADDED: Demographics & Social Links to payload
+      dateOfBirth: formData.dateOfBirth,
+      gender: formData.gender,
+      ethnicity: formData.ethnicity,
+      country: formData.country,
+      linkedinUrl: formData.linkedinUrl,
+      twitterUrl: formData.twitterUrl,
+      instagramUrl: formData.instagramUrl,
+      facebookUrl: formData.facebookUrl,
+
       specialties: JSON.stringify(formData.specialties),
       sessionTypes: JSON.stringify(formData.sessionTypes),
       certifications: JSON.stringify(formData.certifications),
@@ -179,9 +219,27 @@ const CoachProfileEditor = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'personal':
-        return <PersonalInfoSection data={formData} errors={errors} updateData={handleUpdateFormData} setUnsavedChanges={setUnsavedChanges} />;
+        return (
+            <div className='space-y-8'>
+                <PersonalInfoSection 
+                    data={formData} 
+                    errors={errors} 
+                    updateData={handleUpdateFormData} 
+                    setUnsavedChanges={setUnsavedChanges} 
+                />
+                {/* RE-ADDED: Demographic Information Section to Personal tab */}
+                <DemographicsFormSection 
+                    formData={formData} 
+                    handleChange={e => handleUpdateFormData({ [e.target.name]: e.target.value })} 
+                />
+            </div>
+        );
       case 'contact':
         return <ContactSection data={formData} errors={errors} updateData={handleUpdateFormData} setUnsavedChanges={setUnsavedChanges} />;
+      // RE-ADDED TAB CONTENT
+      case 'social':
+        return <SocialLinksSection data={formData} updateData={handleUpdateFormData} setUnsavedChanges={setUnsavedChanges} />;
+      // END RE-ADDED TAB CONTENT
       case 'professional':
         return <ProfessionalSection data={formData} errors={errors} updateData={handleUpdateFormData} updateNestedData={updateNestedFormData} setUnsavedChanges={setUnsavedChanges} />;
       case 'services':
@@ -232,6 +290,24 @@ const CoachProfileEditor = () => {
             You have unsaved changes.
           </div>
         )}
+        
+        {/* START: ADDED View Public Profile Button */}
+        {user?.id && (
+            <Link 
+                to={`/profiles/${user.id}`} 
+                target="_blank" 
+                className={cn(
+                    // Mimics the Button component's styling for a secondary action
+                    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+                    "bg-transparent text-blue-600 border border-blue-600 hover:bg-blue-50/50 h-10 px-4 py-2 text-sm"
+                )}
+            >
+                <Eye className="w-5 h-5 mr-2" />
+                View Public Profile
+            </Link>
+        )}
+        {/* END: ADDED View Public Profile Button */}
+
         <Button onClick={handleSave} disabled={isLoading || !unsavedChanges} size="lg">
           <Save className="w-5 h-5 mr-2" />
           {isLoading ? 'Saving...' : 'Save Changes'}

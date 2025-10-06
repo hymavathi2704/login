@@ -239,12 +239,9 @@ async function logout(req, res) {
   res.json({ message: 'Logged out' });
 }
 
-// ==============================
-// Refresh Token REMOVED
-// ==============================
 
 // ==============================
-// Update user profile <<< RESTORED FUNCTION DEFINITION >>>
+// Update user profile
 // ==============================
 async function updateProfile(req, res) {
   try {
@@ -258,10 +255,12 @@ async function updateProfile(req, res) {
 
     const userFields = ['firstName', 'lastName', 'email', 'phone'];
     const coachFields = [
-      'title', 'bio', 'location', 'timezone', 'website',
-      'specialties', 'certifications', 'languages', 'sessionTypes',
-      'availability', 'dateOfBirth', 'gender', 'ethnicity',
-      'country', 'targetAudience', 'profilePicture', // Ensure profilePicture is included here for non-file updates
+      'professionalTitle', 'bio', 'websiteUrl', 'yearsOfExperience', 
+      'specialties', 'certifications', 'education', 'sessionTypes',
+      'pricing', 'availability', 
+      'dateOfBirth', 'gender', 'ethnicity', 'country', 
+      'linkedinUrl', 'twitterUrl', 'instagramUrl', 'facebookUrl',
+      'profilePicture', 
     ];
     const clientFields = ['coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'];
 
@@ -271,7 +270,8 @@ async function updateProfile(req, res) {
 
     for (const key in req.body) {
       if (userFields.includes(key)) userData[key] = req.body[key];
-      if (coachFields.includes(key)) coachData[key] = req.body[key];
+      // NOTE: We check for keys from the CoachProfile model
+      if (coachFields.includes(key)) coachData[key] = req.body[key]; 
       if (clientFields.includes(key)) clientData[key] = req.body[key];
     }
     
@@ -286,6 +286,11 @@ async function updateProfile(req, res) {
     await user.update(userData);
 
     if (Object.keys(coachData).length > 0) {
+      // NOTE: 'professionalTitle' replaces the old 'title' field
+      if (coachData.title) {
+        coachData.professionalTitle = coachData.title;
+        delete coachData.title;
+      }
       const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
       await coachProfile.update(coachData);
     }
