@@ -5,6 +5,7 @@ const validator = require('validator');
 const axios = require('axios');
 const { Op } = require('sequelize');
 const { customAlphabet } = require('nanoid');
+
 const User = require('../models/user');
 const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
@@ -62,13 +63,12 @@ async function register(req, res) {
 // ==============================
 async function login(req, res) {
   try {
-    const { password } = req.body;
-    const email = req.body.email?.toLowerCase().trim();
-    const user = await User.findOne({ where: { email } });
+    const { email: rawEmail, password } = req.body;
+    const email = rawEmail?.toLowerCase().trim();
 
+    const user = await User.findOne({ where: { email } });
     if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    if (user.provider !== 'email')
-      return res.status(400).json({ error: `Use ${user.provider} login` });
+    if (user.provider !== 'email') return res.status(400).json({ error: `Use ${user.provider} login` });
     if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
 
     const ok = await bcrypt.compare(password, user.password_hash);
@@ -79,12 +79,14 @@ async function login(req, res) {
       email: user.email,
       roles: user.roles,
     });
+
     const refreshToken = signAccessToken({
       userId: user.id,
       email: user.email,
       type: 'refresh',
     });
 
+    // Set refresh token in cookie (httpOnly)
     res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -92,6 +94,7 @@ async function login(req, res) {
       maxAge: 1000 * 60 * 60 * 24 * (parseInt(process.env.REFRESH_TOKEN_EXPIRES_DAYS || '30')),
     });
 
+    // Send **accessToken** to frontend for Authorization header
     res.json({
       accessToken,
       user: {
@@ -99,7 +102,6 @@ async function login(req, res) {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone || null,
         roles: user.roles,
       },
     });
@@ -108,6 +110,7 @@ async function login(req, res) {
     res.status(500).json({ error: 'Login failed' });
   }
 }
+
 
 // ==============================
 // Social Login
@@ -168,26 +171,35 @@ async function socialLogin(req, res) {
 }
 
 // ==============================
-// Get current user (with profiles)
+// Logout
+// ==============================
+async function logout(req, res) {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+  res.json({ message: 'Logged out' });
+}
+
+// ==============================
+// Get current user (basic info)
 // ==============================
 async function me(req, res) {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // FIX: Use the 'as' alias for both profiles to match server.js association and desired output.
     const user = await User.findByPk(userId, {
       include: [
-        { model: CoachProfile, as: 'CoachProfile' }, 
-        { model: ClientProfile, as: 'ClientProfile' }
+        { model: CoachProfile, as: 'CoachProfile' },
+        { model: ClientProfile, as: 'ClientProfile' },
       ],
     });
 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const plainUser = user.get({ plain: true });
-
-    res.status(200).json({ user: plainUser });
+    res.status(200).json({ user: user.get({ plain: true }) });
   } catch (err) {
     console.error('Error fetching /me:', err);
     res.status(500).json({ error: 'Failed to fetch user' });
@@ -223,89 +235,6 @@ async function createProfile(req, res) {
     res.status(500).json({ error: 'Failed to create profile' });
   }
 }
-
-// ==============================
-// Logout
-// ==============================
-async function logout(req, res) {
-  res.clearCookie(REFRESH_COOKIE_NAME, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
-  res.json({ message: 'Logged out' });
-}
-
-// ==============================
-// Update user profile <<< RESTORED FUNCTION DEFINITION >>>
-// ==============================
-async function updateProfile(req, res) {
-  try {
-    console.log('Received profile update request with body:', req.body);
-
-    const userId = req.user?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-    const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    const userFields = ['firstName', 'lastName', 'email', 'phone'];
-    const coachFields = [
-      'title', 'bio', 'location', 'timezone', 'website',
-      'specialties', 'certifications', 'languages', 'sessionTypes',
-      'availability', 'dateOfBirth', 'gender', 'ethnicity',
-      'country', 'targetAudience', 'profilePicture', // Ensure profilePicture is included here for non-file updates
-    ];
-    const clientFields = ['coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'];
-
-    const userData = {};
-    const coachData = {};
-    const clientData = {};
-
-    for (const key in req.body) {
-      if (userFields.includes(key)) userData[key] = req.body[key];
-      if (coachFields.includes(key)) coachData[key] = req.body[key];
-      if (clientFields.includes(key)) clientData[key] = req.body[key];
-    }
-    
-    // If the frontend sends profilePicture in the main PUT request, update the User model
-    if (coachData.profilePicture !== undefined) {
-        userData.profilePicture = coachData.profilePicture;
-        delete coachData.profilePicture;
-    }
-
-    if (userData.email) userData.email = userData.email.toLowerCase().trim();
-
-    await user.update(userData);
-
-    if (Object.keys(coachData).length > 0) {
-      const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
-      await coachProfile.update(coachData);
-    }
-    if (Object.keys(clientData).length > 0) {
-      const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
-      await clientProfile.update(clientData);
-    }
-
-    const updatedUser = await User.findByPk(userId, {
-      include: [
-          { model: CoachProfile, as: 'CoachProfile' }, 
-          { model: ClientProfile, as: 'ClientProfile' }
-      ],
-    });
-
-    const plainUpdatedUser = updatedUser.get({ plain: true });
-    
-    res.status(200).json({
-      message: 'Profile updated successfully',
-      user: plainUpdatedUser,
-    });
-  } catch (err) {
-    console.error('Update profile error:', err);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
-}
-
 
 // ==============================
 // Email & Password Reset
@@ -392,9 +321,7 @@ async function resetPassword(req, res) {
       },
     });
 
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired password reset token.' });
-    }
+    if (!user) return res.status(400).json({ error: 'Invalid or expired password reset token.' });
 
     const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
     user.password_hash = hash;
@@ -410,7 +337,7 @@ async function resetPassword(req, res) {
 }
 
 // ==============================
-// Exports <<< FIXED EXPORT LIST >>>
+// Export
 // ==============================
 module.exports = {
   register,
@@ -418,10 +345,9 @@ module.exports = {
   socialLogin,
   logout,
   me,
+  createProfile,
   verifyEmail,
   resendVerification,
   forgotPassword,
   resetPassword,
-  createProfile,
-  updateProfile, // <<< ADDED BACK THE MISSING EXPORT
 };

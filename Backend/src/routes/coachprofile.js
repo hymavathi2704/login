@@ -3,13 +3,18 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 const coachProfileController = require('../controllers/coachProfileController');
 
-// GET /api/coach/profile - Get the logged-in coach's profile
+// ==============================
+// Logged-in coach routes
+// ==============================
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
-
-// PUT /api/coach/profile - Update the logged-in coach's profile
 router.put('/profile', authenticate, coachProfileController.updateCoachProfile);
+router.post('/profile/add-item', authenticate, coachProfileController.addItem);
+router.post('/profile/remove-item', authenticate, coachProfileController.removeItem);
+router.post('/profile/upload-picture', authenticate, coachProfileController.uploadProfilePicture);
 
-// ✅ FIX: Use :id as the parameter name for the public route
+// ==============================
+// Public coach profile
+// ==============================
 router.get('/public/:id', coachProfileController.getPublicCoachProfile);
 
 module.exports = router;

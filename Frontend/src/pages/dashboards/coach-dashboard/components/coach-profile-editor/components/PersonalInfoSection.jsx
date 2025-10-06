@@ -9,9 +9,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { uploadProfilePicture } from '@/auth/authApi';
 
 // Load backend URL from .env (fallback to localhost)
-// CRITICAL: This must match the backend's port and address.
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
-
 
 const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) => {
     const fileInputRef = useRef(null);
@@ -19,13 +17,9 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
     const [dragActive, setDragActive] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     
-    // Initialize previewUrl with the most current profile picture path
-    // The data prop comes from the fetch, which is the most reliable source after component mount.
     const [previewUrl, setPreviewUrl] = useState(data?.profilePicture || user?.profilePicture || null);
 
-    // Sync previewUrl if the data or user state changes externally (e.g., after initial fetch)
     useEffect(() => {
-        // We prioritize the path from the fetched form data, as it's the source of truth for this form.
         setPreviewUrl(data?.profilePicture || user?.profilePicture || null);
     }, [user?.profilePicture, data?.profilePicture]);
 
@@ -34,87 +28,55 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         setUnsavedChanges(true);
     };
     
-    // Helper to construct the full image source URL
     const getFullImageSrc = (pathOrBase64) => {
-        // If the path starts with the common /uploads/ path from the backend
         if (typeof pathOrBase64 === 'string' && pathOrBase64.startsWith('/uploads/')) {
-            // FIX: Use the full base URL and the path
             return `${API_BASE_URL}${pathOrBase64}`; 
         }
-        // Otherwise, it's a local Base64 preview (during upload) or a null/undefined value
         return pathOrBase64;
     };
-
 
     const handleFileUpload = async (file) => {
         if (!file || !file?.type?.startsWith('image/')) {
             toast.error("Please select a valid image file.");
             return;
         }
-        
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        if (file.size > 5 * 1024 * 1024) {
             toast.error("File size exceeds 5MB limit.");
             return;
         }
 
-        // 1. Show immediate local preview (temporary UX)
         const reader = new FileReader();
-        reader.onload = (e) => {
-            setPreviewUrl(e.target.result); 
-        };
+        reader.onload = (e) => setPreviewUrl(e.target.result);
         reader.readAsDataURL(file);
 
         setIsUploading(true);
-        
         try {
-            // 2. Upload the file to the dedicated backend endpoint
             const response = await uploadProfilePicture(file);
-            const newPath = response.data.profilePicture; // e.g., /uploads/image-123.jpg
+            const newPath = response.data.profilePicture;
 
-            // 3. Update the global AuthContext state (crucial for header update)
-            setUser(prevUser => ({ 
-                ...prevUser, 
-                profilePicture: newPath 
-            }));
-            
-            // 4. Update the local form data state
-            updateData({ profilePicture: newPath }); 
-            
-            // 5. Set final public path for stable display
-            setPreviewUrl(newPath); 
+            setUser(prevUser => ({ ...prevUser, profilePicture: newPath }));
+            updateData({ profilePicture: newPath });
+            setPreviewUrl(newPath);
             setUnsavedChanges(true);
             toast.success("Profile picture uploaded successfully! Don't forget to save other changes.");
-            
         } catch (error) {
             console.error("Image upload failed:", error);
             toast.error(error.response?.data?.error || "Image upload failed. Please try again.");
-            // Revert the preview on failure to the last saved image
             setPreviewUrl(data?.profilePicture || user?.profilePicture || null);
         } finally {
             setIsUploading(false);
         }
     };
 
-
     const handleDrop = (e) => {
         e?.preventDefault();
         setDragActive(false);
-        
         const file = e?.dataTransfer?.files?.[0];
-        if (file) {
-            handleFileUpload(file);
-        }
+        if (file) handleFileUpload(file);
     };
 
-    const handleDragOver = (e) => {
-        e?.preventDefault();
-        setDragActive(true);
-    };
-
-    const handleDragLeave = (e) => {
-        e?.preventDefault();
-        setDragActive(false);
-    };
+    const handleDragOver = (e) => { e?.preventDefault(); setDragActive(true); };
+    const handleDragLeave = (e) => { e?.preventDefault(); setDragActive(false); };
 
     const removeProfilePicture = () => {
         setPreviewUrl(null);
@@ -129,16 +91,13 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
             {/* Profile Picture Upload */}
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Profile Picture</h3>
-                
                 <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
                     {/* Avatar Preview */}
                     <div className="relative">
                         <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                             {isUploading ? (
-                                // Simple loading indicator
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                             ) : previewUrl ? (
-                                // ✅ Using the helper to display the image from the backend
                                 <img 
                                     src={getFullImageSrc(previewUrl)} 
                                     alt="Profile preview" 
@@ -148,7 +107,6 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                                 <Camera className="w-8 h-8 text-gray-400" />
                             )}
                         </div>
-                        
                         {previewUrl && !isUploading && (
                             <button
                                 onClick={removeProfilePicture}
@@ -167,8 +125,7 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                             onDragLeave={handleDragLeave}
                             className={cn(
                                 "border-2 border-dashed rounded-lg p-6 text-center transition-colors",
-                                dragActive 
-                                    ? "border-blue-400 bg-blue-50" :"border-gray-300 hover:border-gray-400"
+                                dragActive ? "border-blue-400 bg-blue-50" :"border-gray-300 hover:border-gray-400"
                             )}
                         >
                             <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -176,11 +133,8 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                                 <p className="text-sm text-gray-600">
                                     <span className="font-medium">Click to upload</span> or drag and drop
                                 </p>
-                                <p className="text-xs text-gray-500">
-                                    PNG, JPG, GIF up to 5MB
-                                </p>
+                                <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
                             </div>
-                            
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -190,7 +144,6 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                             >
                                 {isUploading ? 'Uploading...' : 'Choose File'}
                             </Button>
-                            
                             <input
                                 ref={fileInputRef}
                                 type="file"
@@ -203,6 +156,7 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                     </div>
                 </div>
             </div>
+
             {/* Personal Information Form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Input
@@ -213,7 +167,6 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                     error={errors?.firstName}
                     placeholder="Enter your first name"
                 />
-                
                 <Input
                     label="Last Name"
                     required
@@ -230,7 +183,8 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                 placeholder="e.g., Certified Life Coach, Business Mentor"
                 description="This title will appear prominently on your profile"
             />
-            {/* Preview Card */}
+
+            {/* Profile Preview Card */}
             <div className="bg-gray-50 rounded-lg p-6">
                 <h4 className="text-sm font-medium text-gray-900 mb-4">Profile Preview</h4>
                 <div className="flex items-center space-x-4">
@@ -238,7 +192,6 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                         {isUploading ? (
                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
                         ) : previewUrl ? (
-                            // ✅ Using the helper to display the image from the backend
                             <img 
                                 src={getFullImageSrc(previewUrl)} 
                                 alt="Profile preview" 

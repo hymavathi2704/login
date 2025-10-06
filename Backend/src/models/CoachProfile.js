@@ -1,4 +1,3 @@
-// Backend/src/models/CoachProfile.js
 const { DataTypes, UUIDV4 } = require('sequelize');
 const db = require('../config/db');
 
@@ -19,7 +18,7 @@ const CoachProfile = db.define('coach_profiles', {
     },
     onDelete: 'CASCADE',
   },
-  // Personal Info
+  // Personal & Professional Info
   professionalTitle: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -28,12 +27,10 @@ const CoachProfile = db.define('coach_profiles', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  // Contact Info
   websiteUrl: {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  // Professional Info
   bio: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -54,7 +51,7 @@ const CoachProfile = db.define('coach_profiles', {
     type: DataTypes.INTEGER,
     allowNull: true,
   },
-  // Services
+  // Services Info
   sessionTypes: {
     type: DataTypes.JSON,
     allowNull: true,

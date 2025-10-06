@@ -1,10 +1,17 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-const signAccessToken = (payload) => {
+const signAccessToken = (user) => {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is missing. Check your .env file.");
   }
+
+  // Include `id` and roles in the payload for authentication
+  const payload = {
+    id: user.id,
+    email: user.email,
+    roles: user.roles
+  };
 
   return jwt.sign(
     payload,
