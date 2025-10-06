@@ -72,16 +72,15 @@ router.post('/forgot-password', authLimiter, auth.forgotPassword);
 router.post('/reset-password', authLimiter, auth.resetPassword);
 
 router.post('/logout', auth.logout);
+// REMOVED: router.post('/refresh-token', auth.refreshToken);
 
 router.get('/me', authenticate, auth.me);
 
 // --- NEW ROUTE ---
-// Adds a new role profile (client or coach) to the logged-in user's account
 router.post('/create-profile', authenticate, auth.createProfile);
 // -----------------
 
-// === DEDICATED PROFILE PICTURE UPLOAD ROUTE (STABLE SOLUTION) ===
-// NOTE: General PUT /profile route was removed to fix server crash.
+// === DEDICATED PROFILE PICTURE UPLOAD ROUTE ===
 router.post(
   '/profile/upload-picture', 
   authenticate, 

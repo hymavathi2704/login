@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getMe } from './authApi';
+import { getMe, logoutUser } from './authApi'; 
 
 const AuthContext = createContext(null);
 
@@ -8,12 +8,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [currentRole, setCurrentRole] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false); // 1. ADD REFRESHING STATE
+  // isRefreshing state removed
   const navigate = useNavigate();
 
+  // Use the one from authApi to clear both local storage items
   const logout = useCallback(() => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('currentRole');
+    logoutUser(); // Clears localStorage items
     setUser(null);
     setCurrentRole(null);
     navigate('/');
@@ -46,27 +46,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   const refreshUserData = useCallback(async () => {
-    setIsRefreshing(true); // 2. SET REFRESHING TO TRUE
+    // Refreshing logic simplified to just re-fetch user data
     try {
       const response = await getMe();
       const userData = response.data.user;
       setUser(userData);
+      console.log("User data refreshed successfully.");
     } catch (error) {
-      console.error("Failed to refresh user data:", error);
+      console.error("Failed to refresh user data (Access Token Expired). Forcing logout:", error);
+      // If getMe fails now, it means the Access Token is expired/invalid, so we log out.
       logout();
-    } finally {
-      setIsRefreshing(false); // 3. ALWAYS SET TO FALSE WHEN DONE
     }
-  }, [logout]);
+  }, [logout]); 
 
   useEffect(() => {
     const initializeSession = async () => {
       const token = localStorage.getItem('accessToken');
       if (token) {
         try {
-          const response = await getMe();
+          // Check session. If Access Token is expired, this will throw a 401 and go to catch block.
+          const response = await getMe(); 
           const userData = response.data.user;
           setUser(userData);
+          
           const storedRole = localStorage.getItem('currentRole');
           const userRoles = userData.roles || [];
           if (storedRole && userRoles.includes(storedRole)) {
@@ -77,7 +79,8 @@ export const AuthProvider = ({ children }) => {
             setCurrentRole(null);
           }
         } catch (error) {
-          console.error("Session verification failed, logging out:", error);
+          // If the Access Token is expired, we log out and force a re-login.
+          console.error("Session check failed (Token Expired). Logging out.", error);
           logout();
         }
       }
@@ -88,11 +91,10 @@ export const AuthProvider = ({ children }) => {
   
    const value = { 
     user, 
-    setUser, // <--- ADD THIS LINE
+    setUser, 
     roles: user?.roles || [],
     currentRole, 
     isLoading,
-    isRefreshing,
     login, 
     logout, 
     switchRole, 
@@ -101,7 +103,8 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!isLoading && children}
+      {/* Render children only when loading is complete */}
+      {!isLoading && children} 
     </AuthContext.Provider>
   );
 };

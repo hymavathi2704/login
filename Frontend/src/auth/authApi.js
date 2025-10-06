@@ -29,10 +29,11 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for basic error handling
+// Response interceptor for basic error handling (REFRESH LOGIC REMOVED)
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // If a 401 now occurs, it leads directly to logout/error state
     const message =
       error?.response?.data?.error ||
       error?.response?.data?.message ||
@@ -41,6 +42,7 @@ axiosInstance.interceptors.response.use(
     return Promise.reject({ ...error, message });
   }
 );
+
 
 // --- AUTHENTICATION API ---
 

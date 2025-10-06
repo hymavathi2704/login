@@ -1,18 +1,19 @@
+// Frontend/src/auth/PrivateRoute.jsx
+
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
 const PrivateRoute = ({ children, allowedRoles }) => {
-  // 1. GET isRefreshing FROM THE CONTEXT
-  const { user, isLoading, isRefreshing } = useAuth();
+  const { user, isLoading } = useAuth(); 
   const location = useLocation();
 
-  // 2. CHECK BOTH LOADING AND REFRESHING STATES
-  if (isLoading || isRefreshing) {
-    return <div>Loading...</div>; // Or a spinner component
+  // If loading, return null (direct open experience)
+  if (isLoading) {
+    return null; 
   }
 
-  // If there's no user object, they are not logged in.
+  // If there's no user object (and loading is complete), they are not logged in.
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
