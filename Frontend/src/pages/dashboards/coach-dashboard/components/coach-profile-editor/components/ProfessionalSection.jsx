@@ -1,3 +1,4 @@
+// Frontend/src/pages/dashboards/coach-dashboard/components/coach-profile-editor/components/ProfessionalSection.jsx
 import React, { useState } from 'react';
 import { Plus, X, Award, GraduationCap, Tag } from 'lucide-react';
 import Input from '@/components/ui/Input';
@@ -23,6 +24,7 @@ const ProfessionalSection = ({ data, errors, updateData, updateNestedData, setUn
     setUnsavedChanges(true);
   };
 
+  // 🔑 FIX: Ensures the value from the slider/input is treated as an integer
   const handleExperienceChange = (value) => {
     updateData('yearsOfExperience', parseInt(value) || 0);
     setUnsavedChanges(true);

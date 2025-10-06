@@ -24,11 +24,16 @@ const safeParse = (value) => {
 };
 
 // ==============================
-// GET Coach Profile 
+// GET Coach Profile (MODIFIED)
 // ==============================
 const getCoachProfile = async (req, res) => {
     try {
         const userId = req.user.userId;
+        
+        // 🔑 CRITICAL FIX: Ensure the CoachProfile record exists before trying to fetch it.
+        // This guarantees the frontend receives a valid user object with an associated profile.
+        await CoachProfile.findOrCreate({ where: { userId } }); 
+
         const user = await User.findByPk(userId, {
             include: [
                 { model: CoachProfile, as: 'CoachProfile' },
@@ -40,6 +45,7 @@ const getCoachProfile = async (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
+        // Return the user object, which now has a guaranteed CoachProfile entry
         res.status(200).json({ user: user.get({ plain: true }) });
 
     } catch (error) {
@@ -47,7 +53,6 @@ const getCoachProfile = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch profile' });
     }
 };
-
 
 // ==============================
 // PUT/UPDATE Coach Profile 

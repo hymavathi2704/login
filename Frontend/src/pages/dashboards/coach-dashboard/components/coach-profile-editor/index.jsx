@@ -11,7 +11,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { getCoachProfile, updateUserProfile } from '../../../../../auth/authApi'; 
 import { toast } from 'sonner';
 
-// Helper function to safely parse potential JSON strings (used for both saving and fetching)
+// Helper function to safely parse potential JSON strings (used for fetching)
 const parseCorruptedState = (value) => {
     // Check if the value is a string that looks like JSON (starts with [ or {)
     if (typeof value === 'string' && (value.trim().startsWith('[') || value.trim().startsWith('{'))) {
@@ -21,15 +21,16 @@ const parseCorruptedState = (value) => {
             console.warn('Failed to parse stringified state value:', value, e);
         }
     }
-    // If it's not a string or parsing fails, return the original value
+    // If it's a string, ensure it's not a literal "null" or "undefined" string
+    if (value === 'null' || value === 'undefined') return null;
     return value;
 };
 
-// Helper function to ensure fetched data is an Array or Object, or returns defaults
+// Helper function to ensure fetched data is correct type or returns a proper default
 const safeParseAndDefault = (value, defaultValue) => {
     const parsedValue = parseCorruptedState(value);
     
-    // Check for array fields
+    // Check for array fields (must return an array if an array is the default)
     if (Array.isArray(defaultValue)) {
         return Array.isArray(parsedValue) ? parsedValue : defaultValue;
     }
@@ -41,7 +42,18 @@ const safeParseAndDefault = (value, defaultValue) => {
             : defaultValue;
     }
     
-    return parsedValue || defaultValue;
+    return parsedValue ?? defaultValue;
+};
+
+// CRITICAL FIX: Ensures array items have a temporary unique ID for React's key system
+const ensureUniqueIds = (arr) => {
+    if (!Array.isArray(arr)) return []; 
+    // IMPORTANT: Spreading strings here was the cause of the previous crash.
+    // This is safe ONLY for arrays of OBJECTS (Certifications/Education).
+    return arr.map(item => ({
+        ...item,
+        id: item.id || Math.random()
+    }));
 };
 
 
@@ -84,6 +96,12 @@ const CoachProfileEditor = () => {
     const coachProfile = apiData.user?.CoachProfile || apiData.CoachProfile || {};
     const coreUser = apiData.user || apiData; 
 
+    // Parse data before mapping
+    const certificationsData = safeParseAndDefault(coachProfile.certifications, []);
+    const educationData = safeParseAndDefault(coachProfile.education, []);
+    const specialtiesData = safeParseAndDefault(coachProfile.specialties, []);
+    const sessionTypesData = safeParseAndDefault(coachProfile.sessionTypes, []);
+
     return {
       // Core User fields
       firstName: coreUser.firstName || '',
@@ -98,11 +116,14 @@ const CoachProfileEditor = () => {
       bio: coachProfile.bio || '',
       yearsOfExperience: coachProfile.yearsOfExperience || 0, 
       
-      // CRITICAL FIX: Ensure ALL complex fields are native arrays/objects upon fetch
-      specialties: safeParseAndDefault(coachProfile.specialties, []), 
-      certifications: safeParseAndDefault(coachProfile.certifications, []),
-      education: safeParseAndDefault(coachProfile.education, []),
-      sessionTypes: safeParseAndDefault(coachProfile.sessionTypes, []),
+      // FIX: specialties/sessionTypes are arrays of STRINGS, no ID generation needed
+      specialties: specialtiesData, 
+      sessionTypes: sessionTypesData, 
+      
+      // CORRECT: certifications/education are arrays of OBJECTS, keep ensureUniqueIds
+      certifications: ensureUniqueIds(certificationsData), 
+      education: ensureUniqueIds(educationData),
+      
       pricing: safeParseAndDefault(coachProfile.pricing, defaultPricing),
       availability: safeParseAndDefault(coachProfile.availability, defaultAvailability),
     };
@@ -119,6 +140,10 @@ const CoachProfileEditor = () => {
         setInitialData(mappedData);
       } catch (error) {
         console.error("Failed to fetch coach profile:", error);
+        toast.error('Failed to load profile data. Check network console for API errors.', {
+            description: error.message || "An unknown error occurred during fetch.",
+            duration: 5000
+        });
       } finally {
         setIsFetching(false);
       }
@@ -199,16 +224,18 @@ const CoachProfileEditor = () => {
       profilePicture: formData.profilePicture,
       websiteUrl: formData.websiteUrl,
       bio: formData.bio,
-      yearsOfExperience: formData.yearsOfExperience,
       
-      // APPLY CLEANUP/PARSING TO ALL COMPLEX FIELDS
-      // This guarantees the backend receives native objects/arrays
-      specialties: parseCorruptedState(formData.specialties),
-      certifications: parseCorruptedState(formData.certifications),
-      education: parseCorruptedState(formData.education),
-      sessionTypes: parseCorruptedState(formData.sessionTypes),
-      pricing: parseCorruptedState(formData.pricing),
-      availability: parseCorruptedState(formData.availability),
+      // 🔑 CRITICAL FIX 1: yearsOfExperience must be a clean number
+      yearsOfExperience: parseInt(formData.yearsOfExperience) || 0,
+      
+      // 🔑 CRITICAL FIX 2: Explicitly JSON.stringify all complex array/object fields 
+      // This sends clean JSON strings, which the backend's safeParse will handle.
+      specialties: JSON.stringify(formData.specialties),
+      certifications: JSON.stringify(formData.certifications),
+      education: JSON.stringify(formData.education),
+      sessionTypes: JSON.stringify(formData.sessionTypes),
+      pricing: JSON.stringify(formData.pricing),
+      availability: JSON.stringify(formData.availability),
     };
 
     try {
