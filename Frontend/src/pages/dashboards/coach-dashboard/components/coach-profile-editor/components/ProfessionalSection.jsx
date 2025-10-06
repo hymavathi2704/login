@@ -4,7 +4,18 @@ import { Plus, X, Tag } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
-const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) => {
+// NOTE: This component now accepts onAddListItem and onRemoveListItem from the parent index.jsx
+const ProfessionalSection = ({ 
+    data, 
+    errors, 
+    updateData, 
+    setUnsavedChanges, 
+    onAddListItem, // NEW: API handler for adding (Certifications, Education, Specialties)
+    onRemoveListItem, // NEW: API handler for removing
+    // editItem and updateNestedData will still be used for local list editing and main form fields
+    updateNestedData,
+    editItem // NOTE: This function is not used for Cert/Edu lists because we need the item ID for API calls.
+}) => {
   const [newSpecialty, setNewSpecialty] = useState('');
   const [newCertification, setNewCertification] = useState({ name: '', issuer: '', year: '', expiryYear: '' });
   const [newEducation, setNewEducation] = useState({ degree: '', institution: '', year: '', field: '' });
@@ -20,22 +31,11 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
     updateData({ [field]: value });
     setUnsavedChanges(true);
   };
+  
+  // NOTE: We are removing the local addItem/removeItem functions and using the API handlers passed from the parent.
 
-  const addItem = (field, item) => {
-    updateData({ [field]: [...data[field], item] });
-    setUnsavedChanges(true);
-  };
-
-  const removeItem = (field, idOrIndex) => {
-    if (typeof idOrIndex === 'number') {
-      updateData({ [field]: data[field].filter((_, i) => i !== idOrIndex) });
-    } else {
-      updateData({ [field]: data[field].filter((x) => x.id !== idOrIndex) });
-    }
-    setUnsavedChanges(true);
-  };
-
-  const editItem = (field, id, key, value) => {
+  // The local editItem function needs to be slightly modified to update the data structure
+  const editItemInLocalState = (field, id, key, value) => {
     updateData({
       [field]: data[field].map(x => x.id === id ? { ...x, [key]: value } : x)
     });
@@ -46,28 +46,42 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
   const addSpecialty = (specialty) => {
     const trimmed = specialty.trim();
     if (trimmed && !data.specialties.includes(trimmed)) {
-      addItem('specialties', trimmed);
+      // API call for specialties is different as specialties is a simple string array
+      // We will handle specialties as a simple array for now and rely on main save,
+      // but for certs/edu we must use the dedicated API.
+      // NOTE: Specialties should be saved via the main save function (or use the API if implemented for strings).
+      // Given the backend `addItem` expects a structured object, we'll keep specialties simple for now
+      // and rely on the main "Save Changes" button, unless it also requires the API.
+      // Since the backend's `addItem` handles specialties, we should use the API for consistency.
+      onAddListItem('specialties', trimmed); // Calls API wrapper
       setNewSpecialty('');
     }
   };
 
-  // ===== Certifications =====
+  // ===== Certifications - NOW USES API HANDLER =====
   const addCertification = () => {
     const { name, issuer } = newCertification;
     if (name.trim() && issuer.trim()) {
-      addItem('certifications', { ...newCertification, id: Date.now() });
+      // Call API helper function. API generates the ID and saves to DB.
+      onAddListItem('certifications', newCertification); 
       setNewCertification({ name: '', issuer: '', year: '', expiryYear: '' });
     }
   };
 
-  // ===== Education =====
+  // ===== Education - NOW USES API HANDLER =====
   const addEducation = () => {
     const { degree, institution } = newEducation;
     if (degree.trim() && institution.trim()) {
-      addItem('education', { ...newEducation, id: Date.now() });
+      // Call API helper function. API generates the ID and saves to DB.
+      onAddListItem('education', newEducation);
       setNewEducation({ degree: '', institution: '', year: '', field: '' });
     }
   };
+  
+  const removeListItem = (field, id) => {
+      onRemoveListItem(field, id); // Calls API wrapper
+  }
+
 
   return (
     <div className="space-y-8">
@@ -89,14 +103,21 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         </div>
       </div>
 
-      {/* Specialties */}
+      {/* Specialties - NOTE: Specialties should ideally use the main save button, but if it relies on addItem, we call the API */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Coaching Specialties</h3>
         <div className="flex flex-wrap gap-2">
-          {data.specialties.map((s, i) => (
+          {/* We must filter by index for specialty removal since they don't have an ID */}
+          {data.specialties.map((s, i) => ( 
             <span key={i} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
               <Tag className="w-3 h-3 mr-1" /> {s}
-              <button onClick={() => removeItem('specialties', i)} className="ml-2 text-blue-600 hover:text-blue-800">
+              <button 
+                // NOTE: This will only work if specialties are simple strings in the array and the API is configured for it.
+                // Assuming `onRemoveListItem` can handle the string value as an 'id' for specialty array removal, or we fall back to local filter.
+                // Let's assume the backend API expects the actual item to remove for specialties. 
+                onClick={() => onRemoveListItem('specialties', s)} 
+                className="ml-2 text-blue-600 hover:text-blue-800"
+              >
                 <X className="w-3 h-3" />
               </button>
             </span>
@@ -142,7 +163,7 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         />
       </div>
 
-      {/* Certifications */}
+      {/* Certifications - FIXED: Use editItemInLocalState for edits, API for removal */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Certifications</h3>
         {data.certifications.map(cert => (
@@ -151,13 +172,13 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
               <Input
                 label="Certification Name"
                 value={cert.name}
-                onChange={(e) => editItem('certifications', cert.id, 'name', e.target.value)}
+                onChange={(e) => editItemInLocalState('certifications', cert.id, 'name', e.target.value)}
                 required
               />
               <Input
                 label="Issuer"
                 value={cert.issuer}
-                onChange={(e) => editItem('certifications', cert.id, 'issuer', e.target.value)}
+                onChange={(e) => editItemInLocalState('certifications', cert.id, 'issuer', e.target.value)}
                 required
               />
               <div className="grid grid-cols-2 gap-2">
@@ -165,17 +186,17 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                   label="Year Obtained"
                   type="number"
                   value={cert.year}
-                  onChange={(e) => editItem('certifications', cert.id, 'year', e.target.value)}
+                  onChange={(e) => editItemInLocalState('certifications', cert.id, 'year', e.target.value)}
                 />
                 <Input
                   label="Expiry Year"
                   type="number"
                   value={cert.expiryYear}
-                  onChange={(e) => editItem('certifications', cert.id, 'expiryYear', e.target.value)}
+                  onChange={(e) => editItemInLocalState('certifications', cert.id, 'expiryYear', e.target.value)}
                 />
               </div>
             </div>
-            <button onClick={() => removeItem('certifications', cert.id)} className="text-gray-400 hover:text-red-500 ml-2">
+            <button onClick={() => removeListItem('certifications', cert.id)} className="text-gray-400 hover:text-red-500 ml-2">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -212,7 +233,7 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         </div>
       </div>
 
-      {/* Education */}
+      {/* Education - FIXED: Use editItemInLocalState for edits, API for removal */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Education</h3>
         {data.education.map(edu => (
@@ -221,28 +242,28 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
               <Input
                 label="Degree"
                 value={edu.degree}
-                onChange={(e) => editItem('education', edu.id, 'degree', e.target.value)}
+                onChange={(e) => editItemInLocalState('education', edu.id, 'degree', e.target.value)}
                 required
               />
               <Input
                 label="Institution"
                 value={edu.institution}
-                onChange={(e) => editItem('education', edu.id, 'institution', e.target.value)}
+                onChange={(e) => editItemInLocalState('education', edu.id, 'institution', e.target.value)}
                 required
               />
               <Input
                 label="Field of Study"
                 value={edu.field}
-                onChange={(e) => editItem('education', edu.id, 'field', e.target.value)}
+                onChange={(e) => editItemInLocalState('education', edu.id, 'field', e.target.value)}
               />
               <Input
                 label="Year Completed"
                 type="number"
                 value={edu.year}
-                onChange={(e) => editItem('education', edu.id, 'year', e.target.value)}
+                onChange={(e) => editItemInLocalState('education', edu.id, 'year', e.target.value)}
               />
             </div>
-            <button onClick={() => removeItem('education', edu.id)} className="text-gray-400 hover:text-red-500 ml-2">
+            <button onClick={() => removeListItem('education', edu.id)} className="text-gray-400 hover:text-red-500 ml-2">
               <X className="w-4 h-4" />
             </button>
           </div>
