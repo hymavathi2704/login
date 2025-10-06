@@ -67,8 +67,13 @@ CoachProfile.belongsTo(User, { foreignKey: 'userId', as: 'CoachProfile' });
 CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE' });
 Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId' });
 
-CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE' });
+// Backend/src/server.js (Around line 83)
+
+// FIX: Explicitly set the alias to lowercase 'testimonials'
+CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
 Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId' });
+
+// ... (Rest of the file)
 
 User.hasMany(Event, { foreignKey: 'coachId' });
 Event.belongsTo(User, { as: 'coach', foreignKey: 'coachId' });

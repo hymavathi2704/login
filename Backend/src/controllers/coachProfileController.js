@@ -1,11 +1,12 @@
 const User = require('../models/user');
 const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
-const Event = require('../models/Event'); // Import Event model
-const Testimonial = require('../models/Testimonial'); // Import Testimonial model
-const { Op } = require('sequelize');
+const Event = require('../models/Event'); // ✅ FIX: Import Event model
+const Testimonial = require('../models/Testimonial'); // ✅ FIX: Import Testimonial model
 const path = require('path');
 const fs = require('fs');
+
+// Define the root directory for uploads, used for disk cleanup
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 
 // Helper function to safely parse potential JSON strings (from FE or BE)
@@ -21,8 +22,9 @@ const safeParse = (value) => {
     }
     return value;
 };
+
 // ==============================
-// GET Coach Profile (FIXED FETCH)
+// GET Coach Profile 
 // ==============================
 const getCoachProfile = async (req, res) => {
     try {
@@ -48,7 +50,7 @@ const getCoachProfile = async (req, res) => {
 
 
 // ==============================
-// PUT/UPDATE Coach Profile (FINAL MAPPING & PARSING FIX)
+// PUT/UPDATE Coach Profile 
 // ==============================
 const updateCoachProfile = async (req, res) => {
     try {
@@ -66,8 +68,6 @@ const updateCoachProfile = async (req, res) => {
             lastName: req.body.lastName,
             email: req.body.email?.toLowerCase().trim(),
             phone: req.body.phone,
-            // NOTE: profilePicture is handled by the dedicated upload route,
-            // and should not be passed or processed here.
         };
 
         // Coach Profile Data
@@ -75,6 +75,7 @@ const updateCoachProfile = async (req, res) => {
             professionalTitle: req.body.professionalTitle,
             websiteUrl: req.body.websiteUrl,
             yearsOfExperience: req.body.yearsOfExperience,
+            responseTime: req.body.responseTime, // Ensure this field is handled if present
 
             // APPLY SAFE PARSE TO ALL COMPLEX FIELDS BEFORE SENDING TO DB
             bio: req.body.bio,
@@ -119,18 +120,12 @@ const updateCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// POST Profile Picture Upload (FIXED PERSISTENCE)
+// POST Profile Picture Upload
 // ==============================
-/**
- * @desc    Uploads a new profile picture and updates the user record
- * @route   POST /api/auth/profile/upload-picture
- * @access  Private (Coach/Authenticated User)
- */
 const uploadProfilePicture = async (req, res) => {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    // Multer saves the file to req.file
     if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded or file type is invalid (must be an image).' });
     }
@@ -139,16 +134,11 @@ const uploadProfilePicture = async (req, res) => {
         const user = await User.findByPk(userId);
 
         if (!user) {
-            // Clean up the uploaded file if user is not found
             fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // 1. Fetch the CoachProfile record (FindOrCreate handles cases where it might not exist yet)
-        let [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
-
-        // --- Clean up the OLD profile picture file on the server's disk ---
-        const oldPublicPath = coachProfile.profilePicture; // <-- GET PATH FROM CORRECT MODEL
+        const oldPublicPath = user.profilePicture;
         const newFilename = req.file.filename;
 
         if (oldPublicPath && oldPublicPath.startsWith('/uploads/')) {
@@ -163,26 +153,18 @@ const uploadProfilePicture = async (req, res) => {
                 console.warn('Error deleting old profile picture:', err.message);
             }
         }
-        // ----------------------------------------------------------------------
-
-
-        // The path saved to the database is the public URL path
-        const publicPath = `/uploads/${newFilename}`;
         
-        // 🔑 CRITICAL FIX: Update the CoachProfile record with the new file path
-        coachProfile.profilePicture = publicPath;
-        await coachProfile.save(); 
+        const publicPath = `/uploads/${newFilename}`;
+        user.profilePicture = publicPath;
+        await user.save(); 
 
-        // Respond with the new path so the frontend can display it
-        // The frontend uses this value to update AuthContext state and force re-render.
         res.json({
             message: 'Profile picture uploaded successfully',
-            profilePicture: publicPath, // Return the publicPath directly
+            profilePicture: user.profilePicture, 
         });
 
     } catch (error) {
         console.error('Error in uploadProfilePicture:', error.stack);
-        // Clean up the newly uploaded file on severe error
         try {
             fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
         } catch (cleanupErr) {
@@ -192,87 +174,79 @@ const uploadProfilePicture = async (req, res) => {
     }
 };
 
-// ==============================
-// GET Public Coach Profile by ID (New Function)
-// ==============================
 const getPublicCoachProfile = async (req, res) => {
-    try {
-        const { coachId } = req.params;
+  try {
+    const coachId = req.params.id;
+    console.log("Fetching public coach profile for:", coachId);
 
-        const user = await User.findByPk(coachId, {
-            attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'],
-            include: [
-                { 
-                    model: CoachProfile, 
-                    as: 'CoachProfile', 
-                    attributes: { exclude: ['id', 'userId', 'createdAt', 'updatedAt'] },
-                    include: [
-                         {
-                            model: Testimonial,
-                            as: 'Testimonials', // NOTE: Alias should match server.js (Testimonial model)
-                            required: false,
-                            attributes: ['id', 'clientName', 'clientTitle', 'clientAvatar', 'rating', 'content', 'date', 'sessionType'],
-                        }
-                    ]
-                },
-                {
-                    model: Event,
-                    as: 'Events', // Alias should match server.js
-                    where: { status: 'published' },
-                    required: false,
-                    attributes: ['id', 'title', 'description', 'type', 'date', 'time', 'duration', 'price'],
-                },
-            ],
-        });
+    // Step 1: Find the coach profile first
+    const coachProfile = await CoachProfile.findOne({
+      where: { userId: coachId }, // if coachId is actually a userId
+      include: [
+        {
+          model: User,
+          as: 'User',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'],
+          include: [
+            {
+              model: Event,
+              as: 'events',
+              where: { status: 'published' },
+              required: false,
+              attributes: ['id', 'title', 'description', 'type', 'date', 'time', 'duration', 'price'],
+            }
+          ]
+        },
+        {
+          model: Testimonial,
+          as: 'testimonials',
+          required: false,
+          attributes: ['id', 'clientName', 'clientTitle', 'clientAvatar', 'rating', 'content', 'date', 'sessionType'],
+        },
+      ],
+    });
 
-        if (!user || !user.CoachProfile) {
-            return res.status(404).json({ error: 'Coach profile not found' });
-        }
-
-        const plainUser = user.get({ plain: true });
-
-        // Construct the final flattened profile object to match frontend expectations
-        const profile = {
-            id: plainUser.id,
-            name: `${plainUser.firstName} ${plainUser.lastName}`,
-            email: plainUser.email,
-            phone: plainUser.phone,
-            profileImage: plainUser.profilePicture, // Use profilePicture from User model
-            ...plainUser.CoachProfile,
-            sessions: safeParse(plainUser.CoachProfile.sessionTypes) || [], 
-            events: plainUser.Events || [],
-            testimonials: plainUser.CoachProfile.Testimonials || [], // Use the correct nested alias
-            
-            // Map/Mock fields for frontend component compatibility (from mock data)
-            title: plainUser.CoachProfile.professionalTitle, 
-            rating: 4.9, 
-            totalReviews: plainUser.CoachProfile.Testimonials?.length || 0,
-            totalClients: 0, 
-            yearsExperience: plainUser.CoachProfile.yearsOfExperience || 0,
-            shortBio: plainUser.CoachProfile.bio?.substring(0, 150) + '...' || '',
-            fullBio: plainUser.CoachProfile.bio || '',
-            isAvailable: true, 
-            avgResponseTime: plainUser.CoachProfile.responseTime || 'within-4h', 
-            timezone: plainUser.CoachProfile.availability?.timezone || 'UTC',
-            startingPrice: plainUser.CoachProfile.pricing?.individual || 0,
-            
-        };
-        
-        delete profile.CoachProfile; 
-        delete profile.sessionTypes; 
-        delete profile.Events;
-
-        res.status(200).json({ coach: profile });
-
-    } catch (error) {
-        console.error('Error fetching public coach profile:', error.stack);
-        res.status(500).json({ error: 'Failed to fetch public profile' });
+    if (!coachProfile || !coachProfile.User) {
+      return res.status(404).json({ error: 'Coach profile not found' });
     }
+
+    const user = coachProfile.User.get({ plain: true });
+
+    // Step 2: Construct final object
+    const profile = {
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      phone: user.phone,
+      profileImage: user.profilePicture,
+      ...coachProfile.get({ plain: true }),
+      events: user.events || [],
+      testimonials: coachProfile.testimonials || [],
+      title: coachProfile.professionalTitle,
+      rating: 4.9,
+      totalReviews: coachProfile.testimonials?.length || 0,
+      totalClients: 0,
+      yearsExperience: coachProfile.yearsOfExperience || 0,
+      shortBio: coachProfile.bio?.substring(0, 150) + '...' || '',
+      fullBio: coachProfile.bio || '',
+      isAvailable: true,
+      avgResponseTime: coachProfile.responseTime || 'within-4h',
+      timezone: coachProfile.availability?.timezone || 'UTC',
+      startingPrice: coachProfile.pricing?.individual || 0,
+    };
+
+    res.status(200).json({ coach: profile });
+  } catch (error) {
+    console.error('Error fetching public coach profile:', error);
+    res.status(500).json({ error: 'Failed to fetch public profile' });
+  }
 };
+
+
 
 module.exports = {
     getCoachProfile,
     updateCoachProfile,
-    uploadProfilePicture, // <<< EXPORT NEW FUNCTION
-    getPublicCoachProfile, // <<< EXPORT NEW FUNCTION
+    uploadProfilePicture, 
+    getPublicCoachProfile, 
 };
