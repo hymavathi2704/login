@@ -168,10 +168,12 @@ const CoachProfileEditor = () => {
       const response = await addProfileItem({ type, item });
       const updatedList = response.data[type]; 
       
-      // Update both current form data and initial data
-      handleUpdateFormData({ [type]: updatedList });
-      setInitialData(prev => ({ ...prev, [type]: updatedList }));
-      setUnsavedChanges(true); // Flag unsaved changes to trigger main save flow later
+      // *** CRITICAL FIX: Re-apply ID check to ensure items render correctly ***
+      const validatedList = ensureUniqueIds(updatedList);
+      
+      handleUpdateFormData({ [type]: validatedList });
+      setInitialData(prev => ({ ...prev, [type]: validatedList }));
+      setUnsavedChanges(true);
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`);
     } catch (error) {
       console.error('Add item failed:', error);
@@ -187,10 +189,12 @@ const CoachProfileEditor = () => {
       const response = await removeProfileItem({ type, id });
       const updatedList = response.data[type];
       
-      // Update both current form data and initial data
-      handleUpdateFormData({ [type]: updatedList });
-      setInitialData(prev => ({ ...prev, [type]: updatedList }));
-      setUnsavedChanges(true); // Flag unsaved changes to trigger main save flow later
+      // *** CRITICAL FIX: Re-apply ID check to ensure items render correctly ***
+      const validatedList = ensureUniqueIds(updatedList);
+      
+      handleUpdateFormData({ [type]: validatedList });
+      setInitialData(prev => ({ ...prev, [type]: validatedList }));
+      setUnsavedChanges(true);
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} removed successfully!`);
     } catch (error) {
       console.error('Remove item failed:', error);
@@ -333,7 +337,7 @@ const CoachProfileEditor = () => {
             </button>
           ))}
         </nav>
-      </div>
+        </div>
 
       <main>{renderTabContent()}</main>
 
