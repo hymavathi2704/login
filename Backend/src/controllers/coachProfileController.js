@@ -1,4 +1,3 @@
-// Backend/src/controllers/coachProfileController.js
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
@@ -7,6 +6,9 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const Event = require('../models/Event');
 const Testimonial = require('../models/Testimonial');
+
+// Define the root directory for uploads, used for disk cleanup
+const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 
 // ==============================
 // Helper: Safe JSON parse
@@ -37,7 +39,19 @@ const getCoachProfile = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user: user.get({ plain: true }) });
+    const plainUser = user.get({ plain: true });
+
+    // CRITICAL FIX: Parse JSON string fields for the frontend
+    if (plainUser.CoachProfile) {
+        plainUser.CoachProfile.specialties = safeParse(plainUser.CoachProfile.specialties);
+        plainUser.CoachProfile.education = safeParse(plainUser.CoachProfile.education);
+        plainUser.CoachProfile.certifications = safeParse(plainUser.CoachProfile.certifications);
+        plainUser.CoachProfile.sessionTypes = safeParse(plainUser.CoachProfile.sessionTypes);
+        plainUser.CoachProfile.pricing = safeParse(plainUser.CoachProfile.pricing);
+        plainUser.CoachProfile.availability = safeParse(plainUser.CoachProfile.availability);
+    }
+
+    res.json({ user: plainUser });
 
   } catch (error) {
     console.error('Error fetching coach profile:', error);
@@ -46,22 +60,24 @@ const getCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// UPDATE Coach Profile <<< FIX APPLIED HERE >>>
+// UPDATE Coach Profile 
 // ==============================
 const updateCoachProfile = async (req, res) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
 
-    // 💥 FIX: Explicitly include CoachProfile using the alias 'CoachProfile'
+    // FIX: Explicitly include CoachProfile using the alias 'CoachProfile'
     const user = await User.findByPk(userId, { include: { model: CoachProfile, as: 'CoachProfile' } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const {
       firstName, lastName, email, phone,
       professionalTitle, profilePicture, websiteUrl, bio,
-      yearsOfExperience, specialties, sessionTypes,
-      certifications, education, pricing, availability
+      yearsOfExperience, 
+      // specialties, certifications, education are excluded from mass update to prevent overwrite
+      sessionTypes,
+      pricing, availability
     } = req.body;
 
     // Update user fields
@@ -77,10 +93,7 @@ const updateCoachProfile = async (req, res) => {
       websiteUrl,
       bio,
       yearsOfExperience: parseInt(yearsOfExperience) || 0,
-      specialties: specialties || '[]',
-      sessionTypes: sessionTypes || '[]',
-      certifications: certifications || '[]',
-      education: education || '[]',
+      sessionTypes: sessionTypes || '[]', 
       pricing: pricing || '{}',
       availability: availability || '{}'
     });
@@ -93,7 +106,20 @@ const updateCoachProfile = async (req, res) => {
         ],
     });
 
-    res.json({ user: updatedUser.get({ plain: true }) });
+    const plainUpdatedUser = updatedUser.get({ plain: true });
+    
+    // ENSURE PARSING ON RETURN AS WELL
+    if (plainUpdatedUser.CoachProfile) {
+        plainUpdatedUser.CoachProfile.specialties = safeParse(plainUpdatedUser.CoachProfile.specialties);
+        plainUpdatedUser.CoachProfile.education = safeParse(plainUpdatedUser.CoachProfile.education);
+        plainUpdatedUser.CoachProfile.certifications = safeParse(plainUpdatedUser.CoachProfile.certifications);
+        plainUpdatedUser.CoachProfile.sessionTypes = safeParse(plainUpdatedUser.CoachProfile.sessionTypes);
+        plainUpdatedUser.CoachProfile.pricing = safeParse(plainUpdatedUser.CoachProfile.pricing);
+        plainUpdatedUser.CoachProfile.availability = safeParse(plainUpdatedUser.CoachProfile.availability);
+    }
+
+
+    res.json({ user: plainUpdatedUser });
   } catch (error) {
     console.error('Error updating coach profile:', error);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -101,11 +127,16 @@ const updateCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// ADD Item (certification/education)
+// ADD Item (certification/education/specialties) <<< ENHANCED FIX APPLIED HERE >>>
 // ==============================
 const addItem = async (req, res) => {
   try {
-    const { type, item } = req.body; // type: 'certifications' | 'education'
+    const { type, item } = req.body; 
+    const allowedTypes = ['certifications', 'education', 'specialties'];
+    if (!allowedTypes.includes(type)) {
+        return res.status(400).json({ error: 'Invalid item type specified.' });
+    }
+    
     const userId = req.user.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
     
@@ -115,8 +146,15 @@ const addItem = async (req, res) => {
     const currentItems = safeParse(coachProfile[type]) || [];
     currentItems.push({ ...item, id: uuidv4() });
 
+    // Data is stored as a JSON string in the database
     await coachProfile.update({ [type]: JSON.stringify(currentItems) });
-    res.json({ [type]: currentItems });
+    
+    // FIX: Force read the updated profile to ensure data freshness for the return value
+    const updatedProfile = await CoachProfile.findOne({ where: { userId } });
+    const currentItemsParsed = safeParse(updatedProfile[type]);
+
+    // Return the specific type field array, now guaranteed to be refreshed from DB
+    res.json({ [type]: currentItemsParsed });
   } catch (error) {
     console.error('Error adding item:', error);
     res.status(500).json({ error: 'Failed to add item' });
@@ -124,11 +162,16 @@ const addItem = async (req, res) => {
 };
 
 // ==============================
-// REMOVE Item (certification/education)
+// REMOVE Item (certification/education/specialties) <<< ENHANCED FIX APPLIED HERE >>>
 // ==============================
 const removeItem = async (req, res) => {
   try {
     const { type, id } = req.body;
+    const allowedTypes = ['certifications', 'education', 'specialties'];
+    if (!allowedTypes.includes(type)) {
+        return res.status(400).json({ error: 'Invalid item type specified.' });
+    }
+
     const userId = req.user.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
 
@@ -136,8 +179,16 @@ const removeItem = async (req, res) => {
     if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
 
     const currentItems = (safeParse(coachProfile[type]) || []).filter(item => item.id !== id);
+    
+    // Data is stored as a JSON string in the database
     await coachProfile.update({ [type]: JSON.stringify(currentItems) });
-    res.json({ [type]: currentItems });
+    
+    // FIX: Force read the updated profile to ensure data freshness for the return value
+    const updatedProfile = await CoachProfile.findOne({ where: { userId } });
+    const currentItemsParsed = safeParse(updatedProfile[type]);
+
+    // Return the specific type field array, now guaranteed to be refreshed from DB
+    res.json({ [type]: currentItemsParsed });
   } catch (error) {
     console.error('Error removing item:', error);
     res.status(500).json({ error: 'Failed to remove item' });
@@ -148,84 +199,128 @@ const removeItem = async (req, res) => {
 // UPLOAD Profile Picture
 // ==============================
 const uploadProfilePicture = async (req, res) => {
-  try {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    const userId = req.user.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const coachProfile = await CoachProfile.findOne({ where: { userId } });
-    if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded or file type is invalid (must be an image).' });
+    }
 
-    const filePath = `/uploads/${req.file.filename}`;
-    await coachProfile.update({ profilePicture: filePath });
+    try {
+        const user = await User.findByPk(userId);
 
-    res.json({ profilePicture: filePath });
-  } catch (error) {
-    console.error('Error uploading profile picture:', error);
-    res.status(500).json({ error: 'Failed to upload profile picture' });
-  }
+        if (!user) {
+            fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const newFilename = req.file.filename;
+        const publicPath = `/uploads/${newFilename}`;
+        user.profilePicture = publicPath;
+        await user.save(); 
+
+        res.json({
+            message: 'Profile picture uploaded successfully',
+            profilePicture: user.profilePicture, 
+        });
+
+    } catch (error) {
+        console.error('Error in uploadProfilePicture:', error.stack);
+        try {
+            fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
+        } catch (cleanupErr) {
+            // Log cleanup error if necessary
+        }
+        res.status(500).json({ message: 'Failed to upload image due to server error.' });
+    }
 };
 
-// ==============================
-// GET Public Coach Profile
-// ==============================
 const getPublicCoachProfile = async (req, res) => {
-  try {
-    const coachId = req.params.id;
+  try {
+    const coachId = req.params.id;
+    console.log("Fetching public coach profile for:", coachId);
 
-    const coachProfile = await CoachProfile.findOne({
-      where: { userId: coachId },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
-          include: [
-            { model: Event, as: 'events', required: false, where: { status: 'published' } }
-          ]
-        },
-        { model: Testimonial, as: 'testimonials', required: false }
-      ]
-    });
+    // Step 1: Find the coach profile
+    const coachProfile = await CoachProfile.findOne({
+      where: { userId: coachId }, // coachId = User ID
+      include: [
+        {
+          model: User,
+          as: 'user', // ✅ correct alias
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
+          include: [
+            {
+              model: Event,
+              as: 'events', // ✅ belongs to User
+              required: false,
+              where: { status: 'published' },
+              attributes: ['id', 'title', 'description', 'type', 'date', 'time', 'duration', 'price'],
+            },
+          ],
+        },
+        {
+          model: Testimonial,
+          as: 'testimonials',
+          required: false,
+          attributes: ['id', 'clientName', 'clientTitle', 'clientAvatar', 'rating', 'content', 'date', 'sessionType'],
+        },
+      ],
+    });
 
-    if (!coachProfile || !coachProfile.user) {
-      return res.status(404).json({ error: 'Coach profile not found' });
-    }
+    if (!coachProfile || !coachProfile.user) {
+      return res.status(404).json({ error: 'Coach profile not found' });
+    }
 
-    const user = coachProfile.user.get({ plain: true });
-    res.status(200).json({
-      coach: {
-        id: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        email: user.email,
-        phone: user.phone,
-        profileImage: coachProfile.profilePicture,
-        events: user.events || [],
-        testimonials: coachProfile.testimonials || [],
-        title: coachProfile.professionalTitle,
-        rating: 4.9,
-        totalReviews: coachProfile.testimonials?.length || 0,
-        totalClients: 0,
-        yearsExperience: coachProfile.yearsOfExperience || 0,
-        shortBio: coachProfile.bio ? coachProfile.bio.substring(0, 150) + '...' : '',
-        fullBio: coachProfile.bio || '',
-        isAvailable: true,
-        avgResponseTime: coachProfile.responseTime || 'within-4h',
-        timezone: coachProfile.availability?.timezone || 'UTC',
-        startingPrice: coachProfile.pricing?.individual || 0,
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching public coach profile:', error);
-    res.status(500).json({ error: 'Failed to fetch public profile' });
-  }
+    // CRITICAL FIX FOR PUBLIC PROFILE: Parse JSON strings
+    const plainCoachProfile = coachProfile.get({ plain: true });
+    
+    if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
+    if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
+    if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
+
+
+    const user = plainCoachProfile.user;
+
+    // Step 2: Construct final object
+    const profile = {
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      phone: user.phone,
+      profileImage: plainCoachProfile.profilePicture, // from CoachProfile
+      events: user.events || [], // ✅ events included via User
+      testimonials: plainCoachProfile.testimonials || [],
+      title: plainCoachProfile.professionalTitle,
+      rating: 4.9,
+      totalReviews: plainCoachProfile.testimonials?.length || 0,
+      totalClients: 0,
+      yearsExperience: plainCoachProfile.yearsOfExperience || 0,
+      shortBio: plainCoachProfile.bio ? plainCoachProfile.bio.substring(0, 150) + '...' : '',
+      fullBio: plainCoachProfile.bio || '',
+      isAvailable: true,
+      avgResponseTime: plainCoachProfile.responseTime || 'within-4h',
+      timezone: plainCoachProfile.availability?.timezone || 'UTC',
+      startingPrice: plainCoachProfile.pricing?.individual || 0,
+      
+      // ADD PARSED LIST FIELDS TO THE PUBLIC RESPONSE
+      specialties: plainCoachProfile.specialties || [],
+      education: plainCoachProfile.education || [],
+      certifications: plainCoachProfile.certifications || [],
+    };
+
+    res.status(200).json({ coach: profile });
+  } catch (error) {
+    console.error('Error fetching public coach profile:', error);
+    res.status(500).json({ error: 'Failed to fetch public profile' });
+  }
 };
+
 
 module.exports = {
   getCoachProfile,
   updateCoachProfile,
   addItem,
   removeItem,
-  uploadProfilePicture,
-  getPublicCoachProfile
+  uploadProfilePicture, 
+  getPublicCoachProfile, 
 };
