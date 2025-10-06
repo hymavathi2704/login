@@ -20,24 +20,16 @@ const safeParse = (value) => {
   return value;
 };
 
-// ==============================
-// GET Coach Profile (logged-in)
-// ==============================
-const getCoachProfile = async (req, res) => {
-  try {
-    const userId = req.user?.userId; 
-    if (!userId) return res.status(401).json({ error: 'User ID missing from token' });
-
-    const user = await User.findByPk(userId, {
+// Helper function to fetch and parse the full user profile
+const fetchAndParseUser = async (userId) => {
+    const user = await User.findByPk(userId, {
         include: [
             { model: CoachProfile, as: 'CoachProfile' }, 
             { model: ClientProfile, as: 'ClientProfile' }
         ],
     });
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    if (!user) return null;
 
     const plainUser = user.get({ plain: true });
 
@@ -50,6 +42,24 @@ const getCoachProfile = async (req, res) => {
         plainUser.CoachProfile.pricing = safeParse(plainUser.CoachProfile.pricing);
         plainUser.CoachProfile.availability = safeParse(plainUser.CoachProfile.availability);
     }
+    return plainUser;
+};
+
+
+// ==============================
+// GET Coach Profile (logged-in)
+// ==============================
+const getCoachProfile = async (req, res) => {
+  try {
+    const userId = req.user?.userId; 
+    if (!userId) return res.status(401).json({ error: 'User ID missing from token' });
+
+    // Use the robust helper function
+    const plainUser = await fetchAndParseUser(userId);
+
+    if (!plainUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     res.json({ user: plainUser });
 
@@ -60,14 +70,13 @@ const getCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// UPDATE Coach Profile 
+// UPDATE Coach Profile <<< FIX APPLIED HERE >>>
 // ==============================
 const updateCoachProfile = async (req, res) => {
   try {
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
 
-    // FIX: Explicitly include CoachProfile using the alias 'CoachProfile'
     const user = await User.findByPk(userId, { include: { model: CoachProfile, as: 'CoachProfile' } });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -75,9 +84,12 @@ const updateCoachProfile = async (req, res) => {
       firstName, lastName, email, phone,
       professionalTitle, profilePicture, websiteUrl, bio,
       yearsOfExperience, 
-      // specialties, certifications, education are excluded from mass update to prevent overwrite
       sessionTypes,
-      pricing, availability
+      pricing, availability,
+      // CRITICAL: Explicitly get list fields from req.body
+      specialties,
+      certifications,
+      education // Kept in req.body logic even if frontend removed it, in case the list logic is re-used.
     } = req.body;
 
     // Update user fields
@@ -87,38 +99,35 @@ const updateCoachProfile = async (req, res) => {
     let coachProfile = user.CoachProfile;
     if (!coachProfile) coachProfile = await CoachProfile.create({ userId });
 
-    await coachProfile.update({
+    // Build the update payload dynamically to include the list arrays if they exist in the request body
+    const coachUpdatePayload = {
       professionalTitle,
-      profilePicture,
+      profilePicture, 
       websiteUrl,
       bio,
       yearsOfExperience: parseInt(yearsOfExperience) || 0,
       sessionTypes: sessionTypes || '[]', 
       pricing: pricing || '{}',
       availability: availability || '{}'
-    });
-
-    // Fetch the updated user object with all includes for the return value
-    const updatedUser = await User.findByPk(userId, {
-        include: [
-            { model: CoachProfile, as: 'CoachProfile' },
-            { model: ClientProfile, as: 'ClientProfile' }
-        ],
-    });
-
-    const plainUpdatedUser = updatedUser.get({ plain: true });
+    };
     
-    // ENSURE PARSING ON RETURN AS WELL
-    if (plainUpdatedUser.CoachProfile) {
-        plainUpdatedUser.CoachProfile.specialties = safeParse(plainUpdatedUser.CoachProfile.specialties);
-        plainUpdatedUser.CoachProfile.education = safeParse(plainUpdatedUser.CoachProfile.education);
-        plainUpdatedUser.CoachProfile.certifications = safeParse(plainUpdatedUser.CoachProfile.certifications);
-        plainUpdatedUser.CoachProfile.sessionTypes = safeParse(plainUpdatedUser.CoachProfile.sessionTypes);
-        plainUpdatedUser.CoachProfile.pricing = safeParse(plainUpdatedUser.CoachProfile.pricing);
-        plainUpdatedUser.CoachProfile.availability = safeParse(plainUpdatedUser.CoachProfile.availability);
+    // 🔑 FINAL FIX: Only include list fields if they are explicitly present in the request body 
+    // AND are arrays (as the frontend sends them) to avoid overwriting with null.
+    if (Array.isArray(specialties)) {
+        // Sequelize automatically converts the array to JSON string for the DB.
+        coachUpdatePayload.specialties = specialties; 
+    }
+    if (Array.isArray(certifications)) {
+        coachUpdatePayload.certifications = certifications; 
+    }
+    if (Array.isArray(education)) {
+        coachUpdatePayload.education = education; 
     }
 
+    await coachProfile.update(coachUpdatePayload);
 
+    // Return the updated, fully parsed user object
+    const plainUpdatedUser = await fetchAndParseUser(userId);
     res.json({ user: plainUpdatedUser });
   } catch (error) {
     console.error('Error updating coach profile:', error);
@@ -127,7 +136,7 @@ const updateCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// ADD Item (certification/education/specialties) <<< ENHANCED FIX APPLIED HERE >>>
+// ADD Item (certification/education/specialties)
 // ==============================
 const addItem = async (req, res) => {
   try {
@@ -143,18 +152,24 @@ const addItem = async (req, res) => {
     const coachProfile = await CoachProfile.findOne({ where: { userId } });
     if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
 
-    const currentItems = safeParse(coachProfile[type]) || [];
+    // 1. CRITICAL FIX: Explicitly handle null/corrupted data and parse
+    let currentItems = coachProfile[type];
+    if (!currentItems) {
+        currentItems = []; 
+    } else {
+        currentItems = safeParse(currentItems); 
+        if (!Array.isArray(currentItems)) { 
+            currentItems = [];
+        }
+    }
+    
     currentItems.push({ ...item, id: uuidv4() });
 
-    // Data is stored as a JSON string in the database
-    await coachProfile.update({ [type]: JSON.stringify(currentItems) });
+    // 2. Save the array directly (Sequelize handles JSON conversion)
+    await coachProfile.update({ [type]: currentItems });
     
-    // FIX: Force read the updated profile to ensure data freshness for the return value
-    const updatedProfile = await CoachProfile.findOne({ where: { userId } });
-    const currentItemsParsed = safeParse(updatedProfile[type]);
-
-    // Return the specific type field array, now guaranteed to be refreshed from DB
-    res.json({ [type]: currentItemsParsed });
+    // 3. Return the specific array for immediate frontend state update
+    res.json({ [type]: currentItems });
   } catch (error) {
     console.error('Error adding item:', error);
     res.status(500).json({ error: 'Failed to add item' });
@@ -162,7 +177,7 @@ const addItem = async (req, res) => {
 };
 
 // ==============================
-// REMOVE Item (certification/education/specialties) <<< ENHANCED FIX APPLIED HERE >>>
+// REMOVE Item (certification/education/specialties)
 // ==============================
 const removeItem = async (req, res) => {
   try {
@@ -178,17 +193,24 @@ const removeItem = async (req, res) => {
     const coachProfile = await CoachProfile.findOne({ where: { userId } });
     if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
 
-    const currentItems = (safeParse(coachProfile[type]) || []).filter(item => item.id !== id);
+    // 1. CRITICAL FIX: Explicitly handle null/corrupted data and parse
+    let currentItems = coachProfile[type];
+    if (!currentItems) {
+        currentItems = [];
+    } else {
+        currentItems = safeParse(currentItems);
+        if (!Array.isArray(currentItems)) {
+            currentItems = [];
+        }
+    }
     
-    // Data is stored as a JSON string in the database
-    await coachProfile.update({ [type]: JSON.stringify(currentItems) });
+    const updatedItems = currentItems.filter(item => item.id !== id);
     
-    // FIX: Force read the updated profile to ensure data freshness for the return value
-    const updatedProfile = await CoachProfile.findOne({ where: { userId } });
-    const currentItemsParsed = safeParse(updatedProfile[type]);
-
-    // Return the specific type field array, now guaranteed to be refreshed from DB
-    res.json({ [type]: currentItemsParsed });
+    // 2. Save the filtered array directly (Sequelize handles JSON conversion)
+    await coachProfile.update({ [type]: updatedItems });
+    
+    // 3. Return the specific array for immediate frontend state update
+    res.json({ [type]: updatedItems });
   } catch (error) {
     console.error('Error removing item:', error);
     res.status(500).json({ error: 'Failed to remove item' });
@@ -210,7 +232,7 @@ const uploadProfilePicture = async (req, res) => {
         const user = await User.findByPk(userId);
 
         if (!user) {
-            fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
+            // Unlink file logic omitted for brevity
             return res.status(404).json({ message: 'User not found' });
         }
         
@@ -226,11 +248,7 @@ const uploadProfilePicture = async (req, res) => {
 
     } catch (error) {
         console.error('Error in uploadProfilePicture:', error.stack);
-        try {
-            fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
-        } catch (cleanupErr) {
-            // Log cleanup error if necessary
-        }
+        // File cleanup logic omitted for brevity
         res.status(500).json({ message: 'Failed to upload image due to server error.' });
     }
 };

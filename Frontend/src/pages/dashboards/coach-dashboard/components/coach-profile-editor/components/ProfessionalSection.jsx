@@ -1,13 +1,68 @@
 // Frontend/src/pages/dashboards/coach-dashboard/components/coach-profile-editor/components/ProfessionalSection.jsx
 import React, { useState } from 'react';
-import { Plus, X, Tag } from 'lucide-react';
+import { Plus, X, Award, GraduationCap, Tag } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
-const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) => {
+const ProfessionalSection = ({ data, errors, updateData, updateNestedData, setUnsavedChanges }) => {
   const [newSpecialty, setNewSpecialty] = useState('');
-  const [newCertification, setNewCertification] = useState({ name: '', issuer: '', year: '', expiryYear: '' });
-  const [newEducation, setNewEducation] = useState({ degree: '', institution: '', year: '', field: '' });
+  const [newCertification, setNewCertification] = useState({
+    name: '',
+    issuer: '',
+    year: '',
+    expiryYear: ''
+  });
+  // Removed [newEducation] state
+
+  const handleBioChange = (value) => {
+    updateData('bio', value);
+    setUnsavedChanges(true);
+  };
+
+  // 🔑 FIX: Ensures the value from the slider/input is treated as an integer
+  const handleExperienceChange = (value) => {
+    updateData('yearsOfExperience', parseInt(value) || 0);
+    setUnsavedChanges(true);
+  };
+
+  // Specialty Management
+  const addSpecialty = () => {
+    if (newSpecialty?.trim() && !data?.specialties?.includes(newSpecialty?.trim())) {
+      // NOTE: Frontend still prepares the array locally before sending to main save
+      const updatedSpecialties = [...(data?.specialties || []), newSpecialty?.trim()];
+      updateData('specialties', updatedSpecialties);
+      setNewSpecialty('');
+      setUnsavedChanges(true);
+    }
+  };
+
+  const removeSpecialty = (index) => {
+    const updatedSpecialties = data?.specialties?.filter((_, i) => i !== index) || [];
+    updateData('specialties', updatedSpecialties);
+    setUnsavedChanges(true);
+  };
+
+  // Certification Management
+  const addCertification = () => {
+    if (newCertification?.name?.trim() && newCertification?.issuer?.trim()) {
+      // NOTE: Frontend still prepares the array locally before sending to main save
+      const updatedCertifications = [
+        ...(data?.certifications || []),
+        { ...newCertification, id: Date.now() }
+      ];
+      updateData('certifications', updatedCertifications);
+      setNewCertification({ name: '', issuer: '', year: '', expiryYear: '' });
+      setUnsavedChanges(true);
+    }
+  };
+
+  const removeCertification = (id) => {
+    const updatedCertifications = data?.certifications?.filter(cert => cert?.id !== id) || [];
+    updateData('certifications', updatedCertifications);
+    setUnsavedChanges(true);
+  };
+
+  // Removed Education Management handlers (addEducation, removeEducation)
 
   const popularSpecialties = [
     'Life Coaching', 'Business Coaching', 'Career Coaching', 'Executive Coaching',
@@ -15,268 +70,191 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges }) =>
     'Performance Coaching', 'Financial Coaching', 'Mindfulness & Meditation'
   ];
 
-  // ===== Helpers =====
-  const handleChange = (field, value) => {
-    updateData({ [field]: value });
-    setUnsavedChanges(true);
-  };
-
-  const addItem = (field, item) => {
-    updateData({ [field]: [...data[field], item] });
-    setUnsavedChanges(true);
-  };
-
-  const removeItem = (field, idOrIndex) => {
-    if (typeof idOrIndex === 'number') {
-      updateData({ [field]: data[field].filter((_, i) => i !== idOrIndex) });
-    } else {
-      updateData({ [field]: data[field].filter((x) => x.id !== idOrIndex) });
-    }
-    setUnsavedChanges(true);
-  };
-
-  const editItem = (field, id, key, value) => {
-    updateData({
-      [field]: data[field].map(x => x.id === id ? { ...x, [key]: value } : x)
-    });
-    setUnsavedChanges(true);
-  };
-
-  // ===== Specialties =====
-  const addSpecialty = (specialty) => {
-    const trimmed = specialty.trim();
-    if (trimmed && !data.specialties.includes(trimmed)) {
-      addItem('specialties', trimmed);
-      setNewSpecialty('');
-    }
-  };
-
-  // ===== Certifications =====
-  const addCertification = () => {
-    const { name, issuer } = newCertification;
-    if (name.trim() && issuer.trim()) {
-      addItem('certifications', { ...newCertification, id: Date.now() });
-      setNewCertification({ name: '', issuer: '', year: '', expiryYear: '' });
-    }
-  };
-
-  // ===== Education =====
-  const addEducation = () => {
-    const { degree, institution } = newEducation;
-    if (degree.trim() && institution.trim()) {
-      addItem('education', { ...newEducation, id: Date.now() });
-      setNewEducation({ degree: '', institution: '', year: '', field: '' });
-    }
-  };
-
   return (
     <div className="space-y-8">
-      {/* Bio */}
+      {/* Bio Section */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Professional Bio</h3>
-        <textarea
-          value={data.bio || ''}
-          onChange={(e) => handleChange('bio', e.target.value)}
-          rows={6}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Share your coaching philosophy, approach, and what makes you unique."
-        />
-        <div className="flex justify-between items-center mt-2">
-          <p className="text-xs text-gray-500">Recommended: 150-500 characters</p>
-          <span className={`text-xs ${(data.bio?.length || 0) > 500 ? 'text-red-500' : 'text-gray-400'}`}>
-            {data.bio?.length || 0}/500
-          </span>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tell clients about your coaching approach and experience
+          </label>
+          <textarea
+            value={data?.bio || ''}
+            onChange={(e) => handleBioChange(e?.target?.value)}
+            rows={6}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Share your coaching philosophy, approach, and what makes you unique as a coach. This will be one of the first things potential clients see on your profile."
+          />
+          <div className="flex justify-between items-center mt-2">
+            <p className="text-xs text-gray-500">
+              Recommended: 150-500 characters
+            </p>
+            <span className={`text-xs ${
+              (data?.bio?.length || 0) > 500 ? 'text-red-500' : 'text-gray-400'
+            }`}>
+              {data?.bio?.length || 0}/500
+            </span>
+          </div>
         </div>
       </div>
-
-      {/* Specialties */}
+      {/* Specialties Section */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Coaching Specialties</h3>
+        
+        {/* Current Specialties */}
         <div className="flex flex-wrap gap-2">
-          {data.specialties.map((s, i) => (
-            <span key={i} className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
-              <Tag className="w-3 h-3 mr-1" /> {s}
-              <button onClick={() => removeItem('specialties', i)} className="ml-2 text-blue-600 hover:text-blue-800">
+          {data?.specialties?.map((specialty, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+            >
+              <Tag className="w-3 h-3 mr-1" />
+              {specialty}
+              <button
+                onClick={() => removeSpecialty(index)}
+                className="ml-2 text-blue-600 hover:text-blue-800"
+              >
                 <X className="w-3 h-3" />
               </button>
             </span>
           ))}
         </div>
-        <div className="flex space-x-2 mt-2">
+
+        {/* Add New Specialty */}
+        <div className="flex space-x-2">
           <Input
             value={newSpecialty}
-            onChange={(e) => setNewSpecialty(e.target.value)}
-            placeholder="Add a specialty"
+            onChange={(e) => setNewSpecialty(e?.target?.value)}
+            placeholder="Add a specialty (e.g., Life Coaching)"
             className="flex-1"
-            onKeyPress={(e) => e.key === 'Enter' && addSpecialty(newSpecialty)}
+            onKeyPress={(e) => e?.key === 'Enter' && addSpecialty()}
           />
-          <Button onClick={() => addSpecialty(newSpecialty)} disabled={!newSpecialty.trim()} size="sm">
-            <Plus className="w-4 h-4 mr-1" /> Add
+          <Button
+            onClick={addSpecialty}
+            disabled={!newSpecialty?.trim()}
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add
           </Button>
         </div>
-        <div className="flex flex-wrap gap-2 mt-2">
-          {popularSpecialties.map(s => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => addSpecialty(s)}
-              className="px-2 py-1 text-xs rounded-full border border-gray-300 hover:bg-blue-100"
-            >
-              {s}
-            </button>
-          ))}
+
+        {/* Popular Specialties */}
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">Popular specialties:</p>
+          <div className="flex flex-wrap gap-2">
+            {popularSpecialties?.filter(specialty => !data?.specialties?.includes(specialty))?.slice(0, 6)?.map((specialty) => (
+                <button
+                  key={specialty}
+                  onClick={() => {
+                    setNewSpecialty(specialty);
+                    setTimeout(addSpecialty, 0);
+                  }}
+                  className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
+                >
+                  + {specialty}
+                </button>
+              ))}
+          </div>
         </div>
       </div>
-
-      {/* Experience */}
+      {/* Years of Experience */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Experience</h3>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Years of Coaching Experience: {data.yearsOfExperience || 0} years
-        </label>
-        <input
-          type="range" min="0" max="30" step="1"
-          value={data.yearsOfExperience || 0}
-          onChange={(e) => handleChange('yearsOfExperience', parseInt(e.target.value))}
-          className="w-full h-2 bg-gray-200 rounded-lg cursor-pointer"
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-4">
+            Years of Coaching Experience: {data?.yearsOfExperience || 0} years
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="30"
+            step="1"
+            value={data?.yearsOfExperience || 0}
+            onChange={(e) => handleExperienceChange(e?.target?.value)}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-2">
+            <span>0 years</span>
+            <span>15+ years</span>
+            <span>30+ years</span>
+          </div>
+        </div>
       </div>
-
       {/* Certifications */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Certifications</h3>
-        {data.certifications.map(cert => (
-          <div key={cert.id} className="flex items-start justify-between p-4 border border-gray-200 rounded-lg">
-            <div className="flex flex-col space-y-2 w-full">
-              <Input
-                label="Certification Name"
-                value={cert.name}
-                onChange={(e) => editItem('certifications', cert.id, 'name', e.target.value)}
-                required
-              />
-              <Input
-                label="Issuer"
-                value={cert.issuer}
-                onChange={(e) => editItem('certifications', cert.id, 'issuer', e.target.value)}
-                required
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  label="Year Obtained"
-                  type="number"
-                  value={cert.year}
-                  onChange={(e) => editItem('certifications', cert.id, 'year', e.target.value)}
-                />
-                <Input
-                  label="Expiry Year"
-                  type="number"
-                  value={cert.expiryYear}
-                  onChange={(e) => editItem('certifications', cert.id, 'expiryYear', e.target.value)}
-                />
+        
+        {/* Current Certifications */}
+        <div className="space-y-3">
+          {data?.certifications?.map((cert) => (
+            <div key={cert?.id} className="flex items-start justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <Award className="w-5 h-5 text-yellow-500 mt-1" />
+                <div>
+                  <h4 className="font-medium text-gray-900">{cert?.name}</h4>
+                  <p className="text-sm text-gray-600">{cert?.issuer}</p>
+                  <p className="text-xs text-gray-500">
+                    {cert?.year && `Obtained: ${cert?.year}`}
+                    {cert?.expiryYear && ` | Expires: ${cert?.expiryYear}`}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => removeCertification(cert?.id)}
+                className="text-gray-400 hover:text-red-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button onClick={() => removeItem('certifications', cert.id)} className="text-gray-400 hover:text-red-500 ml-2">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-        <div className="p-4 border border-dashed rounded-lg">
-          <h4 className="font-medium text-gray-900">Add Certification</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          ))}
+        </div>
+
+        {/* Add Certification Form */}
+        <div className="border border-dashed border-gray-300 rounded-lg p-4 space-y-4">
+          <h4 className="font-medium text-gray-900">Add New Certification</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Name"
-              value={newCertification.name}
-              onChange={(e) => setNewCertification(prev => ({ ...prev, name: e.target.value }))}
+              label="Certification Name"
+              value={newCertification?.name}
+              onChange={(e) => setNewCertification(prev => ({ ...prev, name: e?.target?.value }))}
+              placeholder="e.g., Certified Professional Coach"
+              required
             />
             <Input
-              label="Issuer"
-              value={newCertification.issuer}
-              onChange={(e) => setNewCertification(prev => ({ ...prev, issuer: e.target.value }))}
+              label="Issuing Organization"
+              value={newCertification?.issuer}
+              onChange={(e) => setNewCertification(prev => ({ ...prev, issuer: e?.target?.value }))}
+              placeholder="e.g., International Coach Federation"
+              required
             />
             <Input
               label="Year Obtained"
               type="number"
-              value={newCertification.year}
-              onChange={(e) => setNewCertification(prev => ({ ...prev, year: e.target.value }))}
+              value={newCertification?.year}
+              onChange={(e) => setNewCertification(prev => ({ ...prev, year: e?.target?.value }))}
+              placeholder="2023"
             />
             <Input
-              label="Expiry Year"
+              label="Expiry Year (if applicable)"
               type="number"
-              value={newCertification.expiryYear}
-              onChange={(e) => setNewCertification(prev => ({ ...prev, expiryYear: e.target.value }))}
+              value={newCertification?.expiryYear}
+              onChange={(e) => setNewCertification(prev => ({ ...prev, expiryYear: e?.target?.value }))}
+              placeholder="2026"
             />
           </div>
-          <Button onClick={addCertification} disabled={!newCertification.name.trim() || !newCertification.issuer.trim()} size="sm" className="mt-2">
-            <Plus className="w-4 h-4 mr-1" /> Add
+          <Button
+            onClick={addCertification}
+            disabled={!newCertification?.name?.trim() || !newCertification?.issuer?.trim()}
+            size="sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Certification
           </Button>
         </div>
       </div>
-
-      {/* Education */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">Education</h3>
-        {data.education.map(edu => (
-          <div key={edu.id} className="flex items-start justify-between p-4 border border-gray-200 rounded-lg">
-            <div className="flex flex-col space-y-2 w-full">
-              <Input
-                label="Degree"
-                value={edu.degree}
-                onChange={(e) => editItem('education', edu.id, 'degree', e.target.value)}
-                required
-              />
-              <Input
-                label="Institution"
-                value={edu.institution}
-                onChange={(e) => editItem('education', edu.id, 'institution', e.target.value)}
-                required
-              />
-              <Input
-                label="Field of Study"
-                value={edu.field}
-                onChange={(e) => editItem('education', edu.id, 'field', e.target.value)}
-              />
-              <Input
-                label="Year Completed"
-                type="number"
-                value={edu.year}
-                onChange={(e) => editItem('education', edu.id, 'year', e.target.value)}
-              />
-            </div>
-            <button onClick={() => removeItem('education', edu.id)} className="text-gray-400 hover:text-red-500 ml-2">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        ))}
-        <div className="p-4 border border-dashed rounded-lg">
-          <h4 className="font-medium text-gray-900">Add Education</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-            <Input
-              label="Degree"
-              value={newEducation.degree}
-              onChange={(e) => setNewEducation(prev => ({ ...prev, degree: e.target.value }))}
-            />
-            <Input
-              label="Institution"
-              value={newEducation.institution}
-              onChange={(e) => setNewEducation(prev => ({ ...prev, institution: e.target.value }))}
-            />
-            <Input
-              label="Field"
-              value={newEducation.field}
-              onChange={(e) => setNewEducation(prev => ({ ...prev, field: e.target.value }))}
-            />
-            <Input
-              label="Year"
-              type="number"
-              value={newEducation.year}
-              onChange={(e) => setNewEducation(prev => ({ ...prev, year: e.target.value }))}
-            />
-          </div>
-          <Button onClick={addEducation} disabled={!newEducation.degree.trim() || !newEducation.institution.trim()} size="sm" className="mt-2">
-            <Plus className="w-4 h-4 mr-1" /> Add
-          </Button>
-        </div>
-      </div>
+      {/* Removed Education Section */}
     </div>
   );
 };
