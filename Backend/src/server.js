@@ -1,4 +1,4 @@
-// 🚀 IMPORTANT: Load environment variables at the very top
+// 🚀 Load environment variables first
 require('dotenv').config();
 const path = require('path'); 
 const express = require('express');
@@ -25,7 +25,7 @@ const Testimonial = require('./models/Testimonial');
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
 const coachProfileRoutes = require('./routes/coachProfile');
-const profileRoutes = require('./routes/fetchCoachProfiles'); // <<< NEW IMPORT
+const profileRoutes = require('./routes/fetchCoachProfiles');
 
 const app = express();
 
@@ -36,61 +36,61 @@ const corsOptions = {
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
 };
-
 app.use(cors(corsOptions));
 
-// Configure Helmet to be less restrictive with cross-origin requests
 app.use(
     helmet({
         crossOriginResourcePolicy: false,
     })
 );
 
-// 1. Ensure JSON limit is set high enough (Fix from previous issue)
-app.use(express.json({ limit: '5mb' })); 
+// Parse JSON with high limit for images or large payloads
+app.use(express.json({ limit: '5mb' }));
 
-// 2. Add the Static File Middleware to serve images
-// Any request to /uploads/... will now look in the root 'uploads' folder.
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'))); 
+// Serve static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.use(cookieParser());
 
 // ==========================================
 // Model Associations
 // ==========================================
-User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' }); 
+// User <-> ClientProfile
+User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
 ClientProfile.belongsTo(User, { foreignKey: 'userId', as: 'ClientProfile' });
 
-User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'CoachProfile' }); 
-CoachProfile.belongsTo(User, { foreignKey: 'userId', as: 'CoachProfile' });
+// User <-> CoachProfile
+User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'CoachProfile' });
+CoachProfile.belongsTo(User, { foreignKey: 'userId', as: 'user' }); // alias 'user' matches include
 
-CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE' });
-Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId' });
+// CoachProfile <-> Session
+CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'sessions' });
+Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
-// Backend/src/server.js (Around line 83)
-
-// FIX: Explicitly set the alias to lowercase 'testimonials'
+// CoachProfile <-> Testimonial
 CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
-Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId' });
+Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
-// ... (Rest of the file)
+// User <-> Event
+User.hasMany(Event, { foreignKey: 'coachId', as: 'events' });
+Event.belongsTo(User, { foreignKey: 'coachId', as: 'coach' });
 
-User.hasMany(Event, { foreignKey: 'coachId' });
-Event.belongsTo(User, { as: 'coach', foreignKey: 'coachId' });
+// User <-> Booking
+User.hasMany(Booking, { foreignKey: 'clientId', as: 'bookings' });
+Booking.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
 
-User.hasMany(Booking, { foreignKey: 'clientId' });
-Booking.belongsTo(User, { as: 'client', foreignKey: 'clientId' });
-
-Event.hasMany(Booking, { foreignKey: 'eventId' });
-Booking.belongsTo(Event, { foreignKey: 'eventId' });
+// Event <-> Booking
+Event.hasMany(Booking, { foreignKey: 'eventId', as: 'bookings' });
+Booking.belongsTo(Event, { foreignKey: 'eventId', as: 'event' });
 
 // ==========================================
 // API Routes
 // ==========================================
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
-app.use('/api/coach', coachProfileRoutes); // Correctly mounts the coach routes
-app.use('/api/profiles', profileRoutes); // <<< NEW ROUTE MOUNTED HERE
+app.use('/api/coach', coachProfileRoutes);
+app.use('/api/profiles', profileRoutes);
+
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================

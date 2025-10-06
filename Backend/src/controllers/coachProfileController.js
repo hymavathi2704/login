@@ -179,23 +179,23 @@ const getPublicCoachProfile = async (req, res) => {
     const coachId = req.params.id;
     console.log("Fetching public coach profile for:", coachId);
 
-    // Step 1: Find the coach profile first
+    // Step 1: Find the coach profile
     const coachProfile = await CoachProfile.findOne({
-      where: { userId: coachId }, // if coachId is actually a userId
+      where: { userId: coachId }, // coachId = User ID
       include: [
         {
           model: User,
-          as: 'User',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'],
+          as: 'user', // ✅ correct alias
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
           include: [
             {
               model: Event,
-              as: 'events',
-              where: { status: 'published' },
+              as: 'events', // ✅ belongs to User
               required: false,
+              where: { status: 'published' },
               attributes: ['id', 'title', 'description', 'type', 'date', 'time', 'duration', 'price'],
-            }
-          ]
+            },
+          ],
         },
         {
           model: Testimonial,
@@ -206,11 +206,11 @@ const getPublicCoachProfile = async (req, res) => {
       ],
     });
 
-    if (!coachProfile || !coachProfile.User) {
+    if (!coachProfile || !coachProfile.user) {
       return res.status(404).json({ error: 'Coach profile not found' });
     }
 
-    const user = coachProfile.User.get({ plain: true });
+    const user = coachProfile.user.get({ plain: true });
 
     // Step 2: Construct final object
     const profile = {
@@ -218,16 +218,15 @@ const getPublicCoachProfile = async (req, res) => {
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       phone: user.phone,
-      profileImage: user.profilePicture,
-      ...coachProfile.get({ plain: true }),
-      events: user.events || [],
+      profileImage: coachProfile.profilePicture, // from CoachProfile
+      events: user.events || [], // ✅ events included via User
       testimonials: coachProfile.testimonials || [],
       title: coachProfile.professionalTitle,
       rating: 4.9,
       totalReviews: coachProfile.testimonials?.length || 0,
       totalClients: 0,
       yearsExperience: coachProfile.yearsOfExperience || 0,
-      shortBio: coachProfile.bio?.substring(0, 150) + '...' || '',
+      shortBio: coachProfile.bio ? coachProfile.bio.substring(0, 150) + '...' : '',
       fullBio: coachProfile.bio || '',
       isAvailable: true,
       avgResponseTime: coachProfile.responseTime || 'within-4h',
@@ -241,6 +240,7 @@ const getPublicCoachProfile = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch public profile' });
   }
 };
+
 
 
 
