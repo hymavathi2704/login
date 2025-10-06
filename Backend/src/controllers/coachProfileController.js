@@ -249,21 +249,22 @@ const uploadProfilePicture = async (req, res) => {
 
 const getPublicCoachProfile = async (req, res) => {
   try {
+    // Correctly extracting the ID from the URL parameters
     const coachId = req.params.id;
     console.log("Fetching public coach profile for:", coachId);
 
     // Step 1: Find the coach profile
     const coachProfile = await CoachProfile.findOne({
-      where: { userId: coachId }, // coachId = User ID
+      where: { userId: coachId }, // Finds profile by User ID
       include: [
         {
           model: User,
-          as: 'user', // ✅ correct alias
+          as: 'user', 
           attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
           include: [
             {
               model: Event,
-              as: 'events', // ✅ belongs to User
+              as: 'events', 
               required: false,
               where: { status: 'published' },
               attributes: ['id', 'title', 'description', 'type', 'date', 'time', 'duration', 'price'],
@@ -280,27 +281,27 @@ const getPublicCoachProfile = async (req, res) => {
     });
 
     if (!coachProfile || !coachProfile.user) {
+      // Sends a 404 response if not found, which is what the frontend expects
       return res.status(404).json({ error: 'Coach profile not found' });
     }
 
-    // CRITICAL FIX FOR PUBLIC PROFILE: Parse JSON strings
+    // CRITICAL: Parse JSON strings for display on the public profile
     const plainCoachProfile = coachProfile.get({ plain: true });
     
     if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
     if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
     if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
 
-
     const user = plainCoachProfile.user;
 
-    // Step 2: Construct final object
+    // Step 2: Construct final object including new fields
     const profile = {
       id: user.id,
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       phone: user.phone,
-      profileImage: plainCoachProfile.profilePicture, // from CoachProfile
-      events: user.events || [], // ✅ events included via User
+      profileImage: plainCoachProfile.profilePicture, 
+      events: user.events || [],
       testimonials: plainCoachProfile.testimonials || [],
       title: plainCoachProfile.professionalTitle,
       rating: 4.9,
@@ -314,16 +315,20 @@ const getPublicCoachProfile = async (req, res) => {
       timezone: plainCoachProfile.availability?.timezone || 'UTC',
       startingPrice: plainCoachProfile.pricing?.individual || 0,
       
-      // ADD PARSED LIST FIELDS TO THE PUBLIC RESPONSE
+      // ADDED: Lists
       specialties: plainCoachProfile.specialties || [],
       education: plainCoachProfile.education || [],
       certifications: plainCoachProfile.certifications || [],
 
-      // ADDED: Social Links for public view
+      // ADDED: Social Links and Demographics (ensure they are used in AboutSection)
       linkedinUrl: plainCoachProfile.linkedinUrl,
       twitterUrl: plainCoachProfile.twitterUrl,
       instagramUrl: plainCoachProfile.instagramUrl,
       facebookUrl: plainCoachProfile.facebookUrl,
+      dateOfBirth: plainCoachProfile.dateOfBirth,
+      gender: plainCoachProfile.gender,
+      ethnicity: plainCoachProfile.ethnicity,
+      country: plainCoachProfile.country,
     };
 
     res.status(200).json({ coach: profile });

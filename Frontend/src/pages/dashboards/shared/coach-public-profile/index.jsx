@@ -1,8 +1,8 @@
 // Frontend/src/pages/dashboards/shared/coach-public-profile/index.jsx
 
 import React, { useState, useEffect } from 'react';
-// IMPORT FIX: Import useParams to read the ID from the URL
-import { useParams } from 'react-router-dom';
+// FIX: Ensure useParams is imported and used to read the ID from the URL
+import { useParams } from 'react-router-dom'; 
 import { getCoachById } from '@/auth/authApi'; 
 
 // Corrected imports using the '@' alias for your UI components
@@ -30,22 +30,21 @@ const CoachPublicProfile = () => {
     try {
       // Use the coachId derived from the URL
       if (!coachId) {
+        // If the ID is missing from the URL (e.g., /profiles), throw a local error
         throw new Error('Coach ID is missing from the URL.');
       }
       
-      // 2. Call the actual backend API
       const response = await getCoachById(coachId);
       const fetchedCoach = response.data.coach;
 
       setCoach(fetchedCoach);
-      // 3. Set testimonials directly from the fetched coach object
       setTestimonials(fetchedCoach.testimonials || []); 
       
     } catch (err) {
       console.error("Failed to fetch coach data:", err);
-      // Handle 404 specifically for a clearer error message
+      // Backend should return 404, which is handled here
       const errorMessage = err.response?.status === 404 
-        ? 'Coach profile not found.' 
+        ? 'Coach profile not found. The profile record may not exist in the database yet.' 
         : (err?.message || 'Failed to load profile.');
       setError(errorMessage);
     } finally {
@@ -54,12 +53,11 @@ const CoachPublicProfile = () => {
   };
 
   useEffect(() => {
-    // Re-run fetch when coachId changes (which happens once on load)
     fetchCoachData();
   }, [coachId]); 
 
   // --- Handlers for interactivity ---
-  const handleBookSession = () => alert('Booking functionality would be implemented here');
+  const handleBookSession = () => console.log('Booking functionality would be implemented here');
   const handleContact = (type, value) => console.log('Contact action:', { type, value });
   const handleServiceClick = (type, service) => console.log('Service selected:', { type, service });
 
