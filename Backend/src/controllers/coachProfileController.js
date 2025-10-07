@@ -6,6 +6,7 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const Event = require('../models/Event');
 const Testimonial = require('../models/Testimonial');
+const { Op } = require('sequelize'); // <<-- IMPORT Op for filtering
 
 // Define the root directory for uploads, used for disk cleanup
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -345,6 +346,80 @@ const getPublicCoachProfile = async (req, res) => {
 };
 
 
+// ==============================
+// GET All Coach Profiles (for client discovery) <<-- NEW FUNCTION
+// ===================================
+const getAllCoachProfiles = async (req, res) => {
+  try {
+    const { search, audience } = req.query;
+    const whereClause = {
+      roles: { [Op.like]: '%"coach"%' }, 
+      [Op.or]: []
+    };
+
+    if (search) {
+        whereClause[Op.or].push(
+            { firstName: { [Op.like]: `%${search}%` } },
+            { lastName: { [Op.like]: `%${search}%` } },
+            { email: { [Op.like]: `%${search}%` } }
+        );
+    }
+    
+    if (whereClause[Op.or].length === 0) delete whereClause[Op.or];
+
+    const coaches = await User.findAll({
+        where: whereClause,
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'],
+        include: [
+            { 
+                model: CoachProfile, 
+                as: 'CoachProfile',
+                where: audience ? { specialties: { [Op.like]: `%${audience}%` } } : {},
+                required: true 
+            },
+            {
+                model: Testimonial,
+                as: 'testimonials',
+                attributes: ['rating'], 
+                required: false,
+            }
+        ],
+        group: ['User.id', 'CoachProfile.id', 'testimonials.id']
+    });
+
+    const processedCoaches = coaches.map(coach => {
+        const plainCoach = coach.get({ plain: true });
+        
+        if (plainCoach.CoachProfile) {
+            plainCoach.CoachProfile.specialties = safeParse(plainCoach.CoachProfile.specialties);
+            plainCoach.CoachProfile.pricing = safeParse(plainCoach.CoachProfile.pricing);
+        }
+
+        const ratings = plainCoach.testimonials?.map(t => t.rating) || [];
+        const averageRating = ratings.length > 0 
+            ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
+            : '0.0';
+        
+        return {
+            id: plainCoach.id,
+            name: `${plainCoach.firstName} ${plainCoach.lastName}`,
+            title: plainCoach.CoachProfile?.professionalTitle,
+            profileImage: plainCoach.profilePicture,
+            shortBio: plainCoach.CoachProfile?.bio ? plainCoach.CoachProfile.bio.substring(0, 150) + '...' : '',
+            specialties: plainCoach.CoachProfile?.specialties || [],
+            startingPrice: plainCoach.CoachProfile?.pricing?.individual || 0,
+            rating: parseFloat(averageRating),
+            totalReviews: ratings.length,
+        };
+    });
+
+    res.status(200).json({ coaches: processedCoaches });
+  } catch (error) {
+    console.error('Error fetching all coach profiles:', error);
+    res.status(500).json({ error: 'Failed to fetch coach profiles' });
+  }
+};
+
 module.exports = {
   getCoachProfile,
   updateCoachProfile,
@@ -352,4 +427,5 @@ module.exports = {
   removeItem,
   uploadProfilePicture, 
   getPublicCoachProfile, 
+  getAllCoachProfiles, // <<-- EXPORT THE NEW FUNCTION
 };
