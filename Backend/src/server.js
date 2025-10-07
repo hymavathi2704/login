@@ -33,15 +33,15 @@ const app = express();
 // Middlewares
 // ==========================================
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true,
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
 };
 app.use(cors(corsOptions));
 
 app.use(
-    helmet({
-        crossOriginResourcePolicy: false,
-    })
+    helmet({
+        crossOriginResourcePolicy: false,
+    })
 );
 
 // Parse JSON with high limit for images or large payloads
@@ -99,15 +99,15 @@ app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
 // Error Handling
-// ==========================================
+//==========================================
 app.use((err, req, res, next) => {
-    if (err instanceof UnauthorizedError) {
-        console.error('JWT Unauthorized Error:', err);
-        return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
-    }
+    if (err instanceof UnauthorizedError) {
+        console.error('JWT Unauthorized Error:', err);
+        return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
+    }
 
-    console.error('Unexpected Error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Unexpected Error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
 });
 
 // ==========================================
@@ -116,17 +116,17 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4028;
 
 (async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('✅ Database connected');
+    try {
+        await sequelize.authenticate();
+        console.log('✅ Database connected');
 
-        // 💥 FIX: Removed { alter: true } to prevent MySQL key limit error
-        await sequelize.sync(); 
-        console.log('✅ Database synchronized');
+        // 💥 FIX: Removed { alter: true } to prevent MySQL key limit error
+        await sequelize.sync(); 
+        console.log('✅ Database synchronized');
 
-        app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
-    } catch (err) {
-        console.error('❌ Failed to start server:', err);
-        process.exit(1);
-    }
+        app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+    } catch (err) {
+        console.error('❌ Failed to start server:', err);
+        process.exit(1);
+    }
 })();

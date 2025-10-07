@@ -88,10 +88,6 @@ const User = sequelize.define('User', {
     updatedAt: 'updated_at',
 });
 
-// NEW ASSOCIATION: A client (User) can write many testimonials
-User.hasMany(Testimonial, {
-    foreignKey: 'clientId',
-    as: 'writtenTestimonials'
-});
+
 
 module.exports = User;

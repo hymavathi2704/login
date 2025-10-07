@@ -1,7 +1,7 @@
 // Backend/src/models/Session.js
 const { DataTypes, UUIDV4 } = require('sequelize');
 const db = require('../config/db');
-const CoachProfile = require('./CoachProfile'); 
+// REMOVED: const CoachProfile = require('./CoachProfile'); 
 
 const Session = db.define('Session', {
   id: {
@@ -48,10 +48,7 @@ const Session = db.define('Session', {
   timestamps: true,
 });
 
-// Association: A session belongs to one coach profile
-Session.belongsTo(CoachProfile, {
-    foreignKey: 'coachProfileId',
-    as: 'coachProfile'
-});
+// REMOVED: Association definition is now centralized in server.js
+// Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
 module.exports = Session;

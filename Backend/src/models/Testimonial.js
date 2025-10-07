@@ -1,7 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const CoachProfile = require('./CoachProfile'); 
-const User = require('./user'); 
+// NOTE: Imports for other models (User, CoachProfile) are removed to prevent circular dependency issues.
 
 const Testimonial = sequelize.define('Testimonial', {
     id: {
@@ -27,8 +26,8 @@ const Testimonial = sequelize.define('Testimonial', {
         },
         onDelete: 'CASCADE',
     },
-    // NOTE: clientName and clientAvatar are removed and fetched from the associated clientUser
-    clientTitle: DataTypes.STRING, // Kept clientTitle as it's non-User data
+    // REMOVED: clientName, clientAvatar (This data is fetched from the User model via clientId)
+    clientTitle: DataTypes.STRING, 
     rating: DataTypes.INTEGER,
     content: DataTypes.TEXT,
     date: DataTypes.DATEONLY,
@@ -38,15 +37,6 @@ const Testimonial = sequelize.define('Testimonial', {
     timestamps: true,
 });
 
-// Associations
-Testimonial.belongsTo(CoachProfile, { 
-    foreignKey: 'coachProfileId', 
-    as: 'coachProfile'
-});
-
-Testimonial.belongsTo(User, { // NEW ASSOCIATION: Testimonial belongs to a Client (User)
-    foreignKey: 'clientId',
-    as: 'clientUser'
-});
+// NOTE: Association definitions are removed from here. They are centralized in server.js.
 
 module.exports = Testimonial;
