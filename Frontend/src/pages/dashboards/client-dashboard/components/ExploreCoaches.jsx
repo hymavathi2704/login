@@ -51,7 +51,7 @@ const ExploreCoaches = () => {
       // Set breadcrumb as a single object which the Navigation component will parse
       setBreadcrumb({
         parent: 'Explore Coaches',
-        current: `${selectedCoach.firstName} ${selectedCoach.lastName}`,
+        current: `${selectedCoach.name}`, // Use combined name field
         onBack: () => setSelectedCoach(null)
       });
     }
@@ -112,11 +112,15 @@ const ExploreCoaches = () => {
               {coaches.length > 0 ? coaches.map(coach => (
                 <tr key={coach.id}> 
                   <td className="px-6 py-4 whitespace-nowrap">
-                      <img className="h-10 w-10 rounded-full" src={`https://ui-avatars.com/api/?name=${coach.firstName}+${coach.lastName}&background=random`} alt="" />
+                      <img 
+                        className="h-10 w-10 rounded-full" 
+                        // FIX: Use profileImage if available, fallback to UI avatar creator
+                        src={coach.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(coach.name)}&background=random`} 
+                        alt={`${coach.name} profile`} 
+                    />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{coach.firstName} {coach.lastName}</div>
-                      {/* FIX 4: Use the top-level 'title' field, which is how the backend formats the professionalTitle */}
+                      <div className="text-sm font-medium text-gray-900">{coach.name}</div> {/* FIX: Use combined name field */}
                       <div className="text-sm text-purple-600">{coach.title || 'Coach'}</div> 
                     </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

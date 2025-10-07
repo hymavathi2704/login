@@ -141,6 +141,7 @@ const updateCoachProfile = async (req, res) => {
 
 // ==============================
 // ADD Item (certification/education/specialties)
+// ... (unchanged)
 // ==============================
 const addItem = async (req, res) => {
   try {
@@ -179,6 +180,7 @@ const addItem = async (req, res) => {
 
 // ==============================
 // REMOVE Item (certification/education/specialties)
+// ... (unchanged)
 // ==============================
 const removeItem = async (req, res) => {
   try {
@@ -220,6 +222,7 @@ const removeItem = async (req, res) => {
 
 // ==============================
 // UPLOAD Profile Picture
+// ... (unchanged)
 // ==============================
 const uploadProfilePicture = async (req, res) => {
     const userId = req.user?.userId;

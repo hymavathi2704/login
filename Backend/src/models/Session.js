@@ -1,7 +1,7 @@
 // Backend/src/models/Session.js
 const { DataTypes, UUIDV4 } = require('sequelize');
 const db = require('../config/db');
-// REMOVED: const CoachProfile = require('./CoachProfile'); 
+// NOTE: Imports for other models are removed to prevent circular dependency issues.
 
 const Session = db.define('Session', {
   id: {
@@ -39,7 +39,7 @@ const Session = db.define('Session', {
     type: DataTypes.FLOAT,
     allowNull: false,
   },
-  isActive: {
+  isActive: { // ✅ FINAL REQUIRED FIELD
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   }
@@ -48,7 +48,6 @@ const Session = db.define('Session', {
   timestamps: true,
 });
 
-// REMOVED: Association definition is now centralized in server.js
-// Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
+// Associations are defined centrally in server.js.
 
 module.exports = Session;
