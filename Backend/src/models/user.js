@@ -4,7 +4,7 @@ const sequelize = require('../config/db');
 
 const User = sequelize.define('User', {
     id: {
-        type: DataTypes.CHAR(36), // <-- CORRECTED
+        type: DataTypes.CHAR(36),
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
         allowNull: false,
@@ -38,7 +38,7 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING(255),
         allowNull: true,
     },
-    // NEW FIELD: profilePicture
+    // CRITICAL FIX: The profilePicture column, necessary for the database
     profilePicture: { 
         type: DataTypes.STRING(255),
         allowNull: true,
