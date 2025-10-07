@@ -181,18 +181,23 @@ export const getCoachProfile = () => {
 };
 
 // =========================================================
-// SESSION MANAGEMENT FUNCTIONS (FIXED)
+// SESSION MANAGEMENT FUNCTIONS
 // =========================================================
 
 export const createSession = async (sessionData) => {
-    // FIX: API_BASE_URL is now defined at the top
-    return axios.post(`${API_BASE_URL}/api/coach/sessions`, sessionData);
+    return axios.post(`${API_BASE_URL}/api/coach/sessions`, sessionData, {
+        withCredentials: true, // <-- CRITICAL FIX
+    });
 };
 
 export const updateSession = async (sessionId, sessionData) => {
-    return axios.put(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, sessionData);
+    return axios.put(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, sessionData, {
+        withCredentials: true, // <-- CRITICAL FIX
+    });
 };
 
 export const deleteSession = async (sessionId) => {
-    return axios.delete(`${API_BASE_URL}/api/coach/sessions/${sessionId}`);
+    return axios.delete(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, {
+        withCredentials: true, // <-- CRITICAL FIX
+    });
 };

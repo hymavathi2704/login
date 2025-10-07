@@ -35,9 +35,9 @@ const app = express();
 const corsOptions = {
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
-    // 🔥 FIX: Explicitly allow methods and headers for CORS preflight success
+    // 🔥 FIX: Explicitly allow methods and the Authorization header for CORS preflight success
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization'], // <-- THIS IS THE CRITICAL LINE
 };
 app.use(cors(corsOptions));
 
@@ -123,11 +123,9 @@ const PORT = process.env.PORT || 4028;
         await sequelize.authenticate();
         console.log('✅ Database connected');
 
-        // 🔥 FIX FOR ER_TOO_MANY_KEYS (Development Only):
-        // Temporarily use { force: true } to drop and recreate all tables, resetting the index count.
-        // !!! WARNING: THIS WILL DELETE ALL DATA !!!
-        await sequelize.sync({ alter: true }); 
-        console.log('✅ Database synchronized ');
+        // 💥 FIX: Removed { alter: true } to prevent MySQL key limit error
+        await sequelize.sync(); 
+        console.log('✅ Database synchronized');
 
         app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
     } catch (err) {

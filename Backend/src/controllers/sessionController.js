@@ -4,18 +4,35 @@ const Session = require('../models/Session');
 const CoachProfile = require('../models/CoachProfile');
 const { Op } = require('sequelize');
 
-// Helper to ensure empty date/time strings are converted to null for Sequelize
+// ==============================
+// Helper: Sanitize & Map Data
+// ==============================
 const sanitizeSessionData = (data) => {
+    // We expect 'name' from the frontend, but the model needs 'title'.
+    const title = data.name; // Use frontend 'name' for title
+    
+    // Ensure price and duration are correctly typed
+    const duration = parseInt(data.duration, 10);
+    const price = parseFloat(data.price);
+    
     return {
-        ...data,
-        // Convert empty strings for date fields to null to avoid Moment.js errors
+        // Map 'name' to 'title'
+        title: title, 
+        
+        // Map 'type' (frontend 'format') to 'type'
+        type: data.type, 
+
+        // Map Duration/Price/Description
+        duration: duration, 
+        price: price, 
+        description: data.description || null,
+        
+        // Sanitize optional fields
         defaultDate: data.defaultDate || null,
         defaultTime: data.defaultTime || null,
         meetingLink: data.meetingLink || null,
-        description: data.description || null,
-        // Ensure numbers are numbers
-        duration: parseInt(data.duration, 10),
-        price: parseFloat(data.price),
+        
+        isActive: true, // Default status
     };
 };
 
@@ -33,11 +50,11 @@ const createSession = async (req, res) => {
         }
 
         const sanitizedData = sanitizeSessionData(data);
-
-        // Create the new session linked to the coach's profile
+        
+        // This line is where the Sequelize validation error occurred.
         const newSession = await Session.create({
             coachProfileId: coachProfile.id,
-            ...sanitizedData,
+            ...sanitizedData, // Now contains a valid 'title' field
         });
 
         return res.status(201).json({ 
@@ -47,10 +64,13 @@ const createSession = async (req, res) => {
 
     } catch (error) {
         console.error('Error creating session:', error);
+        // This is necessary to debug validation errors during development
+        if (error.name === 'SequelizeValidationError') {
+            console.error('Sequelize Validation Errors:', error.errors.map(e => e.message));
+        }
         return res.status(500).json({ error: 'Failed to create session' });
     }
 };
-
 // ==========================================
 // 2. UPDATE SESSION
 // ==========================================

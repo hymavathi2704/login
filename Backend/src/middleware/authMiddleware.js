@@ -2,6 +2,7 @@ const { expressjwt: jwt } = require('express-jwt');
 const User = require('../models/user');
 
 const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || 'refresh_token';
+const ACCESS_COOKIE_NAME = 'jwt'; // The name of the cookie where the Access Token is stored
 
 // Middleware to protect routes
 const authenticate = jwt({
@@ -9,13 +10,15 @@ const authenticate = jwt({
   algorithms: ['HS256'],
   requestProperty: 'user', // <- put decoded token on req.user (so controllers keep working)
   getToken: (req) => {
-    // Authorization header: "Bearer <token>"
+    // 1. CHECK COOKIE FIRST (since login sets it this way for cross-origin security)
+    if (req.cookies && req.cookies[ACCESS_COOKIE_NAME]) {
+        return req.cookies[ACCESS_COOKIE_NAME];
+    }
+    
+    // 2. FALLBACK to Authorization header: "Bearer <token>"
     if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
       return req.headers.authorization.split(' ')[1];
     }
-    
-    // CRITICAL FIX: Removed the fallback to the REFRESH_COOKIE_NAME to ensure
-    // the middleware only tries to use the Access Token from the header.
     
     return null;
   },
