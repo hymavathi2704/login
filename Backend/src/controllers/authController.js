@@ -13,8 +13,21 @@ const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mail
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
-const ACCESS_COOKIE_NAME = 'jwt'; // Define the access token cookie name
+const ACCESS_COOKIE_NAME = 'jwt'; // Defined the access token cookie name
 const generateOtp = customAlphabet('0123456789', 6);
+
+// ==============================
+// Helper function for safe cookie settings
+// ==============================
+const getCookieOptions = (isProduction) => ({
+    httpOnly: true,
+    // FIX: Set secure only if in production (where HTTPS is guaranteed)
+    secure: isProduction, 
+    // FIX: Use 'Lax' in development (HTTP localhost) to allow the cookie to be sent.
+    // Use 'None' only when secure: true is active (production HTTPS).
+    sameSite: isProduction ? 'None' : 'Lax', 
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
+});
 
 // ==============================
 // Register
@@ -80,22 +93,21 @@ async function login(req, res) {
 			email: user.email,
 			roles: user.roles,
 		});
+		
+        const isProduction = process.env.NODE_ENV === 'production';
+        const cookieOptions = getCookieOptions(isProduction);
 
 		// Clear the refresh token cookie just in case an old one exists
 		res.clearCookie(REFRESH_COOKIE_NAME, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
+			secure: isProduction,
+			sameSite: isProduction ? 'None' : 'Lax',
 		});
 
-        // 🔥 FIX: Set the Access Token as an HTTP-only cookie with cross-origin flags
+        // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
         res.cookie(ACCESS_COOKIE_NAME, accessToken, {
-            httpOnly: true,
-            // Must be true for SameSite: 'None'. Necessary for cross-domain dev.
-            secure: true, 
-            // Allows cookie to be sent cross-domain (localhost:5173 -> localhost:4028)
-            sameSite: 'None', 
-            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
+            ...cookieOptions,
+            maxAge: 1000 * 60 * 60 * 24 * 7, 
         });
 
 		res.json({
@@ -155,22 +167,21 @@ async function socialLogin(req, res) {
 			email: user.email,
 			roles: user.roles,
 		});
+		
+        const isProduction = process.env.NODE_ENV === 'production';
+        const cookieOptions = getCookieOptions(isProduction);
 
 		// Clear the refresh token cookie just in case an old one exists
 		res.clearCookie(REFRESH_COOKIE_NAME, {
 			httpOnly: true,
-			secure: process.env.NODE_ENV === 'production',
-			sameSite: 'lax',
+			secure: isProduction,
+			sameSite: isProduction ? 'None' : 'Lax',
 		});
         
-        // 🔥 FIX: Set the Access Token as an HTTP-only cookie with cross-origin flags
+        // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
         res.cookie(ACCESS_COOKIE_NAME, accessToken, {
-            httpOnly: true,
-            // Must be true for SameSite: 'None'. Necessary for cross-domain dev.
-            secure: true, 
-            // Allows cookie to be sent cross-domain (localhost:5173 -> localhost:4028)
-            sameSite: 'None', 
-            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
+            ...cookieOptions,
+            maxAge: 1000 * 60 * 60 * 24 * 7, 
         });
 
 		res.json({
@@ -251,17 +262,18 @@ async function createProfile(req, res) {
 // Logout
 // ==============================
 async function logout(req, res) {
+    const isProduction = process.env.NODE_ENV === 'production';
 	// Clear the refresh token cookie
 	res.clearCookie(REFRESH_COOKIE_NAME, {
 		httpOnly: true,
-		secure: process.env.NODE_ENV === 'production',
-		sameSite: 'lax',
+		secure: isProduction,
+		sameSite: isProduction ? 'None' : 'Lax',
 	});
     // Clear the access token cookie
     res.clearCookie(ACCESS_COOKIE_NAME, {
         httpOnly: true,
-        secure: true, 
-        sameSite: 'None', 
+        secure: isProduction, 
+        sameSite: isProduction ? 'None' : 'Lax', 
     });
 	res.json({ message: 'Logged out' });
 }
