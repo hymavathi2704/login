@@ -6,8 +6,8 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const Event = require('../models/Event');
 const Testimonial = require('../models/Testimonial');
-const Session = require('../models/Session'); // CRITICAL: Missing import
-const { Op } = require('sequelize'); // CRITICAL: Missing import
+const Session = require('../models/Session'); // CRITICAL: Import Session model
+const { Op } = require('sequelize'); // CRITICAL: Import Op for filtering
 
 // Define the root directory for uploads, used for disk cleanup
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -141,7 +141,6 @@ const updateCoachProfile = async (req, res) => {
 
 // ==============================
 // ADD Item (certification/education/specialties)
-// ... (unchanged)
 // ==============================
 const addItem = async (req, res) => {
   try {
@@ -180,7 +179,6 @@ const addItem = async (req, res) => {
 
 // ==============================
 // REMOVE Item (certification/education/specialties)
-// ... (unchanged)
 // ==============================
 const removeItem = async (req, res) => {
   try {
@@ -222,7 +220,6 @@ const removeItem = async (req, res) => {
 
 // ==============================
 // UPLOAD Profile Picture
-// ... (unchanged)
 // ==============================
 const uploadProfilePicture = async (req, res) => {
     const userId = req.user?.userId;
@@ -276,7 +273,7 @@ const getPublicCoachProfile = async (req, res) => {
         {
           model: User,
           as: 'user', 
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], // Added profilePicture
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], 
           include: [
             {
               model: Event,
@@ -291,7 +288,7 @@ const getPublicCoachProfile = async (req, res) => {
           model: Testimonial,
           as: 'testimonials',
           required: false,
-          attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], // Updated attributes
+          attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
           include: [{ // Include client (User) details for avatar/name
             model: User,
             as: 'clientUser', // ALIAS from server.js

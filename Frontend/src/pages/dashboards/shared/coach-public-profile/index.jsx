@@ -1,11 +1,9 @@
 // Frontend/src/pages/dashboards/shared/coach-public-profile/index.jsx
 
 import React, { useState, useEffect } from 'react';
-// FIX: Ensure useParams is imported and used to read the ID from the URL
 import { useParams } from 'react-router-dom'; 
 import { getCoachById } from '@/auth/authApi'; 
 
-// Corrected imports using the '@' alias for your UI components
 import NavigationLoadingStates from '@/components/ui/NavigationLoadingStates';
 import ProfileHeader from './components/ProfileHeader';
 import AboutSection from './components/AboutSection';
@@ -13,11 +11,13 @@ import ServicesSection from './components/ServicesSection';
 import TestimonialsSection from './components/TestimonialsSection';
 import ContactSidebar from './components/ContactSidebar';
 
-// This component now uses the ID from the URL params
-const CoachPublicProfile = () => {
-  // FIX: Use useParams to extract the 'id' from the URL
-  const { id } = useParams(); 
-  const coachId = id; // Rename for clarity in the rest of the component
+// FIX: Accept coachId as a prop (aliased as propCoachId)
+const CoachPublicProfile = ({ coachId: propCoachId }) => {
+  // Use useParams to extract the 'id' from the URL (used when navigating directly)
+  const { id: urlCoachId } = useParams(); 
+    
+  // FIX: Determine the final coachId: prefer prop over URL param
+  const finalCoachId = propCoachId || urlCoachId;
     
   const [coach, setCoach] = useState(null);
   const [testimonials, setTestimonials] = useState([]); 
@@ -28,13 +28,14 @@ const CoachPublicProfile = () => {
     setLoading(true);
     setError(null);
     try {
-      // Use the coachId derived from the URL
-      if (!coachId) {
-        // If the ID is missing from the URL (e.g., /profiles), throw a local error
+      // Use the determined finalCoachId
+      if (!finalCoachId) {
+        // This error should now only trigger if rendered without a prop OR a URL ID
         throw new Error('Coach ID is missing from the URL.');
       }
       
-      const response = await getCoachById(coachId);
+      // Use the final ID to fetch data
+      const response = await getCoachById(finalCoachId);
       const fetchedCoach = response.data.coach;
 
       setCoach(fetchedCoach);
@@ -53,8 +54,9 @@ const CoachPublicProfile = () => {
   };
 
   useEffect(() => {
+    // Depend on finalCoachId. This re-runs only when the ID changes (either prop or URL).
     fetchCoachData();
-  }, [coachId]); 
+  }, [finalCoachId]); 
 
   // --- Handlers for interactivity ---
   const handleBookSession = () => console.log('Booking functionality would be implemented here');
