@@ -243,6 +243,9 @@ async function logout(req, res) {
 // ==============================
 // Update user profile
 // ==============================
+// ==============================
+// Update user profile
+// ==============================
 async function updateProfile(req, res) {
   try {
     console.log('Received profile update request with body:', req.body);
@@ -253,14 +256,14 @@ async function updateProfile(req, res) {
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const userFields = ['firstName', 'lastName', 'email', 'phone'];
+    const userFields = ['firstName', 'lastName', 'email', 'phone', 'profilePicture']; // Added profilePicture to User fields
     const coachFields = [
       'professionalTitle', 'bio', 'websiteUrl', 'yearsOfExperience', 
-      'specialties', 'certifications', 'education', 'sessionTypes',
+      'specialties', 'certifications', 'education', 
+      // REMOVED: 'sessionTypes', // <-- THIS LINE MUST BE REMOVED
       'pricing', 'availability', 
       'dateOfBirth', 'gender', 'ethnicity', 'country', 
       'linkedinUrl', 'twitterUrl', 'instagramUrl', 'facebookUrl',
-      'profilePicture', 
     ];
     const clientFields = ['coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'];
 
@@ -276,10 +279,10 @@ async function updateProfile(req, res) {
     }
     
     // If the frontend sends profilePicture in the main PUT request, update the User model
-    if (coachData.profilePicture !== undefined) {
-        userData.profilePicture = coachData.profilePicture;
-        delete coachData.profilePicture;
+    if (req.body.profilePicture !== undefined) {
+        userData.profilePicture = req.body.profilePicture;
     }
+
 
     if (userData.email) userData.email = userData.email.toLowerCase().trim();
 

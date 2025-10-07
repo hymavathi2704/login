@@ -1,11 +1,10 @@
 // src/models/user.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Testimonial = require('./Testimonial'); // Import Testimonial model
 
 const User = sequelize.define('User', {
     id: {
-        type: DataTypes.CHAR(36), 
+        type: DataTypes.CHAR(36), // <-- CORRECTED
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
         allowNull: false,
@@ -36,6 +35,11 @@ const User = sequelize.define('User', {
         allowNull: true,
     },
     oauth_id: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+    },
+    // NEW FIELD: profilePicture
+    profilePicture: { 
         type: DataTypes.STRING(255),
         allowNull: true,
     },
@@ -87,7 +91,5 @@ const User = sequelize.define('User', {
     createdAt: 'created_at',
     updatedAt: 'updated_at',
 });
-
-
 
 module.exports = User;

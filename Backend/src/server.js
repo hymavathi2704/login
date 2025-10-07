@@ -33,15 +33,15 @@ const app = express();
 // Middlewares
 // ==========================================
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true,
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
 };
 app.use(cors(corsOptions));
 
 app.use(
-    helmet({
-        crossOriginResourcePolicy: false,
-    })
+    helmet({
+        crossOriginResourcePolicy: false,
+    })
 );
 
 // Parse JSON with high limit for images or large payloads
@@ -64,15 +64,15 @@ User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'Coac
 CoachProfile.belongsTo(User, { foreignKey: 'userId', as: 'user' }); // alias 'user' matches include
 
 // CoachProfile <-> Session (Services offered)
-CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'availableSessions' }); // Updated alias to match controller
+CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'sessions' });
 Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
 // CoachProfile <-> Testimonial (Testimonials RECEIVED)
 CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
 Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
-// User <-> Testimonial (Testimonials WRITTEN by client - NEW)
-User.hasMany(Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); // Set null on client deletion
+// NEW ASSOCIATION: User <-> Testimonial (Testimonials WRITTEN by client)
+User.hasMany(Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); 
 Testimonial.belongsTo(User, { foreignKey: 'clientId', as: 'clientUser' });
 
 // User <-> Event
@@ -99,15 +99,15 @@ app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
 // Error Handling
-//==========================================
+// ==========================================
 app.use((err, req, res, next) => {
-    if (err instanceof UnauthorizedError) {
-        console.error('JWT Unauthorized Error:', err);
-        return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
-    }
+    if (err instanceof UnauthorizedError) {
+        console.error('JWT Unauthorized Error:', err);
+        return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
+    }
 
-    console.error('Unexpected Error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Unexpected Error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
 });
 
 // ==========================================
@@ -116,17 +116,17 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 4028;
 
 (async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('✅ Database connected');
+    try {
+        await sequelize.authenticate();
+        console.log('✅ Database connected');
 
-        // 💥 FIX: Removed { alter: true } to prevent MySQL key limit error
-        await sequelize.sync(); 
-        console.log('✅ Database synchronized');
+        // 💥 FIX: Removed { alter: true } to prevent MySQL key limit error
+        await sequelize.sync(); 
+        console.log('✅ Database synchronized');
 
-        app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
-    } catch (err) {
-        console.error('❌ Failed to start server:', err);
-        process.exit(1);
-    }
+        app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+    } catch (err) {
+        console.error('❌ Failed to start server:', err);
+        process.exit(1);
+    }
 })();

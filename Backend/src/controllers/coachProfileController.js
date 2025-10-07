@@ -6,8 +6,8 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const Event = require('../models/Event');
 const Testimonial = require('../models/Testimonial');
-const Session = require('../models/Session'); // NEW: Import Session model
-const { Op } = require('sequelize'); // NEW: Import Op for filtering
+const Session = require('../models/Session'); // CRITICAL: Missing import
+const { Op } = require('sequelize'); // CRITICAL: Missing import
 
 // Define the root directory for uploads, used for disk cleanup
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -35,7 +35,7 @@ const getCoachProfile = async (req, res) => {
             { 
                 model: CoachProfile, 
                 as: 'CoachProfile',
-                include: [{ model: Session, as: 'availableSessions' }] // ADDED: Include available Sessions
+                include: [{ model: Session, as: 'sessions' }] // UPDATED: Use 'sessions' alias
             }, 
             { model: ClientProfile, as: 'ClientProfile' }
         ],
@@ -81,9 +81,7 @@ const updateCoachProfile = async (req, res) => {
       firstName, lastName, email, phone,
       professionalTitle, profilePicture, websiteUrl, bio,
       yearsOfExperience, 
-      // ADDED: Demographics (Ensure these are saved)
       dateOfBirth, gender, ethnicity, country,
-      // ADDED: Social Links (Ensure these are saved)
       linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
       // REMOVED: sessionTypes from destructured body
       pricing, availability
@@ -102,9 +100,7 @@ const updateCoachProfile = async (req, res) => {
       websiteUrl,
       bio,
       yearsOfExperience: parseInt(yearsOfExperience) || 0,
-      // ADDED: Demographics
       dateOfBirth, gender, ethnicity, country,
-      // ADDED: Social Links
       linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
       // REMOVED: sessionTypes update logic
       pricing: pricing || '{}',
@@ -117,7 +113,7 @@ const updateCoachProfile = async (req, res) => {
             { 
                 model: CoachProfile, 
                 as: 'CoachProfile',
-                include: [{ model: Session, as: 'availableSessions' }] // ADDED: Include available Sessions
+                include: [{ model: Session, as: 'sessions' }] // UPDATED: Use 'sessions' alias
             },
             { model: ClientProfile, as: 'ClientProfile' }
         ],
@@ -145,6 +141,7 @@ const updateCoachProfile = async (req, res) => {
 
 // ==============================
 // ADD Item (certification/education/specialties)
+// ... (unchanged)
 // ==============================
 const addItem = async (req, res) => {
   try {
@@ -183,6 +180,7 @@ const addItem = async (req, res) => {
 
 // ==============================
 // REMOVE Item (certification/education/specialties)
+// ... (unchanged)
 // ==============================
 const removeItem = async (req, res) => {
   try {
@@ -224,6 +222,7 @@ const removeItem = async (req, res) => {
 
 // ==============================
 // UPLOAD Profile Picture
+// ... (unchanged)
 // ==============================
 const uploadProfilePicture = async (req, res) => {
     const userId = req.user?.userId;
@@ -277,7 +276,7 @@ const getPublicCoachProfile = async (req, res) => {
         {
           model: User,
           as: 'user', 
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], 
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], // Added profilePicture
           include: [
             {
               model: Event,
@@ -292,16 +291,16 @@ const getPublicCoachProfile = async (req, res) => {
           model: Testimonial,
           as: 'testimonials',
           required: false,
-          attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'],
+          attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], // Updated attributes
           include: [{ // Include client (User) details for avatar/name
             model: User,
-            as: 'clientUser',
+            as: 'clientUser', // ALIAS from server.js
             attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
           }]
         },
         { // Include the coach's available services
           model: Session,
-          as: 'availableSessions',
+          as: 'sessions', // UPDATED: Use 'sessions' alias
           required: false,
         }
       ],
@@ -320,6 +319,7 @@ const getPublicCoachProfile = async (req, res) => {
     if (plainCoachProfile.pricing) plainCoachProfile.pricing = safeParse(plainCoachProfile.pricing); 
     if (plainCoachProfile.availability) plainCoachProfile.availability = safeParse(plainCoachProfile.availability);
 
+
     const user = plainCoachProfile.user;
 
     // Format testimonials to include the client's name/avatar from the User model
@@ -327,7 +327,7 @@ const getPublicCoachProfile = async (req, res) => {
         id: t.id,
         clientId: t.clientId,
         clientName: t.clientUser ? `${t.clientUser.firstName} ${t.clientUser.lastName}` : 'Anonymous Client',
-        clientAvatar: t.clientUser?.profilePicture || '/default-avatar.png', // Fallback
+        clientAvatar: t.clientUser?.profilePicture || '/default-avatar.png', 
         clientTitle: t.clientTitle,
         rating: t.rating,
         content: t.content,
@@ -345,7 +345,7 @@ const getPublicCoachProfile = async (req, res) => {
       profileImage: plainCoachProfile.profilePicture || user.profilePicture, 
       events: user.events || [], 
       testimonials: formattedTestimonials,
-      availableSessions: plainCoachProfile.availableSessions || [], 
+      availableSessions: plainCoachProfile.sessions || [], // UPDATED: Use plainCoachProfile.sessions
       title: plainCoachProfile.professionalTitle,
       rating: 4.9, 
       totalReviews: formattedTestimonials.length,
@@ -357,7 +357,7 @@ const getPublicCoachProfile = async (req, res) => {
       avgResponseTime: plainCoachProfile.responseTime || 'within-4h',
       timezone: plainCoachProfile.availability?.timezone || 'UTC',
       // Get starting price from pricing JSON or look at the cheapest session
-      startingPrice: plainCoachProfile.pricing?.individual || plainCoachProfile.availableSessions?.[0]?.price || 0,
+      startingPrice: plainCoachProfile.pricing?.individual || plainCoachProfile.sessions?.[0]?.price || 0,
       
       // PARSED LIST FIELDS
       specialties: plainCoachProfile.specialties || [],
@@ -422,7 +422,7 @@ const getAllCoachProfiles = async (req, res) => {
                     },
                     { // For price calculation
                         model: Session,
-                        as: 'availableSessions',
+                        as: 'sessions', // UPDATED: Use 'sessions' alias
                         attributes: ['price'], 
                         required: false,
                     }
@@ -430,7 +430,7 @@ const getAllCoachProfiles = async (req, res) => {
             },
         ],
         // Grouping is necessary for aggregation (like counting testimonials)
-        group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.availableSessions.id']
+        group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
     });
 
     const processedCoaches = coaches.map(coach => {
@@ -443,7 +443,7 @@ const getAllCoachProfiles = async (req, res) => {
         }
 
         const ratings = profile?.testimonials?.map(t => t.rating) || [];
-        const prices = profile?.availableSessions?.map(s => s.price) || [];
+        const prices = profile?.sessions?.map(s => s.price) || [];
         
         const averageRating = ratings.length > 0 
             ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
@@ -482,5 +482,5 @@ module.exports = {
   removeItem,
   uploadProfilePicture, 
   getPublicCoachProfile, 
-  getAllCoachProfiles, // <<-- RE-EXPORTED
+  getAllCoachProfiles,
 };
