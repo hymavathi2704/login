@@ -1,20 +1,24 @@
 // Frontend/src/pages/dashboards/shared/coach-public-profile/index.jsx
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom'; 
+// MODIFIED: Added useNavigate
+import { useParams, useNavigate } from 'react-router-dom'; 
 import { getCoachById } from '@/auth/authApi'; 
 
 import NavigationLoadingStates from '@/components/ui/NavigationLoadingStates';
+// ADDED: Import Button
+import Button from '@/components/ui/Button'; 
 import ProfileHeader from './components/ProfileHeader';
 import AboutSection from './components/AboutSection';
 import ServicesSection from './components/ServicesSection';
 import TestimonialsSection from './components/TestimonialsSection';
-import ContactSidebar from './components/ContactSidebar';
 
 // FIX: Accept coachId as a prop (aliased as propCoachId)
 const CoachPublicProfile = ({ coachId: propCoachId }) => {
   // Use useParams to extract the 'id' from the URL (used when navigating directly)
   const { id: urlCoachId } = useParams(); 
+  // ADDED: Initialize navigation hook
+  const navigate = useNavigate();
     
   // FIX: Determine the final coachId: prefer prop over URL param
   const finalCoachId = propCoachId || urlCoachId;
@@ -63,6 +67,12 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
   const handleContact = (type, value) => console.log('Contact action:', { type, value });
   const handleServiceClick = (type, service) => console.log('Service selected:', { type, service });
 
+  // ADDED: Handler for new button
+  const handleExploreMore = () => {
+    // FIX: Navigating to the correct, existing client dashboard route
+    navigate('/dashboard/client'); 
+  };
+
   if (loading) {
     return <NavigationLoadingStates isLoading={true} loadingType="profile" />;
   }
@@ -85,28 +95,26 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
         onContact={handleContact}
       />
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Main Content */}
-        <div className="lg:col-span-2 space-y-8">
-          <AboutSection coach={coach} />
-          <ServicesSection 
-            coach={coach} 
-            onServiceClick={handleServiceClick}
-          />
-          <TestimonialsSection testimonials={testimonials} />
-        </div>
+      {/* Main Content Sections - Now full width, stacked */}
+      <div className="space-y-8">
+        <AboutSection coach={coach} />
+        <ServicesSection 
+          coach={coach} 
+          onServiceClick={handleServiceClick}
+        />
+        <TestimonialsSection testimonials={testimonials} />
+      </div>
 
-        {/* Right Column - Sidebar */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-24">
-            <ContactSidebar 
-              coach={coach}
-              onContact={handleContact}
-              onBookSession={handleBookSession}
-            />
-          </div>
-        </div>
+      {/* ADDED: Explore More Coaches Button */}
+      <div className="flex justify-center pt-8">
+        <Button 
+          variant="secondary" 
+          size="lg"
+          onClick={handleExploreMore}
+          iconName="ArrowRight" 
+        >
+          Explore More Coaches
+        </Button>
       </div>
     </div>
   );

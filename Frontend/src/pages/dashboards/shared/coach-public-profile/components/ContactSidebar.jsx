@@ -1,3 +1,5 @@
+// Frontend/src/pages/dashboards/shared/coach-public-profile/components/ContactSidebar.jsx
+
 import React from 'react';
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
@@ -8,8 +10,8 @@ const ContactSidebar = ({ coach, onContact, onBookSession }) => {
 
   return (
     <div className="space-y-6">
-      {/* Quick Actions */}
-      <div className="bg-card rounded-card p-6 shadow-soft">
+      {/* Quick Actions - REMOVED */}
+      {/* <div className="bg-card rounded-card p-6 shadow-soft">
         <h3 className="font-semibold text-foreground mb-4">Quick Actions</h3>
         
         <div className="space-y-3">
@@ -43,9 +45,9 @@ const ContactSidebar = ({ coach, onContact, onBookSession }) => {
             Add to Favorites
           </Button>
         </div>
-      </div>
-      {/* Availability Status */}
-      <div className="bg-card rounded-card p-6 shadow-soft">
+      </div> */}
+      {/* Availability Status - REMOVED */}
+      {/* <div className="bg-card rounded-card p-6 shadow-soft">
         <h3 className="font-semibold text-foreground mb-4">Availability</h3>
         
         <div className="space-y-3">
@@ -68,9 +70,9 @@ const ContactSidebar = ({ coach, onContact, onBookSession }) => {
             <span>{coach?.timezone || 'EST (UTC-5)'}</span>
           </div>
         </div>
-      </div>
-      {/* Contact Information */}
-      <div className="bg-card rounded-card p-6 shadow-soft">
+      </div> */}
+      {/* Contact Information - REMOVED */}
+      {/* <div className="bg-card rounded-card p-6 shadow-soft">
         <h3 className="font-semibold text-foreground mb-4">Contact Info</h3>
         
         <div className="space-y-3">
@@ -119,9 +121,9 @@ const ContactSidebar = ({ coach, onContact, onBookSession }) => {
             </button>
           )}
         </div>
-      </div>
-      {/* Pricing Summary */}
-      <div className="bg-card rounded-card p-6 shadow-soft">
+      </div> */}
+      {/* Pricing Summary - REMOVED */}
+      {/* <div className="bg-card rounded-card p-6 shadow-soft">
         <h3 className="font-semibold text-foreground mb-4">Pricing</h3>
         
         <div className="space-y-3">
@@ -143,7 +145,7 @@ const ContactSidebar = ({ coach, onContact, onBookSession }) => {
             </p>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
