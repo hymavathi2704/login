@@ -1,10 +1,11 @@
 // src/models/user.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
+const Testimonial = require('./Testimonial'); // Import Testimonial model
 
 const User = sequelize.define('User', {
     id: {
-        type: DataTypes.CHAR(36), // <-- CORRECTED
+        type: DataTypes.CHAR(36), 
         defaultValue: DataTypes.UUIDV4,
         primaryKey: true,
         allowNull: false,
@@ -85,6 +86,12 @@ const User = sequelize.define('User', {
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+});
+
+// NEW ASSOCIATION: A client (User) can write many testimonials
+User.hasMany(Testimonial, {
+    foreignKey: 'clientId',
+    as: 'writtenTestimonials'
 });
 
 module.exports = User;

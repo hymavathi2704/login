@@ -6,7 +6,8 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const Event = require('../models/Event');
 const Testimonial = require('../models/Testimonial');
-const { Op } = require('sequelize'); // <<-- IMPORT Op for filtering
+const Session = require('../models/Session'); // NEW: Import Session model
+const { Op } = require('sequelize'); // NEW: Import Op for filtering
 
 // Define the root directory for uploads, used for disk cleanup
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -31,7 +32,11 @@ const getCoachProfile = async (req, res) => {
 
     const user = await User.findByPk(userId, {
         include: [
-            { model: CoachProfile, as: 'CoachProfile' }, 
+            { 
+                model: CoachProfile, 
+                as: 'CoachProfile',
+                include: [{ model: Session, as: 'availableSessions' }] // ADDED: Include available Sessions
+            }, 
             { model: ClientProfile, as: 'ClientProfile' }
         ],
     });
@@ -47,7 +52,7 @@ const getCoachProfile = async (req, res) => {
         plainUser.CoachProfile.specialties = safeParse(plainUser.CoachProfile.specialties);
         plainUser.CoachProfile.education = safeParse(plainUser.CoachProfile.education);
         plainUser.CoachProfile.certifications = safeParse(plainUser.CoachProfile.certifications);
-        plainUser.CoachProfile.sessionTypes = safeParse(plainUser.CoachProfile.sessionTypes);
+        // REMOVED: plainUser.CoachProfile.sessionTypes parsing logic
         plainUser.CoachProfile.pricing = safeParse(plainUser.CoachProfile.pricing);
         plainUser.CoachProfile.availability = safeParse(plainUser.CoachProfile.availability);
     }
@@ -80,8 +85,7 @@ const updateCoachProfile = async (req, res) => {
       dateOfBirth, gender, ethnicity, country,
       // ADDED: Social Links (Ensure these are saved)
       linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-      // specialties, certifications, education are excluded from mass update to prevent overwrite
-      sessionTypes,
+      // REMOVED: sessionTypes from destructured body
       pricing, availability
     } = req.body;
 
@@ -102,7 +106,7 @@ const updateCoachProfile = async (req, res) => {
       dateOfBirth, gender, ethnicity, country,
       // ADDED: Social Links
       linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-      sessionTypes: sessionTypes || '[]', 
+      // REMOVED: sessionTypes update logic
       pricing: pricing || '{}',
       availability: availability || '{}'
     });
@@ -110,7 +114,11 @@ const updateCoachProfile = async (req, res) => {
     // Fetch the updated user object with all includes for the return value
     const updatedUser = await User.findByPk(userId, {
         include: [
-            { model: CoachProfile, as: 'CoachProfile' },
+            { 
+                model: CoachProfile, 
+                as: 'CoachProfile',
+                include: [{ model: Session, as: 'availableSessions' }] // ADDED: Include available Sessions
+            },
             { model: ClientProfile, as: 'ClientProfile' }
         ],
     });
@@ -122,7 +130,7 @@ const updateCoachProfile = async (req, res) => {
         plainUpdatedUser.CoachProfile.specialties = safeParse(plainUpdatedUser.CoachProfile.specialties);
         plainUpdatedUser.CoachProfile.education = safeParse(plainUpdatedUser.CoachProfile.education);
         plainUpdatedUser.CoachProfile.certifications = safeParse(plainUpdatedUser.CoachProfile.certifications);
-        plainUpdatedUser.CoachProfile.sessionTypes = safeParse(plainUpdatedUser.CoachProfile.sessionTypes);
+        // REMOVED: plainUpdatedUser.CoachProfile.sessionTypes parsing logic
         plainUpdatedUser.CoachProfile.pricing = safeParse(plainUpdatedUser.CoachProfile.pricing);
         plainUpdatedUser.CoachProfile.availability = safeParse(plainUpdatedUser.CoachProfile.availability);
     }
@@ -254,6 +262,9 @@ const uploadProfilePicture = async (req, res) => {
     }
 };
 
+// ==============================
+// GET Public Coach Profile (by ID)
+// ==============================
 const getPublicCoachProfile = async (req, res) => {
   try {
     const coachId = req.params.id;
@@ -265,24 +276,34 @@ const getPublicCoachProfile = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user', // ✅ correct alias
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
+          as: 'user', 
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], 
           include: [
             {
               model: Event,
-              as: 'events', // ✅ belongs to User
+              as: 'events', 
               required: false,
               where: { status: 'published' },
               attributes: ['id', 'title', 'description', 'type', 'date', 'time', 'duration', 'price'],
             },
           ],
         },
-        {
+        { // Testimonials received by this coach
           model: Testimonial,
           as: 'testimonials',
           required: false,
-          attributes: ['id', 'clientName', 'clientTitle', 'clientAvatar', 'rating', 'content', 'date', 'sessionType'],
+          attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'],
+          include: [{ // Include client (User) details for avatar/name
+            model: User,
+            as: 'clientUser',
+            attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+          }]
         },
+        { // Include the coach's available services
+          model: Session,
+          as: 'availableSessions',
+          required: false,
+        }
       ],
     });
 
@@ -293,26 +314,41 @@ const getPublicCoachProfile = async (req, res) => {
     // CRITICAL: Parse JSON strings before sending to the frontend
     const plainCoachProfile = coachProfile.get({ plain: true });
     
-    // These should be arrays on the frontend, so they MUST be parsed here.
     if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
     if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
     if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
-
+    if (plainCoachProfile.pricing) plainCoachProfile.pricing = safeParse(plainCoachProfile.pricing); 
+    if (plainCoachProfile.availability) plainCoachProfile.availability = safeParse(plainCoachProfile.availability);
 
     const user = plainCoachProfile.user;
 
-    // Step 2: Construct final object, ensuring ALL fields are included
+    // Format testimonials to include the client's name/avatar from the User model
+    const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
+        id: t.id,
+        clientId: t.clientId,
+        clientName: t.clientUser ? `${t.clientUser.firstName} ${t.clientUser.lastName}` : 'Anonymous Client',
+        clientAvatar: t.clientUser?.profilePicture || '/default-avatar.png', // Fallback
+        clientTitle: t.clientTitle,
+        rating: t.rating,
+        content: t.content,
+        date: t.date,
+        sessionType: t.sessionType,
+    }));
+
+
+    // Step 2: Construct final object
     const profile = {
       id: user.id,
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       phone: user.phone,
-      profileImage: plainCoachProfile.profilePicture, // from CoachProfile
-      events: user.events || [], // ✅ events included via User
-      testimonials: plainCoachProfile.testimonials || [],
+      profileImage: plainCoachProfile.profilePicture || user.profilePicture, 
+      events: user.events || [], 
+      testimonials: formattedTestimonials,
+      availableSessions: plainCoachProfile.availableSessions || [], 
       title: plainCoachProfile.professionalTitle,
-      rating: 4.9,
-      totalReviews: plainCoachProfile.testimonials?.length || 0,
+      rating: 4.9, 
+      totalReviews: formattedTestimonials.length,
       totalClients: 0,
       yearsExperience: plainCoachProfile.yearsOfExperience || 0,
       shortBio: plainCoachProfile.bio ? plainCoachProfile.bio.substring(0, 150) + '...' : '',
@@ -320,14 +356,15 @@ const getPublicCoachProfile = async (req, res) => {
       isAvailable: true,
       avgResponseTime: plainCoachProfile.responseTime || 'within-4h',
       timezone: plainCoachProfile.availability?.timezone || 'UTC',
-      startingPrice: plainCoachProfile.pricing?.individual || 0,
+      // Get starting price from pricing JSON or look at the cheapest session
+      startingPrice: plainCoachProfile.pricing?.individual || plainCoachProfile.availableSessions?.[0]?.price || 0,
       
-      // PARSED LIST FIELDS (This is where the lists are included)
+      // PARSED LIST FIELDS
       specialties: plainCoachProfile.specialties || [],
       education: plainCoachProfile.education || [],
       certifications: plainCoachProfile.certifications || [],
 
-      // ADDED: Social Links and Demographics (ensure they are included for public view)
+      // ADDED: Social Links and Demographics
       linkedinUrl: plainCoachProfile.linkedinUrl,
       twitterUrl: plainCoachProfile.twitterUrl,
       instagramUrl: plainCoachProfile.instagramUrl,
@@ -345,79 +382,97 @@ const getPublicCoachProfile = async (req, res) => {
   }
 };
 
-
 // ==============================
-// GET All Coach Profiles (for client discovery) <<-- NEW FUNCTION
+// GET All Coach Profiles (for client discovery)
 // ===================================
 const getAllCoachProfiles = async (req, res) => {
-  try {
-    const { search, audience } = req.query;
-    const whereClause = {
-      roles: { [Op.like]: '%"coach"%' }, 
-      [Op.or]: []
-    };
+  try {
+    const { search, audience } = req.query;
+    const whereClause = {
+      roles: { [Op.like]: '%"coach"%' }, // Ensure only users with 'coach' role are selected
+      [Op.or]: []
+    };
 
-    if (search) {
-        whereClause[Op.or].push(
-            { firstName: { [Op.like]: `%${search}%` } },
-            { lastName: { [Op.like]: `%${search}%` } },
-            { email: { [Op.like]: `%${search}%` } }
-        );
-    }
-    
-    if (whereClause[Op.or].length === 0) delete whereClause[Op.or];
+    if (search) {
+        whereClause[Op.or].push(
+            { firstName: { [Op.like]: `%${search}%` } },
+            { lastName: { [Op.like]: `%${search}%` } },
+            { email: { [Op.like]: `%${search}%` } }
+        );
+    }
+    
+    if (whereClause[Op.or].length === 0) delete whereClause[Op.or];
 
-    const coaches = await User.findAll({
-        where: whereClause,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'],
-        include: [
-            { 
-                model: CoachProfile, 
-                as: 'CoachProfile',
-                where: audience ? { specialties: { [Op.like]: `%${audience}%` } } : {},
-                required: true 
-            },
-            {
-                model: Testimonial,
-                as: 'testimonials',
-                attributes: ['rating'], 
-                required: false,
-            }
-        ],
-        group: ['User.id', 'CoachProfile.id', 'testimonials.id']
-    });
+    const coaches = await User.findAll({
+        where: whereClause,
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'],
+        include: [
+            { 
+                model: CoachProfile, 
+                as: 'CoachProfile',
+                // Filter by audience specialty
+                where: audience ? { specialties: { [Op.like]: `%${audience}%` } } : {},
+                required: true,
+                include: [
+                    { // For rating calculation
+                        model: Testimonial,
+                        as: 'testimonials',
+                        attributes: ['rating'], 
+                        required: false,
+                    },
+                    { // For price calculation
+                        model: Session,
+                        as: 'availableSessions',
+                        attributes: ['price'], 
+                        required: false,
+                    }
+                ]
+            },
+        ],
+        // Grouping is necessary for aggregation (like counting testimonials)
+        group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.availableSessions.id']
+    });
 
-    const processedCoaches = coaches.map(coach => {
-        const plainCoach = coach.get({ plain: true });
+    const processedCoaches = coaches.map(coach => {
+        const plainCoach = coach.get({ plain: true });
+        const profile = plainCoach.CoachProfile;
+        
+        if (profile) {
+            profile.specialties = safeParse(profile.specialties);
+            profile.pricing = safeParse(profile.pricing);
+        }
+
+        const ratings = profile?.testimonials?.map(t => t.rating) || [];
+        const prices = profile?.availableSessions?.map(s => s.price) || [];
         
-        if (plainCoach.CoachProfile) {
-            plainCoach.CoachProfile.specialties = safeParse(plainCoach.CoachProfile.specialties);
-            plainCoach.CoachProfile.pricing = safeParse(plainCoach.CoachProfile.pricing);
-        }
-
-        const ratings = plainCoach.testimonials?.map(t => t.rating) || [];
-        const averageRating = ratings.length > 0 
-            ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
-            : '0.0';
+        const averageRating = ratings.length > 0 
+            ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
+            : '0.0';
         
-        return {
-            id: plainCoach.id,
-            name: `${plainCoach.firstName} ${plainCoach.lastName}`,
-            title: plainCoach.CoachProfile?.professionalTitle,
-            profileImage: plainCoach.profilePicture,
-            shortBio: plainCoach.CoachProfile?.bio ? plainCoach.CoachProfile.bio.substring(0, 150) + '...' : '',
-            specialties: plainCoach.CoachProfile?.specialties || [],
-            startingPrice: plainCoach.CoachProfile?.pricing?.individual || 0,
-            rating: parseFloat(averageRating),
-            totalReviews: ratings.length,
-        };
-    });
+        // Calculate minimum price from available sessions, falling back to pricing JSON
+        const startingPrice = prices.length > 0
+            ? Math.min(...prices)
+            : profile?.pricing?.individual || 0; 
 
-    res.status(200).json({ coaches: processedCoaches });
-  } catch (error) {
-    console.error('Error fetching all coach profiles:', error);
-    res.status(500).json({ error: 'Failed to fetch coach profiles' });
-  }
+        
+        return {
+            id: plainCoach.id,
+            name: `${plainCoach.firstName} ${plainCoach.lastName}`,
+            title: profile?.professionalTitle,
+            profileImage: plainCoach.profilePicture,
+            shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
+            specialties: profile?.specialties || [],
+            startingPrice: startingPrice,
+            rating: parseFloat(averageRating),
+            totalReviews: ratings.length,
+        };
+    });
+
+    res.status(200).json({ coaches: processedCoaches });
+  } catch (error) {
+    console.error('Error fetching all coach profiles:', error);
+    res.status(500).json({ error: 'Failed to fetch coach profiles' });
+  }
 };
 
 module.exports = {
@@ -427,5 +482,5 @@ module.exports = {
   removeItem,
   uploadProfilePicture, 
   getPublicCoachProfile, 
-  getAllCoachProfiles, // <<-- EXPORT THE NEW FUNCTION
+  getAllCoachProfiles, // <<-- RE-EXPORTED
 };

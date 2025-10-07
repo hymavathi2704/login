@@ -1,6 +1,8 @@
 // Backend/src/models/CoachProfile.js
 const { DataTypes, UUIDV4 } = require('sequelize');
 const db = require('../config/db');
+const Testimonial = require('./Testimonial'); // Import Testimonial
+const Session = require('./Session'); // Import Session
 
 const CoachProfile = db.define('coach_profiles', {
   id: {
@@ -90,10 +92,7 @@ const CoachProfile = db.define('coach_profiles', {
   },
   
   // Services Info
-  sessionTypes: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
+  // NOTE: sessionTypes field was removed here
   pricing: {
     type: DataTypes.JSON,
     allowNull: true,
@@ -104,6 +103,17 @@ const CoachProfile = db.define('coach_profiles', {
   }
 }, {
   timestamps: true,
+});
+
+// Associations
+CoachProfile.hasMany(Testimonial, { 
+    foreignKey: 'coachProfileId', 
+    as: 'testimonials' // Testimonials received by this coach
+});
+
+CoachProfile.hasMany(Session, {
+    foreignKey: 'coachProfileId',
+    as: 'availableSessions' // Available sessions offered by this coach
 });
 
 module.exports = CoachProfile;

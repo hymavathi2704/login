@@ -63,13 +63,17 @@ ClientProfile.belongsTo(User, { foreignKey: 'userId', as: 'ClientProfile' });
 User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'CoachProfile' });
 CoachProfile.belongsTo(User, { foreignKey: 'userId', as: 'user' }); // alias 'user' matches include
 
-// CoachProfile <-> Session
-CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'sessions' });
+// CoachProfile <-> Session (Services offered)
+CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'availableSessions' }); // Updated alias to match controller
 Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
-// CoachProfile <-> Testimonial
+// CoachProfile <-> Testimonial (Testimonials RECEIVED)
 CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
 Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
+
+// User <-> Testimonial (Testimonials WRITTEN by client - NEW)
+User.hasMany(Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); // Set null on client deletion
+Testimonial.belongsTo(User, { foreignKey: 'clientId', as: 'clientUser' });
 
 // User <-> Event
 User.hasMany(Event, { foreignKey: 'coachId', as: 'events' });

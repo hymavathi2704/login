@@ -1,28 +1,57 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+// Backend/src/models/Session.js
+const { DataTypes, UUIDV4 } = require('sequelize');
+const db = require('../config/db');
+const CoachProfile = require('./CoachProfile'); 
 
-const Session = sequelize.define('Session', {
-    id: {
-        type: DataTypes.STRING,
-        primaryKey: true,
-        allowNull: false,
+const Session = db.define('Session', {
+  id: {
+    type: DataTypes.CHAR(36),
+    defaultValue: UUIDV4,
+    primaryKey: true,
+    allowNull: false,
+  },
+  coachProfileId: { // Link to the coach offering the session
+    type: DataTypes.CHAR(36),
+    allowNull: false,
+    references: {
+      model: 'coach_profiles',
+      key: 'id',
     },
-    coachProfileId: {
-        type: DataTypes.CHAR(36),
-        allowNull: false,
-        references: {
-            model: 'coach_profiles',
-            key: 'id',
-        },
-    },
-    title: DataTypes.STRING,
-    description: DataTypes.TEXT,
-    duration: DataTypes.INTEGER,
-    price: DataTypes.DECIMAL(10, 2),
-    format: DataTypes.STRING,
+    onDelete: 'CASCADE',
+  },
+  title: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  type: { // e.g., '1-on-1', 'Group', 'Digital Product'
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  duration: {
+    type: DataTypes.INTEGER, // duration in minutes
+    allowNull: false,
+  },
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+  }
 }, {
-    tableName: 'coach_sessions',
-    timestamps: true,
+  tableName: 'coach_sessions',
+  timestamps: true,
+});
+
+// Association: A session belongs to one coach profile
+Session.belongsTo(CoachProfile, {
+    foreignKey: 'coachProfileId',
+    as: 'coachProfile'
 });
 
 module.exports = Session;
