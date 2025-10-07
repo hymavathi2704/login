@@ -4,18 +4,20 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Users, DollarSign, Calendar, Globe } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-import { createSession, deleteSession } from '@/auth/authApi'; // Import new API functions
+// Use the new API functions
+import { createSession, deleteSession } from '@/auth/authApi'; 
+import { toast } from 'sonner';
 
 // Pass coachSessions (the actual array of sessions) and onSessionsUpdated (a function to refetch/update the profile state)
-const ServiceSection = ({ coachProfileId, sessions, onSessionsUpdated }) => {
+const ServiceSection = ({ sessions, onSessionsUpdated }) => {
     
-    // Use an effect to clear the temporary form after a successful addition
+    // FIX 1: Standardize the state field to 'duration' and 'type' to match the backend model/controller
     const [newSessionType, setNewSessionType] = useState({
         name: '',
-        duration: '', 
+        duration: '', // CHANGED from durationMinutes
         price: '',           
         description: '',
-        type: 'individual', // Renamed from 'format' to 'type' to match the backend model
+        type: 'individual', 
         defaultDate: '', 
         defaultTime: '', 
         meetingLink: '',
@@ -32,18 +34,20 @@ const ServiceSection = ({ coachProfileId, sessions, onSessionsUpdated }) => {
 
     // --- Handlers ---
     const handleAddSession = async () => {
+        // FIX 2: Check for the correct 'duration' state field in validation
         if (!newSessionType.name.trim() || !newSessionType.duration || !newSessionType.price) {
+            toast.error('Please fill in Session Name, Duration, and Price.');
             return; 
         }
 
         setIsSubmitting(true);
         try {
-            // NOTE: The backend sanitizes the data, but we pass the data structure from the form
             await createSession({
                 ...newSessionType,
-                // Map frontend names to backend model names
-                duration: newSessionType.duration, 
-                type: newSessionType.type,
+                // Ensure duration is parsed correctly before sending
+                duration: parseInt(newSessionType.duration, 10), 
+                price: parseFloat(newSessionType.price),
+                // Backend will sanitize date/time to null if empty
             });
 
             // Clear form on success
@@ -52,12 +56,11 @@ const ServiceSection = ({ coachProfileId, sessions, onSessionsUpdated }) => {
                 type: 'individual', defaultDate: '', defaultTime: '', meetingLink: '' 
             });
 
-            // Trigger refetch of the coach profile data to update the sessions list
             onSessionsUpdated(); 
 
         } catch (error) {
             console.error("Failed to create session:", error);
-            // Show error notification here
+            toast.error(error.response?.data?.error || 'Failed to create session.');
         } finally {
             setIsSubmitting(false);
         }
@@ -69,9 +72,10 @@ const ServiceSection = ({ coachProfileId, sessions, onSessionsUpdated }) => {
         try {
             await deleteSession(sessionId);
             onSessionsUpdated();
+            toast.success('Session deleted successfully.');
         } catch (error) {
             console.error("Failed to delete session:", error);
-            // Show error notification
+            toast.error(error.response?.data?.error || 'Failed to delete session.');
         }
     };
 
@@ -148,7 +152,9 @@ const ServiceSection = ({ coachProfileId, sessions, onSessionsUpdated }) => {
                         <Input
                             label="Duration (minutes)"
                             type="number"
+                            // FIX 3: Change value to use the standardized 'duration' field
                             value={newSessionType.duration}
+                            // FIX 4: Change onChange to update the standardized 'duration' field
                             onChange={e => setNewSessionType(p => ({ ...p, duration: e.target.value }))}
                             placeholder="60"
                             min="1"
@@ -174,7 +180,9 @@ const ServiceSection = ({ coachProfileId, sessions, onSessionsUpdated }) => {
                         <div className="md:col-span-1">
                             <label className="block text-sm font-medium mb-2">Session Format</label>
                             <select
+                                // FIX 5: Change value to use the standardized 'type' field
                                 value={newSessionType.type}
+                                // FIX 6: Change onChange to update the standardized 'type' field
                                 onChange={e => setNewSessionType(p => ({ ...p, type: e.target.value }))}
                                 className="w-full rounded-md border py-2 px-3 text-sm h-[42px]"
                             >

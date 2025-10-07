@@ -13,312 +13,332 @@ const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mail
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
+const ACCESS_COOKIE_NAME = 'jwt'; // Define the access token cookie name
 const generateOtp = customAlphabet('0123456789', 6);
 
 // ==============================
 // Register
 // ==============================
 async function register(req, res) {
-  try {
-    const { firstName, lastName, password } = req.body;
-    const email = req.body.email?.toLowerCase().trim();
+	try {
+		const { firstName, lastName, password } = req.body;
+		const email = req.body.email?.toLowerCase().trim();
 
-    if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
-    if (!password || password.length < 8)
-      return res.status(400).json({ error: 'Password must be >= 8 chars' });
+		if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
+		if (!password || password.length < 8)
+			return res.status(400).json({ error: 'Password must be >= 8 chars' });
 
-    const existing = await User.findOne({ where: { email } });
-    if (existing) return res.status(409).json({ error: 'Email already in use' });
+		const existing = await User.findOne({ where: { email } });
+		if (existing) return res.status(409).json({ error: 'Email already in use' });
 
-    const id = uuidv4();
-    const hash = await bcrypt.hash(password, SALT_ROUNDS);
-    const otp = generateOtp();
-    const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
+		const id = uuidv4();
+		const hash = await bcrypt.hash(password, SALT_ROUNDS);
+		const otp = generateOtp();
+		const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
-    await User.create({
-      id,
-      firstName,
-      lastName,
-      email,
-      password_hash: hash,
-      verification_token: otp,
-      verification_token_expires: otp_expires_at,
-      provider: 'email',
-      email_verified: false,
-      roles: [],
-    });
+		await User.create({
+			id,
+			firstName,
+			lastName,
+			email,
+			password_hash: hash,
+			verification_token: otp,
+			verification_token_expires: otp_expires_at,
+			provider: 'email',
+			email_verified: false,
+			roles: [],
+		});
 
-    await sendVerificationEmail(email, otp).catch(console.error);
+		await sendVerificationEmail(email, otp).catch(console.error);
 
-    res.status(201).json({ message: 'Registered. Please check email to verify.' });
-  } catch (err) {
-    console.error('Register error:', err);
-    res.status(500).json({ error: 'Failed to register user' });
-  }
+		res.status(201).json({ message: 'Registered. Please check email to verify.' });
+	} catch (err) {
+		console.error('Register error:', err);
+		res.status(500).json({ error: 'Failed to register user' });
+	}
 }
 
 // ==============================
 // Login
 // ==============================
 async function login(req, res) {
-  try {
-    const { password } = req.body;
-    const email = req.body.email?.toLowerCase().trim();
-    const user = await User.findOne({ where: { email } });
+	try {
+		const { password } = req.body;
+		const email = req.body.email?.toLowerCase().trim();
+		const user = await User.findOne({ where: { email } });
 
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    if (user.provider !== 'email')
-      return res.status(400).json({ error: `Use ${user.provider} login` });
-    if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
+		if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+		if (user.provider !== 'email')
+			return res.status(400).json({ error: `Use ${user.provider} login` });
+		if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
 
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+		const ok = await bcrypt.compare(password, user.password_hash);
+		if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const accessToken = signAccessToken({
-      userId: user.id,
-      email: user.email,
-      roles: user.roles,
-    });
-    
-    // Clear the refresh token cookie just in case an old one exists
-    res.clearCookie(REFRESH_COOKIE_NAME, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-    });
+		const accessToken = signAccessToken({
+			userId: user.id,
+			email: user.email,
+			roles: user.roles,
+		});
 
-    res.json({
-      accessToken,
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone || null,
-        roles: user.roles,
-      },
-    });
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Login failed' });
-  }
+		// Clear the refresh token cookie just in case an old one exists
+		res.clearCookie(REFRESH_COOKIE_NAME, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'lax',
+		});
+
+        // 🔥 FIX: Set the Access Token as an HTTP-only cookie with cross-origin flags
+        res.cookie(ACCESS_COOKIE_NAME, accessToken, {
+            httpOnly: true,
+            // Must be true for SameSite: 'None'. Necessary for cross-domain dev.
+            secure: true, 
+            // Allows cookie to be sent cross-domain (localhost:5173 -> localhost:4028)
+            sameSite: 'None', 
+            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
+        });
+
+		res.json({
+			accessToken,
+			user: {
+				id: user.id,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				phone: user.phone || null,
+				roles: user.roles,
+			},
+		});
+	} catch (err) {
+		console.error('Login error:', err);
+		res.status(500).json({ error: 'Login failed' });
+	}
 }
 
 // ==============================
 // Social Login
 // ==============================
 async function socialLogin(req, res) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Missing Authorization header' });
+	try {
+		const authHeader = req.headers.authorization;
+		if (!authHeader) return res.status(401).json({ error: 'Missing Authorization header' });
 
-    const auth0Token = authHeader.split(' ')[1];
-    const userInfoResponse = await axios.get(
-      `https://${process.env.AUTH0_DOMAIN}/userinfo`,
-      { headers: { Authorization: `Bearer ${auth0Token}` } }
-    );
+		const auth0Token = authHeader.split(' ')[1];
+		const userInfoResponse = await axios.get(
+			`https://${process.env.AUTH0_DOMAIN}/userinfo`,
+			{ headers: { Authorization: `Bearer ${auth0Token}` } }
+		);
 
-    const userInfo = userInfoResponse.data;
-    if (!userInfo.email)
-      return res.status(400).json({ error: 'Email not returned by Auth0' });
+		const userInfo = userInfoResponse.data;
+		if (!userInfo.email)
+			return res.status(400).json({ error: 'Email not returned by Auth0' });
 
-    const email = userInfo.email.toLowerCase().trim();
-    let user = await User.findOne({ where: { email } });
+		const email = userInfo.email.toLowerCase().trim();
+		let user = await User.findOne({ where: { email } });
 
-    if (!user) {
-      user = await User.create({
-        id: uuidv4(),
-        firstName: userInfo.given_name || '',
-        lastName: userInfo.family_name || '',
-        email,
-        email_verified: userInfo.email_verified || true,
-        provider: userInfo.sub.split('|')[0],
-        oauth_id: userInfo.sub,
-        roles: ['client'],
-      });
-      await ClientProfile.create({ userId: user.id });
-    }
+		if (!user) {
+			user = await User.create({
+				id: uuidv4(),
+				firstName: userInfo.given_name || '',
+				lastName: userInfo.family_name || '',
+				email,
+				email_verified: userInfo.email_verified || true,
+				provider: userInfo.sub.split('|')[0],
+				oauth_id: userInfo.sub,
+				roles: ['client'],
+			});
+			await ClientProfile.create({ userId: user.id });
+		}
 
-    const accessToken = signAccessToken({
-      userId: user.id,
-      email: user.email,
-      roles: user.roles,
-    });
-    
-    // Clear the refresh token cookie just in case an old one exists
-    res.clearCookie(REFRESH_COOKIE_NAME, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-    });
+		const accessToken = signAccessToken({
+			userId: user.id,
+			email: user.email,
+			roles: user.roles,
+		});
 
-    res.json({
-      accessToken,
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone || null,
-        roles: user.roles,
-      },
-    });
-  } catch (err) {
-    console.error('Auth0 login error:', err.response?.data || err);
-    res.status(500).json({ error: 'Failed to process social login' });
-  }
+		// Clear the refresh token cookie just in case an old one exists
+		res.clearCookie(REFRESH_COOKIE_NAME, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'lax',
+		});
+        
+        // 🔥 FIX: Set the Access Token as an HTTP-only cookie with cross-origin flags
+        res.cookie(ACCESS_COOKIE_NAME, accessToken, {
+            httpOnly: true,
+            // Must be true for SameSite: 'None'. Necessary for cross-domain dev.
+            secure: true, 
+            // Allows cookie to be sent cross-domain (localhost:5173 -> localhost:4028)
+            sameSite: 'None', 
+            maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
+        });
+
+		res.json({
+			accessToken,
+			user: {
+				id: user.id,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				phone: user.phone || null,
+				roles: user.roles,
+			},
+		});
+	} catch (err) {
+		console.error('Auth0 login error:', err.response?.data || err);
+		res.status(500).json({ error: 'Failed to process social login' });
+	}
 }
 
 // ==============================
 // Get current user (with profiles)
 // ==============================
 async function me(req, res) {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+	try {
+		const userId = req.user?.userId;
+		if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // FIX: Use the 'as' alias for both profiles to match server.js association and desired output.
-    const user = await User.findByPk(userId, {
-      include: [
-        { model: CoachProfile, as: 'CoachProfile' }, 
-        { model: ClientProfile, as: 'ClientProfile' }
-      ],
-    });
+		// FIX: Use the 'as' alias for both profiles to match server.js association and desired output.
+		const user = await User.findByPk(userId, {
+			include: [
+				{ model: CoachProfile, as: 'CoachProfile' }, 
+				{ model: ClientProfile, as: 'ClientProfile' }
+			],
+		});
 
-    if (!user) return res.status(404).json({ error: 'User not found' });
+		if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const plainUser = user.get({ plain: true });
+		const plainUser = user.get({ plain: true });
 
-    res.status(200).json({ user: plainUser });
-  } catch (err) {
-    console.error('Error fetching /me:', err);
-    res.status(500).json({ error: 'Failed to fetch user' });
-  }
+		res.status(200).json({ user: plainUser });
+	} catch (err) {
+		console.error('Error fetching /me:', err);
+		res.status(500).json({ error: 'Failed to fetch user' });
+	}
 }
 
 // ==============================
 // Create a new role profile
 // ==============================
 async function createProfile(req, res) {
-  try {
-    const userId = req.user?.userId;
-    const { role } = req.body;
+	try {
+		const userId = req.user?.userId;
+		const { role } = req.body;
 
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    if (!['client', 'coach'].includes(role))
-      return res.status(400).json({ error: 'Invalid role specified' });
+		if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+		if (!['client', 'coach'].includes(role))
+			return res.status(400).json({ error: 'Invalid role specified' });
 
-    const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+		const user = await User.findByPk(userId);
+		if (!user) return res.status(404).json({ error: 'User not found' });
 
-    if (!user.roles.includes(role)) {
-      user.roles = [...user.roles, role];
-      await user.save();
-    }
+		if (!user.roles.includes(role)) {
+			user.roles = [...user.roles, role];
+			await user.save();
+		}
 
-    if (role === 'client') await ClientProfile.findOrCreate({ where: { userId } });
-    if (role === 'coach') await CoachProfile.findOrCreate({ where: { userId } });
+		if (role === 'client') await ClientProfile.findOrCreate({ where: { userId } });
+		if (role === 'coach') await CoachProfile.findOrCreate({ where: { userId } });
 
-    res.status(201).json({ message: `${role} profile created successfully.` });
-  } catch (err) {
-    console.error('Create profile error:', err);
-    res.status(500).json({ error: 'Failed to create profile' });
-  }
+		res.status(201).json({ message: `${role} profile created successfully.` });
+	} catch (err) {
+		console.error('Create profile error:', err);
+		res.status(500).json({ error: 'Failed to create profile' });
+	}
 }
 
 // ==============================
 // Logout
 // ==============================
 async function logout(req, res) {
-  // Clear the refresh token cookie
-  res.clearCookie(REFRESH_COOKIE_NAME, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-  });
-  res.json({ message: 'Logged out' });
+	// Clear the refresh token cookie
+	res.clearCookie(REFRESH_COOKIE_NAME, {
+		httpOnly: true,
+		secure: process.env.NODE_ENV === 'production',
+		sameSite: 'lax',
+	});
+    // Clear the access token cookie
+    res.clearCookie(ACCESS_COOKIE_NAME, {
+        httpOnly: true,
+        secure: true, 
+        sameSite: 'None', 
+    });
+	res.json({ message: 'Logged out' });
 }
 
 
 // ==============================
 // Update user profile
 // ==============================
-// ==============================
-// Update user profile
-// ==============================
+// NOTE: This function is likely deprecated/replaced by coachProfileController.updateCoachProfile
 async function updateProfile(req, res) {
-  try {
-    console.log('Received profile update request with body:', req.body);
+	try {
+		console.log('Received profile update request with body:', req.body);
 
-    const userId = req.user?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+		const userId = req.user?.userId;
+		if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const user = await User.findByPk(userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+		const user = await User.findByPk(userId);
+		if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const userFields = ['firstName', 'lastName', 'email', 'phone', 'profilePicture']; // Added profilePicture to User fields
-    const coachFields = [
-      'professionalTitle', 'bio', 'websiteUrl', 'yearsOfExperience', 
-      'specialties', 'certifications', 'education', 
-      // REMOVED: 'sessionTypes', // <-- THIS LINE MUST BE REMOVED
-      'pricing', 'availability', 
-      'dateOfBirth', 'gender', 'ethnicity', 'country', 
-      'linkedinUrl', 'twitterUrl', 'instagramUrl', 'facebookUrl',
-    ];
-    const clientFields = ['coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'];
+		const userFields = ['firstName', 'lastName', 'email', 'phone', 'profilePicture']; 
+		const coachFields = [
+			'professionalTitle', 'bio', 'yearsOfExperience', 
+			'specialties', 'certifications', 'education', 
+			'dateOfBirth', 'gender', 'ethnicity', 'country', 
+			'linkedinUrl', 'twitterUrl', 'instagramUrl', 'facebookUrl',
+		];
+		const clientFields = ['coachingGoals', 'dateOfBirth', 'gender', 'ethnicity', 'country'];
 
-    const userData = {};
-    const coachData = {};
-    const clientData = {};
+		const userData = {};
+		const coachData = {};
+		const clientData = {};
 
-    for (const key in req.body) {
-      if (userFields.includes(key)) userData[key] = req.body[key];
-      // NOTE: We check for keys from the CoachProfile model
-      if (coachFields.includes(key)) coachData[key] = req.body[key]; 
-      if (clientFields.includes(key)) clientData[key] = req.body[key];
-    }
-    
-    // If the frontend sends profilePicture in the main PUT request, update the User model
-    if (req.body.profilePicture !== undefined) {
-        userData.profilePicture = req.body.profilePicture;
-    }
+		for (const key in req.body) {
+			if (userFields.includes(key)) userData[key] = req.body[key];
+			if (coachFields.includes(key)) coachData[key] = req.body[key]; 
+			if (clientFields.includes(key)) clientData[key] = req.body[key];
+		}
+		
+		if (req.body.profilePicture !== undefined) {
+			userData.profilePicture = req.body.profilePicture;
+		}
 
 
-    if (userData.email) userData.email = userData.email.toLowerCase().trim();
+		if (userData.email) userData.email = userData.email.toLowerCase().trim();
 
-    await user.update(userData);
+		await user.update(userData);
 
-    if (Object.keys(coachData).length > 0) {
-      // NOTE: 'professionalTitle' replaces the old 'title' field
-      if (coachData.title) {
-        coachData.professionalTitle = coachData.title;
-        delete coachData.title;
-      }
-      const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
-      await coachProfile.update(coachData);
-    }
-    if (Object.keys(clientData).length > 0) {
-      const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
-      await clientProfile.update(clientData);
-    }
+		if (Object.keys(coachData).length > 0) {
+			if (coachData.title) {
+				coachData.professionalTitle = coachData.title;
+				delete coachData.title;
+			}
+			const [coachProfile] = await CoachProfile.findOrCreate({ where: { userId } });
+			await coachProfile.update(coachData);
+		}
+		if (Object.keys(clientData).length > 0) {
+			const [clientProfile] = await ClientProfile.findOrCreate({ where: { userId } });
+			await clientProfile.update(clientData);
+		}
 
-    const updatedUser = await User.findByPk(userId, {
-      include: [
-          { model: CoachProfile, as: 'CoachProfile' }, 
-          { model: ClientProfile, as: 'ClientProfile' }
-      ],
-    });
+		const updatedUser = await User.findByPk(userId, {
+			include: [
+				{ model: CoachProfile, as: 'CoachProfile' }, 
+				{ model: ClientProfile, as: 'ClientProfile' }
+			],
+		});
 
-    const plainUpdatedUser = updatedUser.get({ plain: true });
-    
-    res.status(200).json({
-      message: 'Profile updated successfully',
-      user: plainUpdatedUser,
-    });
-  } catch (err) {
-    console.error('Update profile error:', err);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
+		const plainUpdatedUser = updatedUser.get({ plain: true });
+		
+		res.status(200).json({
+			message: 'Profile updated successfully',
+			user: plainUpdatedUser,
+		});
+	} catch (err) {
+		console.error('Update profile error:', err);
+		res.status(500).json({ error: 'Failed to update profile' });
+	}
 }
 
 
@@ -326,117 +346,117 @@ async function updateProfile(req, res) {
 // Email & Password Reset
 // ==============================
 async function verifyEmail(req, res) {
-  try {
-    const { code } = req.body;
-    const email = req.body.email?.toLowerCase().trim();
-    const user = await User.findOne({ where: { email, verification_token: code } });
+	try {
+		const { code } = req.body;
+		const email = req.body.email?.toLowerCase().trim();
+		const user = await User.findOne({ where: { email, verification_token: code } });
 
-    if (!user) return res.status(400).json({ error: 'Invalid verification code' });
-    if (user.verification_token_expires < new Date())
-      return res.status(400).json({ error: 'Verification code expired' });
+		if (!user) return res.status(400).json({ error: 'Invalid verification code' });
+		if (user.verification_token_expires < new Date())
+			return res.status(400).json({ error: 'Verification code expired' });
 
-    user.email_verified = true;
-    user.verification_token = null;
-    user.verification_token_expires = null;
-    await user.save();
+		user.email_verified = true;
+		user.verification_token = null;
+		user.verification_token_expires = null;
+		await user.save();
 
-    res.status(200).json({ message: 'Email verified successfully' });
-  } catch (err) {
-    console.error('Email verification error:', err);
-    res.status(500).json({ error: 'Failed to verify email' });
-  }
+		res.status(200).json({ message: 'Email verified successfully' });
+	} catch (err) {
+		console.error('Email verification error:', err);
+		res.status(500).json({ error: 'Failed to verify email' });
+	}
 }
 
 async function resendVerification(req, res) {
-  try {
-    const email = req.body.email?.toLowerCase().trim();
-    const user = await User.findOne({ where: { email } });
+	try {
+		const email = req.body.email?.toLowerCase().trim();
+		const user = await User.findOne({ where: { email } });
 
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.email_verified) return res.status(400).json({ error: 'Email is already verified' });
+		if (!user) return res.status(404).json({ error: 'User not found' });
+		if (user.email_verified) return res.status(400).json({ error: 'Email is already verified' });
 
-    const otp = generateOtp();
-    user.verification_token = otp;
-    user.verification_token_expires = new Date(Date.now() + 1000 * 60 * 15);
-    await user.save();
+		const otp = generateOtp();
+		user.verification_token = otp;
+		user.verification_token_expires = new Date(Date.now() + 1000 * 60 * 15);
+		await user.save();
 
-    await sendVerificationEmail(email, otp);
-    res.status(200).json({ message: 'Verification email resent' });
-  } catch (err) {
-    console.error('Resend verification error:', err);
-    res.status(500).json({ error: 'Failed to resend verification email' });
-  }
+		await sendVerificationEmail(email, otp);
+		res.status(200).json({ message: 'Verification email resent' });
+	} catch (err) {
+		console.error('Resend verification error:', err);
+		res.status(500).json({ error: 'Failed to resend verification email' });
+	}
 }
 
 async function forgotPassword(req, res) {
-  try {
-    const email = req.body.email?.toLowerCase().trim();
-    const user = await User.findOne({ where: { email } });
+	try {
+		const email = req.body.email?.toLowerCase().trim();
+		const user = await User.findOne({ where: { email } });
 
-    if (!user) {
-      return res.status(200).json({
-        message: 'If a matching email was found, a password reset link has been sent.',
-      });
-    }
+		if (!user) {
+			return res.status(200).json({
+				message: 'If a matching email was found, a password reset link has been sent.',
+			});
+		}
 
-    const token = signEmailToken({ userId: user.id });
-    const tokenExpires = new Date(Date.now() + 1000 * 60 * 60);
+		const token = signEmailToken({ userId: user.id });
+		const tokenExpires = new Date(Date.now() + 1000 * 60 * 60);
 
-    user.reset_token = token;
-    user.reset_token_expires = tokenExpires;
-    await user.save();
+		user.reset_token = token;
+		user.reset_token_expires = tokenExpires;
+		await user.save();
 
-    await sendResetPasswordEmail(email, token).catch(console.error);
+		await sendResetPasswordEmail(email, token).catch(console.error);
 
-    res.status(200).json({
-      message: 'If a matching email was found, a password reset link has been sent.',
-    });
-  } catch (err) {
-    console.error('Forgot password error:', err);
-    res.status(500).json({ error: 'Failed to process password reset request.' });
-  }
+		res.status(200).json({
+			message: 'If a matching email was found, a password reset link has been sent.',
+		});
+	} catch (err) {
+		console.error('Forgot password error:', err);
+		res.status(500).json({ error: 'Failed to process password reset request.' });
+	}
 }
 
 async function resetPassword(req, res) {
-  try {
-    const { token, newPassword } = req.body;
-    const user = await User.findOne({
-      where: {
-        reset_token: token,
-        reset_token_expires: { [Op.gt]: new Date() },
-      },
-    });
+	try {
+		const { token, newPassword } = req.body;
+		const user = await User.findOne({
+			where: {
+				reset_token: token,
+				reset_token_expires: { [Op.gt]: new Date() },
+			},
+		});
 
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired password reset token.' });
-    }
+		if (!user) {
+			return res.status(400).json({ error: 'Invalid or expired password reset token.' });
+		}
 
-    const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-    user.password_hash = hash;
-    user.reset_token = null;
-    user.reset_token_expires = null;
-    await user.save();
+		const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+		user.password_hash = hash;
+		user.reset_token = null;
+		user.reset_token_expires = null;
+		await user.save();
 
-    res.status(200).json({ message: 'Password reset successfully.' });
-  } catch (err) {
-    console.error('Reset password error:', err);
-    res.status(500).json({ error: 'Failed to reset password.' });
-  }
+		res.status(200).json({ message: 'Password reset successfully.' });
+	} catch (err) {
+		console.error('Reset password error:', err);
+		res.status(500).json({ error: 'Failed to reset password.' });
+	}
 }
 
 // ==============================
 // Exports
 // ==============================
 module.exports = {
-  register,
-  login,
-  socialLogin,
-  logout,
-  me,
-  verifyEmail,
-  resendVerification,
-  forgotPassword,
-  resetPassword,
-  createProfile,
-  updateProfile,
+	register,
+	login,
+	socialLogin,
+	logout,
+	me,
+	verifyEmail,
+	resendVerification,
+	forgotPassword,
+	resetPassword,
+	createProfile,
+	updateProfile,
 };

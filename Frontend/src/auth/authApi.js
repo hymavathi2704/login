@@ -1,11 +1,13 @@
-import axios from "axios";
 
-// Load backend URL from .env (fallback to localhost)
-const API = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
+import axios from 'axios';
+
+// 🚀 FIX: Define API_BASE_URL so it's accessible to all functions
+// This uses the Vite environment variable (VITE_BACKEND_URL) or defaults to localhost:4028
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
 
 // Create an Axios instance for API requests
 const axiosInstance = axios.create({
-  baseURL: API,
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
@@ -179,10 +181,11 @@ export const getCoachProfile = () => {
 };
 
 // =========================================================
-// SESSION MANAGEMENT FUNCTIONS
+// SESSION MANAGEMENT FUNCTIONS (FIXED)
 // =========================================================
 
 export const createSession = async (sessionData) => {
+    // FIX: API_BASE_URL is now defined at the top
     return axios.post(`${API_BASE_URL}/api/coach/sessions`, sessionData);
 };
 

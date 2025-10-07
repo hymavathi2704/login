@@ -1,25 +1,32 @@
 const express = require('express');
 const router = express.Router();
 
-// 1. IMPORT THE CORRECT AUTHENTICATION MIDDLEWARE
 const { authenticate } = require('../middleware/authMiddleware'); 
-
-// 2. IMPORT THE MULTER INSTANCE (now exports the full instance)
 const upload = require('../middleware/upload'); 
 
-// 3. IMPORT THE NECESSARY CONTROLLERS
 const coachProfileController = require('../controllers/coachProfileController');
 const sessionController = require('../controllers/sessionController'); 
+
+// 🚨 FIX: Middleware to skip the 'authenticate' middleware for OPTIONS requests
+const skipAuthForOptions = (req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        // Respond with 200/204 to allow the browser to proceed with the actual request
+        // Since global CORS is handled in server.js, a simple end() is often sufficient.
+        return res.status(200).end(); 
+    }
+    next();
+};
+
 
 // ==============================
 // Logged-in coach profile routes
 // ==============================
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
-router.put('/profile', authenticate, coachProfileController.updateCoachProfile);
-router.post('/profile/add-item', authenticate, coachProfileController.addItem);
-router.post('/profile/remove-item', authenticate, coachProfileController.removeItem);
-// This line is now correct, calling .single() on the Multer instance
-router.post('/profile/upload-picture', authenticate, upload.single('profilePicture'), coachProfileController.uploadProfilePicture);
+// Apply skipAuthForOptions to POST/PUT/DELETE
+router.put('/profile', skipAuthForOptions, authenticate, coachProfileController.updateCoachProfile);
+router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addItem);
+router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeItem);
+router.post('/profile/upload-picture', skipAuthForOptions, authenticate, upload.single('profilePicture'), coachProfileController.uploadProfilePicture);
 
 
 // ==============================
@@ -27,13 +34,13 @@ router.post('/profile/upload-picture', authenticate, upload.single('profilePictu
 // ==============================
 
 // POST /api/coach/sessions - Create a new session
-router.post('/sessions', authenticate, sessionController.createSession);
+router.post('/sessions', skipAuthForOptions, authenticate, sessionController.createSession);
 
 // PUT /api/coach/sessions/:sessionId - Update an existing session
-router.put('/sessions/:sessionId', authenticate, sessionController.updateSession);
+router.put('/sessions/:sessionId', skipAuthForOptions, authenticate, sessionController.updateSession);
 
 // DELETE /api/coach/sessions/:sessionId - Delete a session
-router.delete('/sessions/:sessionId', authenticate, sessionController.deleteSession);
+router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, sessionController.deleteSession);
 
 
 // ==============================
