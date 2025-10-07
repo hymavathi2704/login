@@ -19,7 +19,7 @@ const Session = db.define('Session', {
     },
     onDelete: 'CASCADE',
   },
-  title: {
+  title: { // Corresponds to frontend 'Session Name'
     type: DataTypes.STRING,
     allowNull: false,
   },
@@ -27,19 +27,37 @@ const Session = db.define('Session', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  type: { // e.g., '1-on-1', 'Group', 'Digital Product'
+  type: { // Corresponds to frontend 'Session Format' (e.g., 'individual', 'group')
     type: DataTypes.STRING,
     allowNull: false,
   },
-  duration: {
+  duration: { // Corresponds to frontend 'Duration (minutes)'
     type: DataTypes.INTEGER, // duration in minutes
     allowNull: false,
   },
-  price: {
+  price: { // Corresponds to frontend 'Price'
     type: DataTypes.FLOAT,
     allowNull: false,
   },
-  isActive: { // ✅ FINAL REQUIRED FIELD
+  
+  // --- NEW FIELDS FROM FRONTEND FORM ---
+  defaultDate: { // Corresponds to frontend 'Default Date'
+    type: DataTypes.DATEONLY, // Stores only the date (e.g., YYYY-MM-DD)
+    allowNull: true,
+    comment: 'Default date for fixed-schedule sessions (e.g., workshops).'
+  },
+  defaultTime: { // Corresponds to frontend 'Default Time'
+    type: DataTypes.STRING, // Store the time string (e.g., '14:30')
+    allowNull: true,
+    comment: 'Default time for fixed-schedule sessions (e.g., workshops).'
+  },
+  meetingLink: { // Corresponds to frontend 'Meeting Link'
+    type: DataTypes.TEXT, // Use TEXT for potentially long URLs
+    allowNull: true,
+  },
+  // --- END NEW FIELDS ---
+
+  isActive: { 
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   }

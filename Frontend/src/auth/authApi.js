@@ -177,3 +177,19 @@ export const getCoachProfile = () => {
   // Keep leading slash as it seems to work for dedicated routes
   return axiosInstance.get("/api/coach/profile");
 };
+
+// =========================================================
+// SESSION MANAGEMENT FUNCTIONS
+// =========================================================
+
+export const createSession = async (sessionData) => {
+    return axios.post(`${API_BASE_URL}/api/coach/sessions`, sessionData);
+};
+
+export const updateSession = async (sessionId, sessionData) => {
+    return axios.put(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, sessionData);
+};
+
+export const deleteSession = async (sessionId) => {
+    return axios.delete(`${API_BASE_URL}/api/coach/sessions/${sessionId}`);
+};

@@ -120,9 +120,11 @@ const PORT = process.env.PORT || 4028;
         await sequelize.authenticate();
         console.log('✅ Database connected');
 
-        // 💥 FIX: Removed { alter: true } to prevent MySQL key limit error
-        await sequelize.sync(); 
-        console.log('✅ Database synchronized');
+        // 🔥 FIX FOR ER_TOO_MANY_KEYS (Development Only):
+        // Temporarily use { force: true } to drop and recreate all tables, resetting the index count.
+        // !!! WARNING: THIS WILL DELETE ALL DATA !!!
+        await sequelize.sync({ alter: true }); 
+        console.log('✅ Database synchronized ');
 
         app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
     } catch (err) {

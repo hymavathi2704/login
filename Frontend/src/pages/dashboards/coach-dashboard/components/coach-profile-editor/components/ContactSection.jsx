@@ -102,31 +102,7 @@ const ContactSection = ({ data, errors, updateData, setUnsavedChanges }) => {
         )}
       </div>
 
-      {/* Website */}
-      <div className="space-y-2">
-        <Input
-          label="Website URL"
-          type="url"
-          value={data?.websiteUrl || ''}
-          onChange={(e) => handleInputChange('websiteUrl', e.target.value)}
-          error={data?.websiteUrl && !validateWebsiteUrl(data?.websiteUrl) ? 'Please enter a valid website URL' : undefined}
-          placeholder="www.yourwebsite.com"
-        />
-        {data?.websiteUrl && validateWebsiteUrl(data?.websiteUrl) && (
-          <div className="flex items-center space-x-2 text-sm text-blue-600">
-            <Globe className="w-4 h-4" />
-            <a 
-              href={formatWebsiteUrl(data?.websiteUrl)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline flex items-center space-x-1"
-            >
-              <span>Preview website</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
-        )}
-      </div>
+      
 
       {/* Contact Preferences */}
       <div className="bg-gray-50 rounded-lg p-6">

@@ -69,74 +69,72 @@ const getCoachProfile = async (req, res) => {
 // UPDATE Coach Profile 
 // ==============================
 const updateCoachProfile = async (req, res) => {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
 
-    // FIX: Explicitly include CoachProfile using the alias 'CoachProfile'
-    const user = await User.findByPk(userId, { include: { model: CoachProfile, as: 'CoachProfile' } });
-    if (!user) return res.status(404).json({ error: 'User not found' });
+        // FIX: Explicitly include CoachProfile using the alias 'CoachProfile'
+        const user = await User.findByPk(userId, { include: { model: CoachProfile, as: 'CoachProfile' } });
+        if (!user) return res.status(404).json({ error: 'User not found' });
 
-    const {
-      firstName, lastName, email, phone,
-      professionalTitle, profilePicture, websiteUrl, bio,
-      yearsOfExperience, 
-      dateOfBirth, gender, ethnicity, country,
-      linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-      // REMOVED: sessionTypes from destructured body
-      pricing, availability
-    } = req.body;
+        const {
+            firstName, lastName, email, phone,
+            professionalTitle, bio, // websiteUrl and profilePicture REMOVED
+            yearsOfExperience, 
+            dateOfBirth, gender, ethnicity, country,
+            linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
+            // REMOVED: sessionTypes from destructured body
+            pricing, availability
+        } = req.body; // profilePicture and websiteUrl are no longer expected or processed here
 
-    // Update user fields
-    await user.update({ firstName, lastName, email, phone });
+        // Update user fields
+        await user.update({ firstName, lastName, email, phone });
 
-    // Update or create coach profile
-    let coachProfile = user.CoachProfile;
-    if (!coachProfile) coachProfile = await CoachProfile.create({ userId });
+        // Update or create coach profile
+        let coachProfile = user.CoachProfile;
+        if (!coachProfile) coachProfile = await CoachProfile.create({ userId });
 
-    await coachProfile.update({
-      professionalTitle,
-      profilePicture,
-      websiteUrl,
-      bio,
-      yearsOfExperience: parseInt(yearsOfExperience) || 0,
-      dateOfBirth, gender, ethnicity, country,
-      linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-      // REMOVED: sessionTypes update logic
-      pricing: pricing || '{}',
-      availability: availability || '{}'
-    });
+        await coachProfile.update({
+            professionalTitle,
+            bio, // websiteUrl and profilePicture REMOVED from the update payload
+            yearsOfExperience: parseInt(yearsOfExperience) || 0,
+            dateOfBirth, gender, ethnicity, country,
+            linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
+            // REMOVED: sessionTypes update logic
+            pricing: pricing || '{}',
+            availability: availability || '{}'
+        });
 
-    // Fetch the updated user object with all includes for the return value
-    const updatedUser = await User.findByPk(userId, {
-        include: [
-            { 
-                model: CoachProfile, 
-                as: 'CoachProfile',
-                include: [{ model: Session, as: 'sessions' }] // UPDATED: Use 'sessions' alias
-            },
-            { model: ClientProfile, as: 'ClientProfile' }
-        ],
-    });
+        // Fetch the updated user object with all includes for the return value
+        const updatedUser = await User.findByPk(userId, {
+            include: [
+                { 
+                    model: CoachProfile, 
+                    as: 'CoachProfile',
+                    include: [{ model: Session, as: 'sessions' }] // UPDATED: Use 'sessions' alias
+                },
+                { model: ClientProfile, as: 'ClientProfile' }
+            ],
+        });
 
-    const plainUpdatedUser = updatedUser.get({ plain: true });
-    
-    // ENSURE PARSING ON RETURN AS WELL
-    if (plainUpdatedUser.CoachProfile) {
-        plainUpdatedUser.CoachProfile.specialties = safeParse(plainUpdatedUser.CoachProfile.specialties);
-        plainUpdatedUser.CoachProfile.education = safeParse(plainUpdatedUser.CoachProfile.education);
-        plainUpdatedUser.CoachProfile.certifications = safeParse(plainUpdatedUser.CoachProfile.certifications);
-        // REMOVED: plainUpdatedUser.CoachProfile.sessionTypes parsing logic
-        plainUpdatedUser.CoachProfile.pricing = safeParse(plainUpdatedUser.CoachProfile.pricing);
-        plainUpdatedUser.CoachProfile.availability = safeParse(plainUpdatedUser.CoachProfile.availability);
+        const plainUpdatedUser = updatedUser.get({ plain: true });
+        
+        // ENSURE PARSING ON RETURN AS WELL
+        if (plainUpdatedUser.CoachProfile) {
+            plainUpdatedUser.CoachProfile.specialties = safeParse(plainUpdatedUser.CoachProfile.specialties);
+            plainUpdatedUser.CoachProfile.education = safeParse(plainUpdatedUser.CoachProfile.education);
+            plainUpdatedUser.CoachProfile.certifications = safeParse(plainUpdatedUser.CoachProfile.certifications);
+            // REMOVED: plainUpdatedUser.CoachProfile.sessionTypes parsing logic
+            plainUpdatedUser.CoachProfile.pricing = safeParse(plainUpdatedUser.CoachProfile.pricing);
+            plainUpdatedUser.CoachProfile.availability = safeParse(plainUpdatedUser.CoachProfile.availability);
+        }
+
+
+        res.json({ user: plainUpdatedUser });
+    } catch (error) {
+        console.error('Error updating coach profile:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
     }
-
-
-    res.json({ user: plainUpdatedUser });
-  } catch (error) {
-    console.error('Error updating coach profile:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
 };
 
 // ==============================

@@ -1,8 +1,6 @@
 // Backend/src/models/CoachProfile.js
 const { DataTypes, UUIDV4 } = require('sequelize');
 const db = require('../config/db');
-// REMOVED: const Testimonial = require('./Testimonial'); 
-// REMOVED: const Session = require('./Session'); 
 
 const CoachProfile = db.define('coach_profiles', {
   id: {
@@ -26,14 +24,8 @@ const CoachProfile = db.define('coach_profiles', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  profilePicture: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  websiteUrl: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
+  // REMOVED: profilePicture (moved to User model)
+  // REMOVED: websiteUrl (consolidated or removed)
   bio: {
     type: DataTypes.TEXT,
     allowNull: true,
@@ -55,7 +47,7 @@ const CoachProfile = db.define('coach_profiles', {
     allowNull: true,
   },
   
-  // === NEW FIELDS: Social Links and Demographics (unchanged) ===
+  // === Social Links and Demographics (UNCHANGED) ===
   linkedinUrl: { type: DataTypes.STRING, allowNull: true, },
   twitterUrl: { type: DataTypes.STRING, allowNull: true, },
   instagramUrl: { type: DataTypes.STRING, allowNull: true, },
@@ -65,23 +57,30 @@ const CoachProfile = db.define('coach_profiles', {
   ethnicity: { type: DataTypes.STRING, allowNull: true, },
   country: { type: DataTypes.STRING, allowNull: true, },
   
-  // Services Info
-  pricing: {
-    type: DataTypes.JSON,
-    allowNull: true,
+  // REMOVED: Services Info (Now managed via Session and Event models)
+  // pricing: { type: DataTypes.JSON, allowNull: true, },
+  // availability: { type: DataTypes.JSON, allowNull: true, }
+
+  // Status/Metrics fields (unchanged)
+  rating: {
+      type: DataTypes.DECIMAL(2, 1),
+      allowNull: false,
+      defaultValue: 0.0,
   },
-  availability: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  }
+  totalReviews: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+  },
+  totalClients: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+  },
+  
 }, {
+  tableName: 'coach_profiles',
   timestamps: true,
 });
-
-// REMOVED: Association definitions are now centralized in server.js
-/*
-CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', as: 'testimonials' });
-CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', as: 'availableSessions' });
-*/
 
 module.exports = CoachProfile;
