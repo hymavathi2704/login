@@ -4,11 +4,10 @@ const router = express.Router();
 // 1. IMPORT THE CORRECT AUTHENTICATION MIDDLEWARE
 const { authenticate } = require('../middleware/authMiddleware'); 
 
-// 🚨 FIX: Import the upload middleware DIRECTLY, not destructured.
-// It is assumed that '../middleware/upload' exports the Multer instance itself.
+// 2. IMPORT THE MULTER INSTANCE (now exports the full instance)
 const upload = require('../middleware/upload'); 
 
-// 2. IMPORT THE NECESSARY CONTROLLERS
+// 3. IMPORT THE NECESSARY CONTROLLERS
 const coachProfileController = require('../controllers/coachProfileController');
 const sessionController = require('../controllers/sessionController'); 
 
@@ -19,7 +18,7 @@ router.get('/profile', authenticate, coachProfileController.getCoachProfile);
 router.put('/profile', authenticate, coachProfileController.updateCoachProfile);
 router.post('/profile/add-item', authenticate, coachProfileController.addItem);
 router.post('/profile/remove-item', authenticate, coachProfileController.removeItem);
-// This line now correctly uses the imported 'upload' instance:
+// This line is now correct, calling .single() on the Multer instance
 router.post('/profile/upload-picture', authenticate, upload.single('profilePicture'), coachProfileController.uploadProfilePicture);
 
 

@@ -36,5 +36,5 @@ const upload = multer({
   },
 });
 
-// Export the middleware for a single file upload named 'profilePicture'
-module.exports = upload.single('profilePicture');
+// FIX: Export the Multer instance itself, not the result of upload.single()
+module.exports = upload;

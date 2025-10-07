@@ -11,8 +11,7 @@ const coachProfileController = require('../controllers/coachProfileController');
 // VITAL MIDDLEWARE (Destructuring for clarity)
 const { authenticate, authorize } = require('../middleware/authMiddleware');  
 const { authLimiter } = require('../middleware/rateLimiter');
-const uploadMiddleware = require('../middleware/upload'); 
-
+const uploadMiddleware = require('../middleware/upload'); // This is the Multer instance
 
 // Allow preflight requests for CORS
 router.options('*', cors());
@@ -84,7 +83,7 @@ router.post('/create-profile', authenticate, auth.createProfile);
 router.post(
   '/profile/upload-picture', 
   authenticate, 
-  uploadMiddleware, 
+  uploadMiddleware.single('profilePicture'), // FIX: Call .single() on the imported Multer instance
   coachProfileController.uploadProfilePicture 
 );
 
