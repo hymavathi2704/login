@@ -559,3 +559,85 @@ export const unfollowCoach = async (req, res) => {
         res.status(500).json({ message: 'Server error when attempting to unfollow coach.' });
     }
 };
+
+// ==============================
+// NEW: GET Followed Coaches (for client dashboard)
+// ==============================
+export const getFollowedCoaches = async (req, res) => {
+    try {
+        const followerId = req.user.userId; // ID of the currently logged-in client
+
+        // 1. Find all Follow records where the current user is the follower
+        const followedRecords = await Follow.findAll({
+            where: { followerId: followerId },
+            attributes: ['followingId'] // Only need the IDs of the coaches being followed
+        });
+        
+        const followedCoachIds = followedRecords.map(record => record.followingId);
+
+        if (followedCoachIds.length === 0) {
+            return res.status(200).json({ coaches: [] });
+        }
+        
+        // 2. Reuse the logic from getAllCoachProfiles to fetch the full data for these specific IDs
+        const coaches = await User.findAll({
+            where: { 
+                id: { [Op.in]: followedCoachIds },
+                roles: { [Op.like]: '%"coach"%' }
+            },
+            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'],
+            include: [
+                { 
+                    model: CoachProfile, 
+                    as: 'CoachProfile',
+                    required: true,
+                    include: [
+                        { model: Testimonial, as: 'testimonials', attributes: ['rating'], required: false },
+                        { model: Session, as: 'sessions', attributes: ['price'], required: false }
+                    ]
+                },
+            ],
+            group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
+        });
+
+        // 3. Apply the same data processing logic as getAllCoachProfiles
+        const processedCoaches = coaches.map(coach => {
+            const plainCoach = coach.get({ plain: true });
+            const profile = plainCoach.CoachProfile;
+            
+            if (profile) {
+                profile.specialties = safeParse(profile.specialties);
+                profile.pricing = safeParse(profile.pricing);
+            }
+
+            const ratings = profile?.testimonials?.map(t => t.rating) || [];
+            const prices = profile?.sessions?.map(s => s.price) || [];
+            
+            const averageRating = ratings.length > 0 
+                ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
+                : '0.0';
+            
+            const startingPrice = prices.length > 0
+                ? Math.min(...prices)
+                : profile?.pricing?.individual || 0; 
+
+            return {
+                id: plainCoach.id,
+                name: `${plainCoach.firstName} ${plainCoach.lastName}`,
+                title: profile?.professionalTitle,
+                profilePicture: plainCoach.profilePicture,
+                shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
+                specialties: profile?.specialties || [],
+                startingPrice: startingPrice,
+                rating: parseFloat(averageRating),
+                totalReviews: ratings.length,
+            };
+        });
+
+        res.status(200).json({ coaches: processedCoaches });
+
+    } catch (error) {
+        console.error('Error fetching followed coaches:', error);
+        res.status(500).json({ error: 'Failed to fetch followed coaches' });
+    }
+};
