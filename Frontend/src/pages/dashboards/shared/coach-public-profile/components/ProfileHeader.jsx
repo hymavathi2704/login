@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // <-- ADD hooks
 import Icon from '@/components/AppIcon';
 import Image from '@/components/AppImage';
 import Button from '@/components/ui/Button';
+import { useAuth } from '@/auth/AuthContext'; // Assuming AuthContext provides user info
+import axios from 'axios'; 
 
 // Load backend URL from .env (fallback to localhost:4028)
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
+const API_URL = `${API_BASE_URL}/api/coach/public`; // Base for public coach profile routes
 
 // Helper to construct the full image source URL for server-uploaded files
 const getFullImageSrc = (path) => {
@@ -12,13 +15,93 @@ const getFullImageSrc = (path) => {
     if (typeof path === 'string' && path.startsWith('/uploads/')) {
         return `${API_BASE_URL}${path}`;
     }
-    // Return original path or a fallback image if necessary (AppImage component often handles fallback)
     return path;
 };
 
+// Helper function to fetch the user's token (must be consistent with authApi.js)
+const getAuthToken = () => {
+    return localStorage.getItem('accessToken'); 
+};
+
 const ProfileHeader = ({ coach, onBookSession, onContact }) => {
+    const { user, roles, logout } = useAuth() || {}; 
+    const isAuthenticated = !!user;
+    // Check if the current user is a client (assuming 'client' role is set up)
+    const isClient = isAuthenticated && roles?.includes('client'); 
+
+    // State to manage the follow status
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [isLoadingFollow, setIsLoadingFollow] = useState(false);
+    
+    // Determine if the current user is the coach themselves
+    const isCoachSelf = isAuthenticated && user?.id === coach?.id;
+    
+    // --- API Call Functions ---
+    const fetchFollowStatus = useCallback(async () => {
+        if (!isAuthenticated || !isClient || !coach?.id || isCoachSelf) {
+            return;
+        }
+
+        setIsLoadingFollow(true);
+        try {
+            const token = getAuthToken();
+            const response = await axios.get(`${API_URL}/${coach.id}/follow-status`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                withCredentials: true
+            });
+            
+            setIsFollowing(response.data.isFollowing);
+        } catch (error) {
+            console.error('Failed to fetch follow status:', error);
+            // Optionally set error state or keep isFollowing false
+        } finally {
+            setIsLoadingFollow(false);
+        }
+    }, [isAuthenticated, isClient, coach?.id, isCoachSelf]);
+
+    // Function to handle follow/unfollow action
+    const handleFollowToggle = async () => {
+        if (!isAuthenticated || !isClient || isCoachSelf) {
+            alert('Please log in as a client to follow a coach.');
+            return;
+        }
+
+        setIsLoadingFollow(true);
+        const token = getAuthToken();
+        const method = isFollowing ? 'DELETE' : 'POST';
+        const url = `${API_URL}/${coach.id}/follow`;
+
+        try {
+            const response = await axios({
+                method: method,
+                url: url,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                withCredentials: true
+            });
+            
+            // The backend returns a status flag, which is definitive
+            setIsFollowing(response.data.isFollowing);
+        } catch (error) {
+            console.error('Failed to toggle follow status:', error);
+            alert(error.response?.data?.message || 'Failed to update follow status.');
+        } finally {
+            setIsLoadingFollow(false);
+        }
+    };
+    // --- End API Call Functions ---
+
+
+    // Effect to fetch initial follow status
+    useEffect(() => {
+        fetchFollowStatus();
+    }, [fetchFollowStatus]);
+
     const formatRating = (rating) => {
-        return rating ? rating?.toFixed(1) : '0.0';
+        return rating ? parseFloat(rating)?.toFixed(1) : '0.0';
     };
 
     const formatExperience = (years) => {
@@ -32,7 +115,6 @@ const ProfileHeader = ({ coach, onBookSession, onContact }) => {
                 <div className="flex-shrink-0">
                     <div className="w-32 h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden shadow-elevated">
                         <Image
-                            // FIX: Apply the helper function to get the full public URL
                             src={getFullImageSrc(coach?.profileImage)}
                             alt={`${coach?.name} - Professional Coach`}
                             className="w-full h-full object-cover"
@@ -56,8 +138,10 @@ const ProfileHeader = ({ coach, onBookSession, onContact }) => {
 
                     {/* Key Metrics */}
                     <div className="flex flex-wrap items-center gap-6 mb-6">
+                        {/* ... (Rating and other metrics display remains the same) ... */}
                         <div className="flex items-center space-x-2">
                             <div className="flex items-center">
+                                {/* Star Rating Icons */}
                                 {[1, 2, 3, 4, 5]?.map((star) => (
                                     <Icon
                                         key={star}
@@ -129,27 +213,22 @@ const ProfileHeader = ({ coach, onBookSession, onContact }) => {
 
                 {/* Action Buttons */}
                 <div className="flex flex-col space-y-3 w-full lg:w-auto">
-                    <Button
-                        variant="default"
-                        size="lg"
-                        onClick={onBookSession}
-                        iconName="Calendar"
-                        iconPosition="left"
-                        className="w-full lg:w-48"
-                    >
-                        Book a Session
-                    </Button>
-                    
-                    <Button
-                        variant="outline"
-                        size="default"
-                        onClick={() => onContact('message')}
-                        iconName="MessageCircle"
-                        iconPosition="left"
-                        className="w-full lg:w-48"
-                    >
-                        Send Message
-                    </Button>
+                    {/* FOLLOW / UNFOLLOW Button - Only visible for logged-in clients, not for self */}
+                    {isAuthenticated && isClient && !isCoachSelf && (
+                        <Button
+                            variant={isFollowing ? "outline" : "primary"}
+                            size="default"
+                            onClick={handleFollowToggle}
+                            iconName={isFollowing ? "UserMinus" : "UserPlus"}
+                            iconPosition="left"
+                            isLoading={isLoadingFollow}
+                            disabled={isLoadingFollow}
+                            className="w-full lg:w-48 order-1 lg:order-1" 
+                        >
+                            {isFollowing ? "Unfollow Coach" : "Follow Coach"}
+                        </Button>
+                    )}
+
                 </div>
             </div>
         </div>

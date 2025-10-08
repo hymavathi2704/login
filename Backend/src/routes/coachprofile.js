@@ -7,6 +7,12 @@ const upload = require('../middleware/upload');
 const coachProfileController = require('../controllers/coachProfileController');
 const sessionController = require('../controllers/sessionController'); 
 
+const { 
+    getFollowStatus,    // <-- ADD THIS
+    followCoach,        // <-- ADD THIS
+    unfollowCoach       // <-- ADD THIS
+} = coachProfileController;
+
 // 🚨 FIX: Middleware to skip the 'authenticate' middleware for OPTIONS requests
 const skipAuthForOptions = (req, res, next) => {
     if (req.method === 'OPTIONS') {
@@ -47,5 +53,13 @@ router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, sessionC
 // Public coach profile (No authentication required)
 // ==============================
 router.get('/public/:id', coachProfileController.getPublicCoachProfile);
+
+// ==============================
+// NEW: Follow/Unfollow Routes (Requires client authentication)
+// The coachId is the :id parameter.
+// ==============================
+router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
+router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
+router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
 
 module.exports = router;

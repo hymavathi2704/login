@@ -1,15 +1,25 @@
-const { v4: uuidv4 } = require('uuid');
-const path = require('path');
-const fs = require('fs');
-const User = require('../models/user');
-const CoachProfile = require('../models/CoachProfile');
-const ClientProfile = require('../models/ClientProfile');
-const Event = require('../models/Event');
-const Testimonial = require('../models/Testimonial');
-const Session = require('../models/Session'); // CRITICAL: Import Session model
-const { Op } = require('sequelize'); // CRITICAL: Import Op for filtering
+// Backend/src/controllers/coachProfileController.js
 
-// Define the root directory for uploads, used for disk cleanup
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path'; 
+import fs from 'fs';
+import User from '../models/user.js'; 
+import CoachProfile from '../models/CoachProfile.js'; 
+import ClientProfile from '../models/ClientProfile.js'; 
+import Event from '../models/Event.js'; 
+import Testimonial from '../models/Testimonial.js'; 
+import Session from '../models/Session.js'; 
+import Follow from '../models/Follow.js'; 
+
+import { Op } from 'sequelize';
+
+// === FIX: Replacement for __dirname in ES Modules ===
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// ===================================================
+
+// Define the root directory for uploads, now using the __dirname equivalent
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 
 // ==============================
@@ -25,7 +35,7 @@ const safeParse = (value) => {
 // ==============================
 // GET Coach Profile (logged-in)
 // ==============================
-const getCoachProfile = async (req, res) => {
+export const getCoachProfile = async (req, res) => { 
   try {
     const userId = req.user?.userId; 
     if (!userId) return res.status(401).json({ error: 'User ID missing from token' });
@@ -35,7 +45,7 @@ const getCoachProfile = async (req, res) => {
             { 
                 model: CoachProfile, 
                 as: 'CoachProfile',
-                include: [{ model: Session, as: 'sessions' }] // UPDATED: Use 'sessions' alias
+                include: [{ model: Session, as: 'sessions' }] 
             }, 
             { model: ClientProfile, as: 'ClientProfile' }
         ],
@@ -47,12 +57,10 @@ const getCoachProfile = async (req, res) => {
 
     const plainUser = user.get({ plain: true });
 
-    // CRITICAL FIX: Parse JSON string fields for the frontend
     if (plainUser.CoachProfile) {
         plainUser.CoachProfile.specialties = safeParse(plainUser.CoachProfile.specialties);
         plainUser.CoachProfile.education = safeParse(plainUser.CoachProfile.education);
         plainUser.CoachProfile.certifications = safeParse(plainUser.CoachProfile.certifications);
-        // REMOVED: plainUser.CoachProfile.sessionTypes parsing logic
         plainUser.CoachProfile.pricing = safeParse(plainUser.CoachProfile.pricing);
         plainUser.CoachProfile.availability = safeParse(plainUser.CoachProfile.availability);
     }
@@ -68,50 +76,44 @@ const getCoachProfile = async (req, res) => {
 // ==============================
 // UPDATE Coach Profile 
 // ==============================
-const updateCoachProfile = async (req, res) => {
+export const updateCoachProfile = async (req, res) => { 
     try {
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
 
-        // FIX: Explicitly include CoachProfile using the alias 'CoachProfile'
         const user = await User.findByPk(userId, { include: { model: CoachProfile, as: 'CoachProfile' } });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         const {
             firstName, lastName, email, phone,
-            professionalTitle, bio, // websiteUrl and profilePicture REMOVED
+            professionalTitle, bio, 
             yearsOfExperience, 
             dateOfBirth, gender, ethnicity, country,
             linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-            // REMOVED: sessionTypes from destructured body
             pricing, availability
-        } = req.body; // profilePicture and websiteUrl are no longer expected or processed here
+        } = req.body; 
 
-        // Update user fields
         await user.update({ firstName, lastName, email, phone });
 
-        // Update or create coach profile
         let coachProfile = user.CoachProfile;
         if (!coachProfile) coachProfile = await CoachProfile.create({ userId });
 
         await coachProfile.update({
             professionalTitle,
-            bio, // websiteUrl and profilePicture REMOVED from the update payload
+            bio, 
             yearsOfExperience: parseInt(yearsOfExperience) || 0,
             dateOfBirth, gender, ethnicity, country,
             linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-            // REMOVED: sessionTypes update logic
             pricing: pricing || '{}',
             availability: availability || '{}'
         });
 
-        // Fetch the updated user object with all includes for the return value
         const updatedUser = await User.findByPk(userId, {
             include: [
                 { 
                     model: CoachProfile, 
                     as: 'CoachProfile',
-                    include: [{ model: Session, as: 'sessions' }] // UPDATED: Use 'sessions' alias
+                    include: [{ model: Session, as: 'sessions' }] 
                 },
                 { model: ClientProfile, as: 'ClientProfile' }
             ],
@@ -119,16 +121,13 @@ const updateCoachProfile = async (req, res) => {
 
         const plainUpdatedUser = updatedUser.get({ plain: true });
         
-        // ENSURE PARSING ON RETURN AS WELL
         if (plainUpdatedUser.CoachProfile) {
             plainUpdatedUser.CoachProfile.specialties = safeParse(plainUpdatedUser.CoachProfile.specialties);
             plainUpdatedUser.CoachProfile.education = safeParse(plainUpdatedUser.CoachProfile.education);
             plainUpdatedUser.CoachProfile.certifications = safeParse(plainUpdatedUser.CoachProfile.certifications);
-            // REMOVED: plainUpdatedUser.CoachProfile.sessionTypes parsing logic
             plainUpdatedUser.CoachProfile.pricing = safeParse(plainUpdatedUser.CoachProfile.pricing);
             plainUpdatedUser.CoachProfile.availability = safeParse(plainUpdatedUser.CoachProfile.availability);
         }
-
 
         res.json({ user: plainUpdatedUser });
     } catch (error) {
@@ -139,9 +138,8 @@ const updateCoachProfile = async (req, res) => {
 
 // ==============================
 // ADD Item (certification/education/specialties)
-// ... (unchanged)
 // ==============================
-const addItem = async (req, res) => {
+export const addItem = async (req, res) => { 
   try {
     const { type, item } = req.body; 
     const allowedTypes = ['certifications', 'education', 'specialties'];
@@ -155,16 +153,14 @@ const addItem = async (req, res) => {
     const coachProfile = await CoachProfile.findOne({ where: { userId } });
     if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
 
-    // *** CRITICAL FIX: Ensure currentItems is an array before pushing ***
     const dataFromDb = safeParse(coachProfile[type]);
     const currentItems = Array.isArray(dataFromDb) ? dataFromDb : [];
     
-    currentItems.push(type === 'specialties' ? item : { ...item, id: uuidv4() }); // Specialties may be strings, others objects
+    currentItems.push(type === 'specialties' ? item : { ...item, id: uuidv4() }); 
 
     // Data is stored as a JSON string in the database
     await coachProfile.update({ [type]: JSON.stringify(currentItems) });
     
-    // FIX: Force read the updated profile to ensure data freshness for the return value
     const updatedProfile = await CoachProfile.findOne({ where: { userId } });
     const currentItemsParsed = safeParse(updatedProfile[type]);
 
@@ -178,9 +174,8 @@ const addItem = async (req, res) => {
 
 // ==============================
 // REMOVE Item (certification/education/specialties)
-// ... (unchanged)
 // ==============================
-const removeItem = async (req, res) => {
+export const removeItem = async (req, res) => { 
   try {
     const { type, id } = req.body;
     const allowedTypes = ['certifications', 'education', 'specialties'];
@@ -194,7 +189,6 @@ const removeItem = async (req, res) => {
     const coachProfile = await CoachProfile.findOne({ where: { userId } });
     if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
 
-    // *** CRITICAL FIX: Ensure currentItems is an array before filtering ***
     const dataFromDb = safeParse(coachProfile[type]);
     const listToFilter = Array.isArray(dataFromDb) ? dataFromDb : [];
     
@@ -206,7 +200,6 @@ const removeItem = async (req, res) => {
     // Data is stored as a JSON string in the database
     await coachProfile.update({ [type]: JSON.stringify(currentItems) });
     
-    // FIX: Force read the updated profile to ensure data freshness for the return value
     const updatedProfile = await CoachProfile.findOne({ where: { userId } });
     const currentItemsParsed = safeParse(updatedProfile[type]);
 
@@ -220,9 +213,8 @@ const removeItem = async (req, res) => {
 
 // ==============================
 // UPLOAD Profile Picture
-// ... (unchanged)
 // ==============================
-const uploadProfilePicture = async (req, res) => {
+export const uploadProfilePicture = async (req, res) => { 
     const userId = req.user?.userId;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
@@ -251,7 +243,9 @@ const uploadProfilePicture = async (req, res) => {
     } catch (error) {
         console.error('Error in uploadProfilePicture:', error.stack);
         try {
-            fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
+            if (req.file) { // Added conditional check for req.file before unlinking
+                fs.unlinkSync(path.join(UPLOADS_DIR, req.file.filename));
+            }
         } catch (cleanupErr) {
             // Log cleanup error if necessary
         }
@@ -262,7 +256,7 @@ const uploadProfilePicture = async (req, res) => {
 // ==============================
 // GET Public Coach Profile (by ID)
 // ==============================
-const getPublicCoachProfile = async (req, res) => {
+export const getPublicCoachProfile = async (req, res) => { 
   try {
     const coachId = req.params.id;
     console.log("Fetching public coach profile for:", coachId);
@@ -298,7 +292,7 @@ const getPublicCoachProfile = async (req, res) => {
         },
         { // Include the coach's available services
           model: Session,
-          as: 'sessions', // UPDATED: Use 'sessions' alias
+          as: 'sessions', 
           required: false,
         }
       ],
@@ -343,7 +337,7 @@ const getPublicCoachProfile = async (req, res) => {
       profileImage: plainCoachProfile.profilePicture || user.profilePicture, 
       events: user.events || [], 
       testimonials: formattedTestimonials,
-      availableSessions: plainCoachProfile.sessions || [], // UPDATED: Use plainCoachProfile.sessions
+      availableSessions: plainCoachProfile.sessions || [], 
       title: plainCoachProfile.professionalTitle,
       rating: 4.9, 
       totalReviews: formattedTestimonials.length,
@@ -383,7 +377,7 @@ const getPublicCoachProfile = async (req, res) => {
 // ==============================
 // GET All Coach Profiles (for client discovery)
 // ===================================
-const getAllCoachProfiles = async (req, res) => {
+export const getAllCoachProfiles = async (req, res) => { 
   try {
     const { search, audience } = req.query;
     const whereClause = {
@@ -420,7 +414,7 @@ const getAllCoachProfiles = async (req, res) => {
                     },
                     { // For price calculation
                         model: Session,
-                        as: 'sessions', // UPDATED: Use 'sessions' alias
+                        as: 'sessions', 
                         attributes: ['price'], 
                         required: false,
                     }
@@ -473,12 +467,95 @@ const getAllCoachProfiles = async (req, res) => {
   }
 };
 
-module.exports = {
-  getCoachProfile,
-  updateCoachProfile,
-  addItem,
-  removeItem,
-  uploadProfilePicture, 
-  getPublicCoachProfile, 
-  getAllCoachProfiles,
+// ==============================
+// NEW: GET Follow Status
+// ==============================
+export const getFollowStatus = async (req, res) => { 
+    try {
+        const coachId = req.params.coachId; 
+        const followerId = req.user.userId; 
+
+        if (followerId.toString() === coachId.toString()) {
+            return res.status(200).json({ isFollowing: false });
+        }
+
+        const followRecord = await Follow.findOne({
+            where: {
+                followerId: followerId,
+                followingId: coachId
+            }
+        });
+
+        res.status(200).json({ isFollowing: !!followRecord });
+
+    } catch (error) {
+        console.error('Error checking follow status (MySQL):', error);
+        res.status(500).json({ message: 'Server error when checking follow status.' });
+    }
+};
+
+// ==============================
+// NEW: POST Follow Coach
+// ==============================
+export const followCoach = async (req, res) => {
+    try {
+        const coachId = req.params.coachId;
+        const followerId = req.user.userId;
+
+        if (followerId.toString() === coachId.toString()) {
+            return res.status(400).json({ message: 'Cannot follow yourself.' });
+        }
+        
+        const [followRecord, created] = await Follow.findOrCreate({
+            where: {
+                followerId: followerId,
+                followingId: coachId
+            },
+            defaults: {
+                followerId: followerId,
+                followingId: coachId
+            }
+        });
+        
+        if (!created) {
+            return res.status(200).json({ message: 'Coach already followed.', isFollowing: true });
+        }
+
+        res.status(201).json({ message: 'Coach followed successfully!', isFollowing: true });
+
+    } catch (error) {
+        console.error('Error following coach (MySQL):', error);
+        res.status(500).json({ message: 'Server error when attempting to follow coach.' });
+    }
+};
+
+// ==============================
+// NEW: DELETE Unfollow Coach
+// ==============================
+export const unfollowCoach = async (req, res) => {
+    try {
+        const coachId = req.params.coachId;
+        const followerId = req.user.userId;
+
+        if (followerId.toString() === coachId.toString()) {
+            return res.status(400).json({ message: 'Cannot unfollow yourself.' });
+        }
+        
+        const result = await Follow.destroy({
+            where: {
+                followerId: followerId,
+                followingId: coachId
+            }
+        });
+
+        if (result === 0) {
+            return res.status(404).json({ message: 'Follow record not found.', isFollowing: false });
+        }
+
+        res.status(200).json({ message: 'Coach unfollowed successfully!', isFollowing: false });
+
+    } catch (error) {
+        console.error('Error unfollowing coach (MySQL):', error);
+        res.status(500).json({ message: 'Server error when attempting to unfollow coach.' });
+    }
 };

@@ -18,9 +18,11 @@ const Event = require('./models/Event');
 const Booking = require('./models/Booking');
 const Session = require('./models/Session');
 const Testimonial = require('./models/Testimonial');
+const Follow = require('./models/Follow'); // <-- NEW IMPORT
 
 // ==========================================
 // Route Imports
+// ... (no changes)
 // ==========================================
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
@@ -31,13 +33,13 @@ const app = express();
 
 // ==========================================
 // Middlewares
+// ... (no changes)
 // ==========================================
 const corsOptions = {
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
-    // 🔥 FIX: Explicitly allow methods and the Authorization header for CORS preflight success
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'], // <-- THIS IS THE CRITICAL LINE
+    allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
 
@@ -47,10 +49,8 @@ app.use(
     })
 );
 
-// Parse JSON with high limit for images or large payloads
 app.use(express.json({ limit: '5mb' }));
 
-// Serve static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.use(cookieParser());
@@ -90,8 +90,19 @@ Booking.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
 Event.hasMany(Booking, { foreignKey: 'eventId', as: 'bookings' });
 Booking.belongsTo(Event, { foreignKey: 'eventId', as: 'event' });
 
+// === NEW ASSOCIATIONS: User <-> Follow (Client follows Coach) ===
+// User (Follower) -> Follows
+User.hasMany(Follow, { foreignKey: 'followerId', onDelete: 'CASCADE', as: 'followingRecords' });
+Follow.belongsTo(User, { foreignKey: 'followerId', as: 'followerUser' });
+
+// User (Following/Coach) -> Follows
+User.hasMany(Follow, { foreignKey: 'followingId', onDelete: 'CASCADE', as: 'followedByRecords' });
+Follow.belongsTo(User, { foreignKey: 'followingId', as: 'followingCoach' });
+
+
 // ==========================================
 // API Routes
+// ... (no changes)
 // ==========================================
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
@@ -102,6 +113,7 @@ app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
 // Error Handling
+// ... (no changes)
 // ==========================================
 app.use((err, req, res, next) => {
     if (err instanceof UnauthorizedError) {
@@ -123,7 +135,7 @@ const PORT = process.env.PORT || 4028;
         await sequelize.authenticate();
         console.log('✅ Database connected');
 
-        // 💥 FIX: Removed { alter: true } to prevent MySQL key limit error
+        // Sequelize will now recognize and create the 'follows' table if it doesn't exist
         await sequelize.sync(); 
         console.log('✅ Database synchronized');
 

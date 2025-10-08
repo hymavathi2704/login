@@ -1,173 +1,111 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
+import { Clock, DollarSign, Users, Tag, TrendingUp } from 'lucide-react'; // Added TrendingUp for subscriptions
+
+// Assuming the coach object has 'availableSessions' array populated from the backend
+// The session objects look like: { id, title, description, type, duration, price, ... }
 
 const ServicesSection = ({ coach, onServiceClick }) => {
-  const [activeTab, setActiveTab] = useState('sessions');
-
-  const tabs = [
-    { id: 'sessions', label: 'One-on-One Sessions', icon: 'User' },
-    { id: 'events', label: 'Events & Workshops', icon: 'Users' }
-  ];
+  // Removed state for activeTab since we're only showing Sessions now
 
   const formatPrice = (price) => {
+    const p = parseFloat(price);
+    if (p === 0) return 'FREE';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    })?.format(price);
+    })?.format(p);
   };
 
   const formatDuration = (minutes) => {
-    if (minutes < 60) return `${minutes} min`;
-    const hours = Math.floor(minutes / 60);
-    const remainingMinutes = minutes % 60;
+    const m = parseInt(minutes, 10);
+    if (m < 60) return `${m} min`;
+    const hours = Math.floor(m / 60);
+    const remainingMinutes = m % 60;
     return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
   };
+  
+  // Helper to determine button text based on session type
+  const getButtonConfig = (sessionType) => {
+      // NOTE: This logic assumes you will manage the 'type' field to denote ongoing services
+      if (sessionType.toLowerCase().includes('subscription') || sessionType.toLowerCase().includes('package')) {
+          return { label: 'Subscribe Now', icon: 'TrendingUp', variant: 'success' };
+      }
+      return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default' };
+  }
+
+  // --- Start of JSX ---
+
+  // Check if availableSessions exists and is an array, defaulting to an empty array
+  const availableSessions = Array.isArray(coach?.availableSessions) ? coach.availableSessions : [];
 
   return (
     <div className="bg-card rounded-card p-6 shadow-soft">
       <h2 className="text-2xl font-heading font-semibold text-foreground mb-6">
-        Services & Offerings
+        Digital Services Offered
       </h2>
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 mb-6 bg-muted rounded-soft p-1">
-        {tabs?.map((tab) => (
-          <button
-            key={tab?.id}
-            onClick={() => setActiveTab(tab?.id)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-soft text-sm font-medium transition-smooth flex-1 justify-center ${
-              activeTab === tab?.id
-                ? 'bg-card text-foreground shadow-soft'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Icon name={tab?.icon} size={16} />
-            <span>{tab?.label}</span>
-          </button>
-        ))}
-      </div>
-      {/* Tab Content */}
-      <div className="min-h-[300px]">
-        {activeTab === 'sessions' && (
-          <div className="space-y-4">
-            {coach?.sessions && coach?.sessions?.length > 0 ? (
-              coach?.sessions?.map((session) => (
-                <div
-                  key={session?.id}
-                  className="border border-border rounded-card p-4 hover:shadow-soft transition-smooth cursor-pointer"
-                  onClick={() => onServiceClick('session', session)}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground mb-1">
-                        {session?.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-2">
-                        {session?.description}
-                      </p>
-                    </div>
-                    <div className="text-right ml-4">
-                      <div className="text-lg font-bold text-primary">
-                        {formatPrice(session?.price)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {formatDuration(session?.duration)}
-                      </div>
-                    </div>
+      
+      {/* Sessions List - Replaces the tab content */}
+      <div className="space-y-4">
+        {availableSessions.length > 0 ? (
+          availableSessions.map((session) => {
+            const { label: buttonLabel, icon: buttonIconName, variant: buttonVariant } = getButtonConfig(session?.type);
+            
+            return (
+              <div
+                key={session?.id}
+                className="border border-border rounded-card p-4 hover:shadow-soft transition-smooth"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 pr-4">
+                    <h3 className="font-semibold text-foreground mb-1">
+                      {session?.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm mb-2">
+                      {session?.description}
+                    </p>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                      <div className="flex items-center space-x-1">
-                        <Icon name="Clock" size={14} />
-                        <span>{formatDuration(session?.duration)}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Icon name="Video" size={14} />
-                        <span>{session?.format}</span>
-                      </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-xl font-bold text-primary">
+                      {formatPrice(session?.price)}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      iconName="ArrowRight"
-                      iconPosition="right"
-                    >
-                      Book Now
-                    </Button>
+                    <div className="text-sm text-muted-foreground">
+                      {session?.price > 0 ? 'per session' : 'free offer'}
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-12">
-                <Icon name="Calendar" size={48} className="text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No sessions available at the moment.</p>
-              </div>
-            )}
-          </div>
-        )}
 
-        {activeTab === 'events' && (
-          <div className="space-y-4">
-            {coach?.events && coach?.events?.length > 0 ? (
-              coach?.events?.map((event) => (
-                <div
-                  key={event?.id}
-                  className="border border-border rounded-card p-4 hover:shadow-soft transition-smooth cursor-pointer"
-                  onClick={() => onServiceClick('event', event)}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground mb-1">
-                        {event?.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm mb-2">
-                        {event?.description}
-                      </p>
+                <div className="flex items-center justify-between pt-3 border-t border-dashed border-border">
+                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                    <div className="flex items-center space-x-1">
+                      <Clock size={14} />
+                      <span>{formatDuration(session?.duration)}</span>
                     </div>
-                    <div className="text-right ml-4">
-                      <div className="text-lg font-bold text-primary">
-                        {formatPrice(event?.price)}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {event?.maxParticipants} spots
-                      </div>
+                    <div className="flex items-center space-x-1">
+                      <Tag size={14} />
+                      <span className="capitalize">{session?.type || 'Individual'}</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                      <div className="flex items-center space-x-1">
-                        <Icon name="Calendar" size={14} />
-                        <span>{new Date(event.date)?.toLocaleDateString()}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Icon name="Clock" size={14} />
-                        <span>{event?.time}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Icon name="Users" size={14} />
-                        <span>{event?.enrolledCount}/{event?.maxParticipants}</span>
-                      </div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      iconName="ArrowRight"
-                      iconPosition="right"
-                      disabled={event?.enrolledCount >= event?.maxParticipants}
-                    >
-                      {event?.enrolledCount >= event?.maxParticipants ? 'Full' : 'Register'}
-                    </Button>
-                  </div>
+                  <Button
+                    variant={buttonVariant}
+                    size="sm"
+                    // Removed onClick={onServiceClick} to keep flow simple per request
+                    iconName={buttonIconName}
+                    iconPosition="right"
+                  >
+                    {buttonLabel}
+                  </Button>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-12">
-                <Icon name="Users" size={48} className="text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No upcoming events or workshops.</p>
               </div>
-            )}
+            );
+          })
+        ) : (
+          <div className="text-center py-12">
+            <Icon name="DollarSign" size={48} className="text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">
+              This coach has not yet listed any digital services.
+            </p>
           </div>
         )}
       </div>
