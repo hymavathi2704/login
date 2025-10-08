@@ -92,17 +92,19 @@ const ExploreCoaches = () => {
     }, [activeTab, fetchCoaches]);
 
     // Helper to format specialties for display
-    const formatSpecialties = (specs) => (
-        specs.slice(0, 3).map((spec, index) => (
-            <span 
-                key={index} 
-                className="inline-block bg-primary-100 text-primary-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full"
-            >
-                {spec}
-            </span>
-        ))
-    );
-
+    const formatSpecialties = (specs) => {
+    // CRITICAL FIX: Ensure specs is an array, default to empty array if null/undefined/string
+    const safeSpecs = Array.isArray(specs) ? specs : [];
+    
+    return safeSpecs.slice(0, 3).map((spec, index) => (
+        <span 
+            key={index} 
+            className="inline-block bg-primary-100 text-primary-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded-full"
+        >
+            {spec}
+        </span>
+    ));
+};
     const handleSearch = (e) => {
         e.preventDefault();
         fetchCoaches(activeTab); // Re-run fetch with current state
