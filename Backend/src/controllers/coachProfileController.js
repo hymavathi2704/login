@@ -574,15 +574,17 @@ export const unfollowCoach = async (req, res) => {
 // ==============================
 export const getFollowedCoaches = async (req, res) => {
     try {
-        const followerId = req.user.userId; // ID of the currently logged-in client
+        // Ensure req.user.userId is reliably present from the authenticate middleware
+        const followerId = req.user.userId; 
 
         // 1. Find all Follow records where the current user is the follower
         const followedRecords = await Follow.findAll({
             where: { followerId: followerId },
-            attributes: ['followingId'] // Only need the IDs of the coaches being followed
+            attributes: ['followingId'] 
         });
         
-        // FIX APPLIED HERE: Use .get('followingId') to reliably extract the attribute value
+        // CRITICAL FIX: Use .get('followingId') to reliably extract the attribute value.
+        // Direct access (record.followingId) often fails when attributes are explicitly limited.
         const followedCoachIds = followedRecords.map(record => record.get('followingId'));
 
         if (followedCoachIds.length === 0) {
@@ -634,9 +636,10 @@ export const getFollowedCoaches = async (req, res) => {
             return {
                 id: plainCoach.id,
                 firstName: plainCoach.firstName, 
-                lastName: plainCoach.lastName,   
+                lastName: plainCoach.lastName,   
                 profilePicture: plainCoach.profilePicture, 
-                title: profile?.professionalTitle,
+                // Ensure this field matches the frontend expectation (frontend was updated in the last response)
+                title: profile?.professionalTitle, 
                 shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
                 specialties: profile?.specialties || [],
                 startingPrice: startingPrice,
