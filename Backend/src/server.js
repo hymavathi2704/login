@@ -90,15 +90,13 @@ Booking.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
 Event.hasMany(Booking, { foreignKey: 'eventId', as: 'bookings' });
 Booking.belongsTo(Event, { foreignKey: 'eventId', as: 'event' });
 
+// ... Model Associations
 // === NEW ASSOCIATIONS: User <-> Follow (Client follows Coach) ===
-// User (Follower) -> Follows
 User.hasMany(Follow, { foreignKey: 'followerId', onDelete: 'CASCADE', as: 'followingRecords' });
 Follow.belongsTo(User, { foreignKey: 'followerId', as: 'followerUser' });
 
-// User (Following/Coach) -> Follows
 User.hasMany(Follow, { foreignKey: 'followingId', onDelete: 'CASCADE', as: 'followedByRecords' });
 Follow.belongsTo(User, { foreignKey: 'followingId', as: 'followingCoach' });
-
 
 // ==========================================
 // API Routes
