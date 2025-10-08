@@ -42,6 +42,8 @@ const Button = React.forwardRef(({
     asChild = false,
     children,
     loading = false,
+    // FIX: Capture the mis-named prop 'isLoading' and prevent it from reaching the DOM
+    isLoading, 
     iconName = null,
     iconPosition = 'left',
     iconSize = null,
@@ -137,6 +139,8 @@ const Button = React.forwardRef(({
                 children: content,
             });
 
+            // Note: We are using <Comp> here, and spreading {...props} which is fine 
+            // as 'isLoading' has been captured.
             return <Comp ref={ref} {...props}>{clonedChild}</Comp>;
         } catch {
             return renderFallbackButton();
@@ -151,7 +155,7 @@ const Button = React.forwardRef(({
             )}
             ref={ref}
             disabled={disabled || loading}
-            {...props}
+            {...props} // 'isLoading' is safely excluded from here.
         >
             {loading && <LoadingSpinner />}
             {iconName && iconPosition === 'left' && renderIcon()}

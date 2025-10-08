@@ -18,12 +18,19 @@ const useDebounce = (value, delay) => {
     return debouncedValue;
 };
 
-// NOTE: Since your original code didn't import a dedicated component for the image, 
-// we will use the native <img> tag with a fallback.
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
 const PUBLIC_PROFILES_URL = `${API_BASE_URL}/api/profiles/coaches`; 
 const FOLLOWED_PROFILES_URL = `${API_BASE_URL}/api/profiles/followed`; 
-// =================================================================================
+
+// Add this helper function to correctly resolve the image source
+const getFullImageSrc = (path) => {
+    // If the path starts with /uploads/, prepend the base URL
+    if (typeof path === 'string' && path.startsWith('/uploads/')) {
+        return `${API_BASE_URL}${path}`;
+    }
+    // Otherwise, it's already a full URL, Base64, or null, so return it as is
+    return path;
+}
 
 const ExploreCoaches = () => {
     const { setBreadcrumb } = useBreadcrumb();
@@ -180,7 +187,7 @@ const ExploreCoaches = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         {/* FIX: Use coach.profilePicture property which is now returned by backend */}
                                         <img className="h-10 w-10 rounded-full" 
-                                             src={coach.profilePicture || `https://ui-avatars.com/api/?name=${coach.firstName}+${coach.lastName}&background=random`} 
+                                             src={getFullImageSrc(coach.profilePicture) || `https://ui-avatars.com/api/?name=${coach.firstName}+${coach.lastName}&background=random`} 
                                              alt={`${coach.firstName} ${coach.lastName}`} 
                                         />
                                     </td>
