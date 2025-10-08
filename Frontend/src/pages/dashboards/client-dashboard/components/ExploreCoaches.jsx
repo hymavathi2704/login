@@ -1,81 +1,61 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Eye, Filter } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // CRITICAL FIX: Import useNavigate
+import { useBreadcrumb } from '@/components/ui/BreadcrumbNavigation';
 import { useAuth } from '@/auth/AuthContext'; 
-import { getAllCoaches } from '@/auth/authApi'; 
-import NavigationLoadingStates from '@/components/ui/NavigationLoadingStates';
-import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import AppImage from '@/components/AppImage';
+// NOTE: Assuming CoachPublicProfile is correctly imported for state-based viewing
+import CoachPublicProfile from '../../shared/coach-public-profile'; 
+import axios from 'axios'; 
 
-// Load backend URL
+// === Mock Dependencies/Helpers (Ensure these are available/imported correctly) ===
+const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        return () => { clearTimeout(handler); };
+    }, [value, delay]);
+    return debouncedValue;
+};
+
+// NOTE: Since your original code didn't import a dedicated component for the image, 
+// we will use the native <img> tag with a fallback.
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
-const PUBLIC_PROFILES_URL = `${API_BASE_URL}/api/profiles/coaches`; // Endpoint for ALL coaches
-const FOLLOWED_PROFILES_URL = `${API_BASE_URL}/api/profiles/followed`; // Endpoint for FOLLOWED coaches
-
-// Helper to construct the full image source URL
-const getFullImageSrc = (path) => {
-    if (typeof path === 'string' && path.startsWith('/uploads/')) {
-        return `${API_BASE_URL}${path}`;
-    }
-    return path;
-};
-
-// Mock specialties for filtering (adjust as needed based on your backend values)
-const coachSpecialties = [
-    { value: '', label: 'All Specialties' },
-    { value: 'Life Coaching', label: 'Life Coaching' },
-    { value: 'Career Development', label: 'Career Development' },
-    { value: 'Business Coaching', label: 'Business Coaching' },
-    { value: 'Wellness', label: 'Wellness' },
-];
-
-// Helper to format specialties for display (includes necessary array check fix)
-const formatSpecialties = (specs) => {
-    const safeSpecs = Array.isArray(specs) ? specs : [];
-    
-    return safeSpecs.slice(0, 3).map((spec, index) => (
-        <span 
-            key={index} 
-            className="inline-block bg-primary/10 text-primary px-2 py-1 rounded-full text-xs font-medium mr-2"
-        >
-            {spec}
-        </span>
-    ));
-};
+const PUBLIC_PROFILES_URL = `${API_BASE_URL}/api/profiles/coaches`; 
+const FOLLOWED_PROFILES_URL = `${API_BASE_URL}/api/profiles/followed`; 
+// =================================================================================
 
 const ExploreCoaches = () => {
+    const { setBreadcrumb } = useBreadcrumb();
     const { isAuthenticated } = useAuth();
-    const navigate = useNavigate(); // Initialize hook
     
-    const [activeTab, setActiveTab] = useState('all'); 
     const [coaches, setCoaches] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedCoach, setSelectedCoach] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedAudience, setSelectedAudience] = useState('');
+    const [activeTab, setActiveTab] = useState('all'); 
     const [error, setError] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedSpecialty, setSelectedSpecialty] = useState('');
 
-    const fetchCoaches = useCallback(async (tab, search, specialty) => {
-        setIsLoading(true);
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+    const fetchCoaches = useCallback(async () => {
         setError(null);
+        setIsLoading(true);
         setCoaches([]);
         
         let url = '';
         let headers = {};
-        
-        if (tab === 'all') {
-            // ALL COACHES: Apply search and filter params
-            url = `${PUBLIC_PROFILES_URL}?search=${search}&audience=${specialty}`;
-        } else if (tab === 'followed') {
-            // FOLLOWED COACHES: Requires authentication, ignores search/filter params
+
+        if (activeTab === 'all') {
+            url = `${PUBLIC_PROFILES_URL}?search=${debouncedSearchTerm}&audience=${selectedAudience}`;
+        } else {
             if (!isAuthenticated) {
-                setError("Please log in to see your followed coaches.");
-                setIsLoading(false);
-                return;
+                 setError("Please log in to view your followed coaches.");
+                 setIsLoading(false);
+                 return;
             }
             url = FOLLOWED_PROFILES_URL; 
-            
             const token = localStorage.getItem('accessToken'); 
             headers = { Authorization: `Bearer ${token}` };
         }
@@ -84,177 +64,157 @@ const ExploreCoaches = () => {
             const response = await axios.get(url, { headers, withCredentials: true });
             
             setCoaches(response.data.coaches || []);
-
         } catch (err) {
-            console.error(`Failed to fetch ${tab} coaches:`, err);
-            setError(`Failed to load coaches. Please check your network or try again.`);
+            console.error(`Failed to fetch ${activeTab} coaches:`, err);
+            setError(`Failed to load coaches: ${err.response?.data?.error || err.message}`);
+            setCoaches([]); 
         } finally {
             setIsLoading(false);
         }
-    }, [isAuthenticated]);
+    }, [activeTab, isAuthenticated, debouncedSearchTerm, selectedAudience]);
 
-    // Effect hook runs on tab change or search submission
     useEffect(() => {
-        // When switching tabs, clear errors and fetch data
-        if (activeTab === 'followed') {
-            // Fetch followed list directly, ignoring current search/filter state
-            fetchCoaches('followed', '', ''); 
+        if (!selectedCoach) {
+            fetchCoaches();
+            setBreadcrumb([]);
         } else {
-            // When on 'all', fetch using current search/filter state
-            fetchCoaches('all', searchQuery, selectedSpecialty); 
+            setBreadcrumb({
+                parent: 'Explore Coaches',
+                current: `${selectedCoach.firstName} ${selectedCoach.lastName}`,
+                onBack: () => setSelectedCoach(null)
+            });
         }
-    }, [activeTab]); 
+    }, [fetchCoaches, selectedCoach, setBreadcrumb]); 
 
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        // Only trigger search when on 'all' tab, otherwise it just filters locally (or shouldn't run)
-        if (activeTab === 'all') {
-            fetchCoaches('all', searchQuery, selectedSpecialty); 
-        }
-    };
+    if (selectedCoach) {
+        return <CoachPublicProfile coachId={selectedCoach.id} />;
+    }
     
-    // FIX: Function to handle navigation to public profile using useNavigate
-    const handleViewProfile = (coachId) => {
-        navigate(`/profiles/${coachId}`); 
-    };
-
     const isFilterDisabled = activeTab === 'followed';
 
     return (
-        <div className="p-6">
-            <h1 className="text-3xl font-heading font-bold text-foreground mb-4">
-                Explore Coaches
-            </h1>
-
-            {/* Tabs - ALL COACHES & FOLLOWED COACHES */}
-            <div className="flex border-b border-border mb-6">
+        <div className="space-y-6">
+            
+            {/* Tabs: All Coaches & Followed Coaches */}
+            <div className="flex border-b border-gray-200 mb-4">
                 <button
-                    className={`px-4 py-2 font-medium text-lg transition-colors duration-200 ${
+                    className={`px-4 py-2 text-base font-medium transition-colors duration-200 ${
                         activeTab === 'all' 
-                            ? 'text-primary border-b-2 border-primary' 
-                            : 'text-muted-foreground hover:text-primary'
+                            ? 'text-purple-700 border-b-2 border-purple-700' 
+                            : 'text-gray-500 hover:text-purple-600'
                     }`}
                     onClick={() => setActiveTab('all')}
                 >
                     All Coaches
                 </button>
                 <button
-                    className={`px-4 py-2 font-medium text-lg transition-colors duration-200 ${
+                    className={`px-4 py-2 text-base font-medium transition-colors duration-200 ${
                         activeTab === 'followed' 
-                            ? 'text-primary border-b-2 border-primary' 
-                            : 'text-muted-foreground hover:text-primary'
+                            ? 'text-purple-700 border-b-2 border-purple-700' 
+                            : 'text-gray-500 hover:text-purple-600'
                     }`}
                     onClick={() => setActiveTab('followed')}
-                    // Disabled if unauthenticated to clearly communicate intent, though fetcher handles it
                     disabled={!isAuthenticated && activeTab !== 'followed'} 
                 >
                     Followed Coaches
                 </button>
             </div>
-            
-            {/* Search and Filter Bar - ALWAYS VISIBLE (Restored Old Layout) */}
-            <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 mb-8 bg-card rounded-xl border border-border p-4">
-                
-                {/* Search Input (Long) */}
-                <div className="flex-1 relative">
-                    <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <Input
-                        type="search"
-                        placeholder={isFilterDisabled ? "Filtering/Search available only in All Coaches tab" : "Search by name or email..."}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2"
-                        disabled={isFilterDisabled}
-                    />
-                </div>
-                
-                {/* Specialty Filter (Select) */}
-                <div className="md:w-64">
-                    <Select
-                        value={selectedSpecialty}
-                        onValueChange={setSelectedSpecialty}
-                        options={coachSpecialties}
-                        placeholder="Filter by Specialization"
-                        className="w-full"
-                        disabled={isFilterDisabled}
-                    />
-                </div>
-                
-                <Button 
-                    type="submit" 
-                    variant="default" 
-                    disabled={isLoading || isFilterDisabled}
-                >
-                    Search
-                </Button>
-            </form>
 
-            {/* Content Area */}
-            {isLoading ? (
-                <NavigationLoadingStates isLoading={true} loadingType="search" />
-            ) : error ? (
-                <div className="p-4 bg-danger/10 text-danger rounded-md">
-                    Error: {error}
-                </div>
-            ) : !isAuthenticated && activeTab === 'followed' ? (
-                <div className="p-4 bg-warning/10 text-warning-foreground rounded-md text-center">
-                    Please **Sign In** to view your followed coaches.
-                </div>
-            ) : coaches.length === 0 ? (
-                <div className="text-center py-10 text-muted-foreground">
-                    {activeTab === 'all' 
-                        ? 'No coaches match your search criteria.' 
-                        : 'You are not currently following any coaches.'}
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {coaches.map((coach) => (
-                        <div key={coach.id} className="bg-card border border-border rounded-card shadow-soft p-4 flex flex-col transition-transform hover:shadow-soft-md">
-                            <div className="flex items-center mb-4">
-                                <div className="w-16 h-16 rounded-full overflow-hidden mr-4 flex-shrink-0">
-                                    <AppImage 
-                                        src={getFullImageSrc(coach.profilePicture || coach.profileImage)} 
-                                        alt={coach.name} 
-                                        className="w-full h-full object-cover" 
-                                    />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-semibold text-foreground">{coach.name}</h3>
-                                    <p className="text-sm text-secondary">{coach.title}</p>
-                                </div>
-                            </div>
 
-                            <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                                {coach.shortBio}
-                            </p>
-
-                            <div className="flex-1 mb-4">
-                                {formatSpecialties(coach.specialties)}
-                            </div>
-
-                            <div className="flex items-center justify-between border-t border-border pt-3 mt-auto">
-                                <div className="flex items-center text-sm">
-                                    <Icon name="Star" size={16} className="text-warning fill-current mr-1" />
-                                    <span className="font-bold text-foreground mr-2">{coach.rating}</span>
-                                    <span className="text-muted-foreground">({coach.totalReviews || 0} reviews)</span>
-                                </div>
-                                <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    onClick={() => handleViewProfile(coach.id)} 
-                                    iconName="Eye"
-                                    iconPosition="left"
-                                >
-                                    View Profile
-                                </Button>
-                            </div>
+            {/* Search and Filter Bar */}
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                        <label className="text-sm font-medium text-gray-700">Search by Name or Specialty</label>
+                        <div className="relative mt-1">
+                            <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder={isFilterDisabled ? "Search/Filter disabled for Followed Coaches" : "e.g., Jane Doe or Life Coaching..."}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                                disabled={isFilterDisabled}
+                            />
                         </div>
-                    ))}
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700">Filter by Target Audience</label>
+                        <div className="relative mt-1">
+                             <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <select 
+                                value={selectedAudience} 
+                                onChange={(e) => setSelectedAudience(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 border rounded-lg appearance-none"
+                                disabled={isFilterDisabled}
+                            >
+                                <option value="">All Audiences</option>
+                                <option>Life coaches</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {error && (
+                <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    {error}
+                </div>
+            )}
+
+            {isLoading ? (
+                <p className="text-center py-8">Loading coaches...</p>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white rounded-xl border">
+                        <thead>
+                            <tr className="w-full bg-gray-50 border-b">
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile Picture</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {coaches.length > 0 ? coaches.map(coach => (
+                                <tr key={coach.id}> 
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {/* FIX: Use coach.profilePicture property which is now returned by backend */}
+                                        <img className="h-10 w-10 rounded-full" 
+                                             src={coach.profilePicture || `https://ui-avatars.com/api/?name=${coach.firstName}+${coach.lastName}&background=random`} 
+                                             alt={`${coach.firstName} ${coach.lastName}`} 
+                                        />
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        {/* FIX: Use coach.firstName and coach.lastName property which are now returned by backend */}
+                                        <div className="text-sm font-medium text-gray-900">{coach.firstName} {coach.lastName}</div>
+                                        {/* FIX: Ensure CoachProfile exists before accessing professionalTitle */}
+                                        <div className="text-sm text-purple-600">{coach.CoachProfile?.professionalTitle || 'Coach'}</div> 
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <button 
+                                            onClick={() => setSelectedCoach(coach)}
+                                            className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50"
+                                        >
+                                            <Eye size={16} className="mr-2" /> View Profile
+                                        </button>
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan="3" className="px-6 py-4 whitespace-nowrap text-center text-gray-500">
+                                        {activeTab === 'all' 
+                                            ? 'No coaches found matching your criteria.' 
+                                            : 'You are not currently following any coaches.'}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             )}
         </div>
     );
 };
+
 
 export default ExploreCoaches;

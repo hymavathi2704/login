@@ -448,17 +448,23 @@ export const getAllCoachProfiles = async (req, res) => {
 
         
         return {
-            id: plainCoach.id,
-            name: `${plainCoach.firstName} ${plainCoach.lastName}`,
-            title: profile?.professionalTitle,
-            profileImage: plainCoach.profilePicture,
-            shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
-            specialties: profile?.specialties || [],
-            startingPrice: startingPrice,
-            rating: parseFloat(averageRating),
-            totalReviews: ratings.length,
-        };
-    });
+        // Pass the raw User fields directly
+        id: plainCoach.id,
+        firstName: plainCoach.firstName, // <-- ADDED
+        lastName: plainCoach.lastName,   // <-- ADDED
+        profilePicture: plainCoach.profilePicture, // <-- ADDED
+        
+        // Pass CoachProfile fields as before
+        title: profile?.professionalTitle,
+        shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
+        specialties: profile?.specialties || [],
+        
+        // Ensure rating and price fields are still present
+        startingPrice: startingPrice,
+        rating: parseFloat(averageRating),
+        totalReviews: ratings.length,
+    };
+});
 
     res.status(200).json({ coaches: processedCoaches });
   } catch (error) {
@@ -622,17 +628,23 @@ export const getFollowedCoaches = async (req, res) => {
                 : profile?.pricing?.individual || 0; 
 
             return {
-                id: plainCoach.id,
-                name: `${plainCoach.firstName} ${plainCoach.lastName}`,
-                title: profile?.professionalTitle,
-                profilePicture: plainCoach.profilePicture,
-                shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
-                specialties: profile?.specialties || [],
-                startingPrice: startingPrice,
-                rating: parseFloat(averageRating),
-                totalReviews: ratings.length,
-            };
-        });
+        // Pass the raw User fields directly
+        id: plainCoach.id,
+        firstName: plainCoach.firstName, // <-- ADDED
+        lastName: plainCoach.lastName,   // <-- ADDED
+        profilePicture: plainCoach.profilePicture, // <-- ADDED
+        
+        // Pass CoachProfile fields as before
+        title: profile?.professionalTitle,
+        shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
+        specialties: profile?.specialties || [],
+        
+        // Ensure rating and price fields are still present
+        startingPrice: startingPrice,
+        rating: parseFloat(averageRating),
+        totalReviews: ratings.length,
+    };
+});
 
         res.status(200).json({ coaches: processedCoaches });
 
