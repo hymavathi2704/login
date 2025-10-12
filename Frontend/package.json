@@ -2,33 +2,8 @@
   "name": "coachflow",
   "version": "0.1.0",
   "private": true,
-  "rocketCritical": {
-    "dependencies": [
-      "@dhiwise/component-tagger",
-      "react",
-      "react-dom",
-      "@reduxjs/toolkit",
-      "redux",
-      "react-router-dom"
-    ],
-    "devDependencies": [
-      "@vitejs/plugin-react",
-      "vite",
-      "vite-tsconfig-paths",
-      "tailwindcss",
-      "autoprefixer",
-      "postcss"
-    ],
-    "scripts": [
-      "start",
-      "build",
-      "serve"
-    ],
-    "warning": "🚨 CRITICAL: DO NOT REMOVE OR MODIFY ABOVE DEPENDENCIES - Required for app functionality"
-  },
   "dependencies": {
     "@auth0/auth0-react": "^2.5.0",
-    "@dhiwise/component-tagger": "^1.0.10",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@reduxjs/toolkit": "^2.6.1",
