@@ -20,7 +20,7 @@ import CoachCommunication from "./components/CoachCommunication";
 import BookNewSession from "./components/BookNewSession";
 import AccountSettings from "../shared/AccountSettings";
 import ExploreCoaches from "./components/ExploreCoaches";
-import ClientProfileEditor from "./components/client-profile-editor";
+import ClientProfileEditor from "./components/ClientProfileEditor";
 
 const ClientDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
