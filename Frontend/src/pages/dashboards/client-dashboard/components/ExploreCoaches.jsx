@@ -121,7 +121,6 @@ const ExploreCoaches = () => {
                             : 'text-gray-500 hover:text-purple-600'
                     }`}
                     onClick={() => setActiveTab('followed')}
-                    disabled={!isAuthenticated && activeTab !== 'followed'} 
                 >
                     Followed Coaches
                 </button>
