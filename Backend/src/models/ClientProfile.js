@@ -18,10 +18,6 @@ const ClientProfile = db.define('client_profiles', {
     },
     onDelete: 'CASCADE',
   },
-  coachingGoals: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
   dateOfBirth: {
     type: DataTypes.DATEONLY,
     allowNull: true,

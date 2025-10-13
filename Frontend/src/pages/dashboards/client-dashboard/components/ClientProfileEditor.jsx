@@ -3,25 +3,9 @@ import { Save, AlertTriangle, Upload, X, Camera } from 'lucide-react';
 // CORRECTED IMPORTS USING @/ ALIAS
 import Button from '@/components/ui/Button'; 
 import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select'; // Assuming you have this component
 import { cn } from '@/utils/cn'; 
-
-// --- Helper Data for Selects ---
-const genderOptions = [
-    { value: '', label: 'Select Gender' },
-    { value: 'Male', label: 'Male' },
-    { value: 'Female', label: 'Female' },
-    { value: 'Non-binary', label: 'Non-binary' },
-    { value: 'Prefer not to say', label: 'Prefer not to say' },
-];
-
-const countryOptions = [
-    { value: '', label: 'Select Country' },
-    { value: 'US', label: 'United States' },
-    { value: 'CA', label: 'Canada' },
-    { value: 'IN', label: 'India' },
-];
-// ---------------------------------
+// 🌟 NEW: Import the reusable Demographic component
+import DemographicsFormSection from '@/pages/dashboards/shared/DemographicsFormSection'; 
 
 
 const ClientProfileEditor = () => {
@@ -30,14 +14,14 @@ const ClientProfileEditor = () => {
   const [initialData, setInitialData] = useState({});
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
-  // 🌟 NEW STATE: To hold the actual file object before upload
-  const [imageFile, setImageFile] = useState(null); 
+  // 🌟 NEW STATE: To hold the actual file object before upload
+  const [imageFile, setImageFile] = useState(null); 
   
   const fileInputRef = useRef(null);
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // --- Data Fetching Logic (UNCHANGED) ---
+  // --- Data Fetching Logic (UNCHANGED and correctly merging) ---
   useEffect(() => {
     const fetchProfileData = async () => {
       const token = localStorage.getItem('accessToken');
@@ -56,15 +40,17 @@ const ClientProfileEditor = () => {
         }
 
         const data = await response.json();
-        
-        const userData = {
-            ...data.user,
-            ...data.user.ClientProfile 
-        };
+        
+        // Correctly merging ClientProfile into the top level for form use
+        const userData = {
+            ...data.user,
+            ...data.user.ClientProfile 
+        };
 
         setProfileData(userData); 
         setInitialData(userData);
-        setPreviewUrl(userData.profilePicture);
+        // This sets the image preview using the URL path from the database
+        setPreviewUrl(userData.profilePicture); 
 
       } catch (error) {
         console.error("Error fetching profile data:", error);
@@ -85,8 +71,15 @@ const ClientProfileEditor = () => {
   const updateData = useCallback((newData) => {
     setProfileData(prev => ({ ...prev, ...newData }));
   }, []);
+  
+  // 🌟 NEW: Universal change handler for inputs and selects (UNCHANGED)
+  const handleChange = useCallback((e) => {
+    const { name, value } = e.target;
+    updateData({ [name]: value });
+  }, [updateData]);
 
-  // 🌟 UPDATED: Handles file preview and saves the file object
+
+  // Handles file preview and saves the file object (UNCHANGED)
   const handleFileUpload = (file) => {
     if (file && file?.type?.startsWith('image/')) {
       const reader = new FileReader();
@@ -95,17 +88,17 @@ const ClientProfileEditor = () => {
       };
       reader.readAsDataURL(file);
 
-      // Save the actual File object and clear temporary Base64
-      setImageFile(file); 
+      // Save the actual File object and clear temporary Base64
+      setImageFile(file); 
       setUnsavedChanges(true); 
     }
   };
 
-  // 🌟 UPDATED: Two-step Save function
+  // Two-step Save function (API URL fixed in previous step)
   const handleSave = async () => {
     setIsSaving(true);
     const token = localStorage.getItem('accessToken');
-    let finalProfileData = { ...profileData };
+    let finalProfileData = { ...profileData };
 
     if (!token) {
       alert("You are not logged in. Please log in to save your profile.");
@@ -113,44 +106,42 @@ const ClientProfileEditor = () => {
       return;
     }
 
-    // --- STEP 1: Upload File if a new one is pending ---
-    if (imageFile) {
-        const formData = new FormData();
-        formData.append('profilePicture', imageFile);
-        
-        try {
-            // Use the dedicated upload endpoint
-            const uploadResponse = await fetch('http://localhost:4028/api/client/profile/upload-picture', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    // IMPORTANT: Do NOT set Content-Type: application/json; FormData sets it correctly.
-                },
-                body: formData,
-            });
+    // --- STEP 1: Upload File if a new one is pending ---
+    if (imageFile) {
+        const formData = new FormData();
+        formData.append('profilePicture', imageFile);
+        
+        try {
+            // This POST call saves the file to the 'uploads' folder
+            const uploadResponse = await fetch('http://localhost:4028/api/client/profile/upload-picture', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: formData,
+            });
 
-            const uploadData = await uploadResponse.json();
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.error || 'File upload failed.');
-            }
-            
-            // Update the profile data with the permanent URL from the backend
-            finalProfileData.profilePicture = uploadData.profilePicture;
+            const uploadData = await uploadResponse.json();
+            if (!uploadResponse.ok) {
+                throw new Error(uploadData.error || 'File upload failed.');
+            }
+            
+            // Store the public URL path returned by the backend
+            finalProfileData.profilePicture = uploadData.profilePicture;
 
-        } catch (uploadError) {
-            console.error('Profile picture upload failed:', uploadError);
-            alert(`Error uploading picture: ${uploadError.message}`);
-            setIsSaving(false);
-            return;
-        }
-    } else if (profileData.profilePicture === null) {
-        // If the user removed the picture but didn't upload a new one, 
-        // explicitly set the value to null to save to the database.
-        finalProfileData.profilePicture = null;
-    }
+        } catch (uploadError) {
+            console.error('Profile picture upload failed:', uploadError);
+            alert(`Error uploading picture: ${uploadError.message}`);
+            setIsSaving(false);
+            return;
+        }
+    } else if (profileData.profilePicture === null) {
+        finalProfileData.profilePicture = null;
+    }
 
-    // --- STEP 2: Save the Profile Data (with the new file path) ---
+    // --- STEP 2: Save the Profile Data (with the new file path) ---
     try {
+      // This PUT call is configured to hit the new /api/client/profile endpoint
       const response = await fetch('http://localhost:4028/api/client/profile', {
         method: 'PUT',
         headers: {
@@ -168,10 +159,18 @@ const ClientProfileEditor = () => {
 
       alert('Profile saved successfully!');
       
-      // Update state with fresh server data and clear temporary file state
-      setProfileData(data.user);
-      setInitialData(data.user);
-      setImageFile(null); // Clear the file object after successful save
+      // 🌟🌟🌟 CRITICAL FIX APPLIED HERE 🌟🌟🌟
+      // Merge the nested response data back into the flat state structure
+      const savedUserData = {
+        ...data.user,
+        ...data.user.ClientProfile // This flattens demographics and ensures persistence
+      };
+      
+      setProfileData(savedUserData);
+      setInitialData(savedUserData);
+      setImageFile(null); // Clears the temporary file object
+      // Also update the preview URL using the newly saved data
+      setPreviewUrl(savedUserData.profilePicture); 
 
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -185,13 +184,12 @@ const ClientProfileEditor = () => {
   const handleDrop = (e) => { e.preventDefault(); setDragActive(false); e.dataTransfer.files[0] && handleFileUpload(e.dataTransfer.files[0]); };
   const handleDragOver = (e) => { e.preventDefault(); setDragActive(true); };
   const handleDragLeave = (e) => { e.preventDefault(); setDragActive(false); };
-  // 🌟 UPDATED: Removes preview and the file object
   const removeProfilePicture = () => { 
-    setPreviewUrl(null); 
-    setImageFile(null); 
-    updateData({ profilePicture: null }); 
-    setUnsavedChanges(true); 
-  };
+    setPreviewUrl(null); 
+    setImageFile(null); 
+    updateData({ profilePicture: null }); 
+    setUnsavedChanges(true); 
+  };
 
 
   return (
@@ -201,17 +199,25 @@ const ClientProfileEditor = () => {
         <p className="text-gray-600 mt-2">
           Keep your profile updated to get the best matches with coaches.
         </p>
+        {profileData.profilePicture && (
+            <img 
+                src={`http://localhost:4028${profileData.profilePicture}`} 
+                alt="Current Profile Picture" 
+                className="mt-4 w-16 h-16 rounded-full object-cover shadow" 
+            />
+        )}
       </div>
 
       <main className="space-y-8 bg-white shadow-lg rounded-xl p-8">
         
-        {/* Profile Picture Upload Section (UPDATED to use imageFile) */}
+        {/* Profile Picture Upload Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Profile Picture</h3>
           <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                {previewUrl ? <img src={previewUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
+                {/* Displays either the URL path or the local Base64 preview */}
+                {previewUrl ? <img src={previewUrl.startsWith('/') ? `http://localhost:4028${previewUrl}` : previewUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
               </div>
               {previewUrl && <button onClick={removeProfilePicture} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>}
             </div>
@@ -222,21 +228,21 @@ const ClientProfileEditor = () => {
                 <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
                 <Button variant="outline" size="sm" onClick={() => fileInputRef.current && fileInputRef.current.click()} className="mt-4">Choose File</Button>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])} className="hidden" />
-              </div>
             </div>
+          </div>
           </div>
         </div>
 
-        {/* Personal Information Form (UNCHANGED) */}
+        {/* Personal Information Form */}
         <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Personal Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Input label="First Name" required value={profileData.firstName || ''} onChange={(e) => updateData({ firstName: e.target.value })} />
-              <Input label="Last Name" required value={profileData.lastName || ''} onChange={(e) => updateData({ lastName: e.target.value })} />
-            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Personal Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input label="First Name" required value={profileData.firstName || ''} onChange={(e) => updateData({ firstName: e.target.value })} />
+              <Input label="Last Name" required value={profileData.lastName || ''} onChange={(e) => updateData({ lastName: e.target.value })} />
+            </div>
         </div>
 
-        {/* Contact Information (UNCHANGED) */}
+        {/* Contact Information */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
           <Input label="Email Address" type="email" required value={profileData.email || ''} onChange={(e) => updateData({ email: e.target.value })} disabled={true} description="Email cannot be changed." />
@@ -248,40 +254,12 @@ const ClientProfileEditor = () => {
             placeholder="+1 (555) 123-4567"
           />
         </div>
-        
-        {/* DEMOGRAPHIC FIELDS SECTION (UNCHANGED) */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900">Demographics</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Input 
-                    label="Date of Birth (Optional)" 
-                    type="date"
-                    value={profileData.dateOfBirth ? profileData.dateOfBirth.split('T')[0] : ''} 
-                    onChange={(e) => updateData({ dateOfBirth: e.target.value })} 
-                />
-                
-                <Select 
-                    label="Gender (Optional)"
-                    value={profileData.gender || ''}
-                    onChange={(e) => updateData({ gender: e.target.value })}
-                    options={genderOptions}
-                />
-                
-                <Select 
-                    label="Country (Optional)"
-                    value={profileData.country || ''}
-                    onChange={(e) => updateData({ country: e.target.value })}
-                    options={countryOptions}
-                />
-                
-                <Input 
-                    label="Ethnicity (Optional)" 
-                    type="text"
-                    value={profileData.ethnicity || ''} 
-                    onChange={(e) => updateData({ ethnicity: e.target.value })} 
-                />
-            </div>
-        </div>
+        
+        {/* DEMOGRAPHIC FIELDS SECTION (Integrated Component) */}
+        <DemographicsFormSection 
+            formData={profileData} 
+            handleChange={handleChange} 
+        />
       </main>
 
       {/* The Save button footer */}
