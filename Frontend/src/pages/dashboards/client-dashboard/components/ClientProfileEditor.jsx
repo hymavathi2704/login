@@ -21,7 +21,7 @@ const ClientProfileEditor = () => {
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // --- Data Fetching Logic (UNCHANGED and correctly merging) ---
+  // --- Data Fetching Logic (Correctly Merges Nested Data) ---
   useEffect(() => {
     const fetchProfileData = async () => {
       const token = localStorage.getItem('accessToken');
@@ -31,6 +31,7 @@ const ClientProfileEditor = () => {
       }
 
       try {
+        // Fetch data from the /me endpoint
         const response = await fetch('http://localhost:4028/api/auth/me', {
           headers: { 'Authorization': `Bearer ${token}`, },
         });
@@ -41,7 +42,7 @@ const ClientProfileEditor = () => {
 
         const data = await response.json();
         
-        // Correctly merging ClientProfile into the top level for form use
+        // ✅ MERGE FIX 1: Flatten ClientProfile data onto the main user object
         const userData = {
             ...data.user,
             ...data.user.ClientProfile 
@@ -49,7 +50,6 @@ const ClientProfileEditor = () => {
 
         setProfileData(userData); 
         setInitialData(userData);
-        // This sets the image preview using the URL path from the database
         setPreviewUrl(userData.profilePicture); 
 
       } catch (error) {
@@ -74,6 +74,7 @@ const ClientProfileEditor = () => {
   
   // 🌟 NEW: Universal change handler for inputs and selects (UNCHANGED)
   const handleChange = useCallback((e) => {
+    // DemographicsFormSection passes event object, use name/value
     const { name, value } = e.target;
     updateData({ [name]: value });
   }, [updateData]);
@@ -88,13 +89,13 @@ const ClientProfileEditor = () => {
       };
       reader.readAsDataURL(file);
 
-      // Save the actual File object and clear temporary Base64
+      // Save the actual File object to be uploaded in handleSave
       setImageFile(file); 
       setUnsavedChanges(true); 
     }
   };
 
-  // Two-step Save function (API URL fixed in previous step)
+  // Two-step Save function 
   const handleSave = async () => {
     setIsSaving(true);
     const token = localStorage.getItem('accessToken');
@@ -106,13 +107,13 @@ const ClientProfileEditor = () => {
       return;
     }
 
-    // --- STEP 1: Upload File if a new one is pending ---
+    // --- STEP 1: Upload File to /uploads folder if a new one is pending ---
     if (imageFile) {
         const formData = new FormData();
         formData.append('profilePicture', imageFile);
         
         try {
-            // This POST call saves the file to the 'uploads' folder
+            // Use the dedicated upload endpoint (which saves to 'uploads' and returns the URL path)
             const uploadResponse = await fetch('http://localhost:4028/api/client/profile/upload-picture', {
                 method: 'POST',
                 headers: {
@@ -126,7 +127,7 @@ const ClientProfileEditor = () => {
                 throw new Error(uploadData.error || 'File upload failed.');
             }
             
-            // Store the public URL path returned by the backend
+            // CRITICAL: Use the returned URL path, NOT the Base64 data
             finalProfileData.profilePicture = uploadData.profilePicture;
 
         } catch (uploadError) {
@@ -136,10 +137,11 @@ const ClientProfileEditor = () => {
             return;
         }
     } else if (profileData.profilePicture === null) {
+        // If the user clicked 'X', ensure null is sent
         finalProfileData.profilePicture = null;
     }
 
-    // --- STEP 2: Save the Profile Data (with the new file path) ---
+    // --- STEP 2: Save the Profile Data (with the new file path/null) ---
     try {
       // This PUT call is configured to hit the new /api/client/profile endpoint
       const response = await fetch('http://localhost:4028/api/client/profile', {
@@ -148,6 +150,7 @@ const ClientProfileEditor = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        // Sends the URL path for profilePicture (from step 1) or null, plus demographics
         body: JSON.stringify(finalProfileData),
       });
 
@@ -157,20 +160,19 @@ const ClientProfileEditor = () => {
         throw new Error(data.error || 'An unknown error occurred during saving.');
       }
 
-      alert('Profile saved successfully!');
+      alert('Profile saved successfully! 🎉');
       
-      // 🌟🌟🌟 CRITICAL FIX APPLIED HERE 🌟🌟🌟
-      // Merge the nested response data back into the flat state structure
-      const savedUserData = {
-        ...data.user,
-        ...data.user.ClientProfile // This flattens demographics and ensures persistence
-      };
+      // 🌟🌟🌟 CRITICAL FIX: Merge the nested response data back into the flat state structure
+      const savedUserData = {
+        ...data.user,
+        ...data.user.ClientProfile // This flattens demographics and ensures persistence
+      };
       
+      // Update ALL state variables based on the new, merged data
       setProfileData(savedUserData);
       setInitialData(savedUserData);
       setImageFile(null); // Clears the temporary file object
-      // Also update the preview URL using the newly saved data
-      setPreviewUrl(savedUserData.profilePicture); 
+      setPreviewUrl(savedUserData.profilePicture); // Persists the new image URL
 
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -186,8 +188,8 @@ const ClientProfileEditor = () => {
   const handleDragLeave = (e) => { e.preventDefault(); setDragActive(false); };
   const removeProfilePicture = () => { 
     setPreviewUrl(null); 
-    setImageFile(null); 
-    updateData({ profilePicture: null }); 
+    setImageFile(null); // Crucial: clear the file object
+    updateData({ profilePicture: null }); // Set state to null (will be sent to backend in Step 2)
     setUnsavedChanges(true); 
   };
 
@@ -199,13 +201,6 @@ const ClientProfileEditor = () => {
         <p className="text-gray-600 mt-2">
           Keep your profile updated to get the best matches with coaches.
         </p>
-        {profileData.profilePicture && (
-            <img 
-                src={`http://localhost:4028${profileData.profilePicture}`} 
-                alt="Current Profile Picture" 
-                className="mt-4 w-16 h-16 rounded-full object-cover shadow" 
-            />
-        )}
       </div>
 
       <main className="space-y-8 bg-white shadow-lg rounded-xl p-8">
@@ -216,7 +211,7 @@ const ClientProfileEditor = () => {
           <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                {/* Displays either the URL path or the local Base64 preview */}
+                {/* Displays the URL path (with full host) or the local Base64 preview */}
                 {previewUrl ? <img src={previewUrl.startsWith('/') ? `http://localhost:4028${previewUrl}` : previewUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
               </div>
               {previewUrl && <button onClick={removeProfilePicture} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>}
@@ -255,7 +250,7 @@ const ClientProfileEditor = () => {
           />
         </div>
         
-        {/* DEMOGRAPHIC FIELDS SECTION (Integrated Component) */}
+        {/* 🌟 DEMOGRAPHIC FIELDS SECTION (Integrated Component) */}
         <DemographicsFormSection 
             formData={profileData} 
             handleChange={handleChange} 
