@@ -157,7 +157,7 @@ async function socialLogin(req, res) {
 				email_verified: userInfo.email_verified || true,
 				provider: userInfo.sub.split('|')[0],
 				oauth_id: userInfo.sub,
-				roles: ['client'],
+				roles: [],
 			});
 			await ClientProfile.create({ userId: user.id });
 		}
