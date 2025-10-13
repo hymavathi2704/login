@@ -7,8 +7,9 @@ import axios from 'axios';
 import Icon from '../components/AppIcon';
 
 const Auth0Callback = () => {
-  const { user, isAuthenticated, getAccessTokenSilently } = useAuth0();
-  const { setAccessToken, setUser } = useAuth();
+  const { isAuthenticated, getAccessTokenSilently } = useAuth0();
+  // FIX 1: Correctly de-structure the 'login' function from AuthContext
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +28,7 @@ const Auth0Callback = () => {
           return navigate('/user-login?error=no_token', { replace: true });
         }
 
+        // Exchange the Auth0 token for your backend token
         const response = await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/auth/social-login`,
           {},
@@ -40,39 +42,13 @@ const Auth0Callback = () => {
         const backendToken = response?.data?.accessToken;
         const backendUser = response?.data?.user;
 
-        if (backendToken) {
-          localStorage.setItem("accessToken", backendToken);
-          setAccessToken(backendToken);
-
-          if (backendUser) {
-            localStorage.setItem("user", JSON.stringify(backendUser));
-            setUser(backendUser);
-
-            // Dynamically redirect based on the user's role from the backend
-            const userRole = backendUser.role;
-            let redirectPath;
-            switch (userRole) {
-              case 'client':
-                redirectPath = '/dashboard/client';
-                break;
-              case 'coach':
-                redirectPath = '/dashboard/coach';
-                break;
-              case 'admin':
-                redirectPath = '/dashboard/admin';
-                break;
-              default:
-                // Fallback for an unrecognized role
-                redirectPath = '/unauthorized';
-                break;
-            }
-            navigate(redirectPath, { replace: true });
-          } else {
-            console.error("No user data returned from backend.");
-            navigate('/user-login?error=backend_failed', { replace: true });
-          }
+        if (backendToken && backendUser) {
+          // FIX 2: Use the unified login function from AuthContext. 
+          // This function handles saving token, setting user, checking roles, and redirecting 
+          // (including the redirection to /welcome-setup for users without a role).
+          login({ accessToken: backendToken, user: backendUser });
         } else {
-          console.error("No access token returned from backend.");
+          console.error("Missing token or user data from backend.");
           navigate('/user-login?error=backend_failed', { replace: true });
         }
       } catch (error) {
@@ -82,7 +58,8 @@ const Auth0Callback = () => {
     };
 
     processAuth0Login();
-  }, [isAuthenticated, getAccessTokenSilently, setAccessToken, setUser, navigate]);
+    // FIX 3: Updated dependency array
+  }, [isAuthenticated, getAccessTokenSilently, login, navigate]); 
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
