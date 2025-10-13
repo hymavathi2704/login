@@ -1,6 +1,6 @@
 // Frontend/src/pages/user-login/components/SocialLoginButtons.jsx
 import React from 'react';
-import { useAuth0 } from '@auth0/auth0-react'; // <-- New import
+import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../../../components/AppIcon';
 
 const SocialLoginButtons = ({ isLoading }) => {
@@ -35,7 +35,7 @@ const SocialLoginButtons = ({ isLoading }) => {
           <span className="px-2 bg-card text-muted-foreground">Or continue with</span>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3"> {/* FIX APPLIED: 'sm:grid-cols-2' was removed here */}
         {socialProviders?.map((provider) => (
           <button
             key={provider?.id}
@@ -53,7 +53,7 @@ const SocialLoginButtons = ({ isLoading }) => {
               name={provider?.icon}
               size={18}
               className="mr-2"
-              color="currentColor"
+              color={provider?.id === 'google' ? '#4285f4' : 'currentColor'}
             />
             Sign in with {provider?.name}
           </button>
