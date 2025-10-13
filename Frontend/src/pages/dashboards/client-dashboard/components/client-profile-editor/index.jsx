@@ -1,136 +1,131 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { User, Heart, Target, Settings, Save, AlertTriangle } from 'lucide-react';
-import PersonalInfoSection from './components/PersonalInfoSection';
-import PreferencesSection from './components/PreferencesSection';
-import GoalsSection from './components/GoalsSection';
-import AccountSection from './components/AccountSection';
-import Button from '@/components/ui/Button';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Save, AlertTriangle, Upload, X, Camera } from 'lucide-react';
+import Button from '../../../../../components/ui/Button';
+import Input from '../../../../../components/ui/Input';
+import { cn } from '../../../../../utils/cn';
 
 const ClientProfileEditor = () => {
-  const [activeTab, setActiveTab] = useState('personal');
-  const [unsavedChanges, setUnsavedChanges] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // FIX: State declarations moved to the top level of the component
   const [profileData, setProfileData] = useState({});
   const [initialData, setInitialData] = useState({});
-  const [errors, setErrors] = useState({});
+  const [unsavedChanges, setUnsavedChanges] = useState(false);
+  
+  const fileInputRef = useRef(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
-  // Fetch initial data
+  // ==========================================================
+  // --- THIS IS THE CORRECTED DATA FETCHING LOGIC ---
+  // ==========================================================
   useEffect(() => {
     const fetchProfileData = async () => {
-      // Replace with actual API call
-      const mockData = {
-        firstName: 'Alex',
-        lastName: 'Doe',
-        email: 'alex.doe@example.com',
-        emailVerified: true,
-        phone: '123-456-7890',
-        phoneVerified: false,
-        profilePicture: 'https://via.placeholder.com/150',
-        profileVisibility: 'coaches-only',
-        coachingFocusAreas: ['Career Development', 'Leadership'],
-        communicationPreferences: { email: true, sms: false, push: true },
-        sessionFrequency: 'bi-weekly',
-        preferredSessionFormat: 'online',
-        budget: { min: 100, max: 250 },
-        shortTermGoals: [
-          { id: 1, text: 'Improve presentation skills', completed: true },
-          { id: 2, text: 'Network with 5 new people this month', completed: false }
-        ],
-        longTermGoals: [
-          { id: 3, text: 'Get promoted to a leadership role', completed: false }
-        ],
-        progressTracking: true,
-        coachingHistory: 'Worked with a career coach last year, found it very helpful.',
-        notifications: { sessionReminders: true, progressUpdates: true, coachMessages: true, marketing: false },
-        privacy: { profileVisibility: 'coaches-only', shareProgress: false, allowReviews: true },
-        subscription: { plan: 'premium', autoRenew: true }
-      };
-      setProfileData(mockData);
-      setInitialData(mockData);
+      // Get the token the user received when they logged in
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        console.error("Authentication Error: No token found. Please log in.");
+        // You could redirect to login page here if you want
+        return;
+      }
+
+      try {
+        // Fetch data from your backend's /me endpoint
+        const response = await fetch('http://localhost:4028/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data from the server.');
+        }
+
+        const data = await response.json();
+        
+        // Populate the form with the REAL data from the database
+        setProfileData(data.user); 
+        setInitialData(data.user);
+        setPreviewUrl(data.user.profilePicture);
+
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+        // Handle error (e.g., show a message to the user)
+      }
     };
 
     fetchProfileData();
-  }, []);
+  }, []); // The empty array [] ensures this runs only once when the page loads
 
-  // Check for unsaved changes
+  
+  // Detects if any changes have been made to the form
   useEffect(() => {
+    // We check against initialData to see if the user has typed anything new
     const hasUnsavedChanges = JSON.stringify(profileData) !== JSON.stringify(initialData);
     setUnsavedChanges(hasUnsavedChanges);
   }, [profileData, initialData]);
 
-  // Handle data updates from child components
+  // Updates the state in real-time as you type in a form field
   const updateData = useCallback((newData) => {
     setProfileData(prev => ({ ...prev, ...newData }));
   }, []);
 
-  const updateNestedData = useCallback((path, value) => {
-    setProfileData(prev => {
-      const keys = path.split('.');
-      const newState = { ...prev };
-      let current = newState;
-      for (let i = 0; i < keys.length - 1; i++) {
-        current[keys[i]] = { ...current[keys[i]] };
-        current = current[keys[i]];
-      }
-      current[keys[keys.length - 1]] = value;
-      return newState;
-    });
-  }, []);
+  const handleFileUpload = (file) => {
+    if (file && file?.type?.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreviewUrl(e.target.result);
+        updateData({ profilePicture: e.target.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  // Validate and save data
+  // Saves the updated data to the backend
   const handleSave = async () => {
     setIsSaving(true);
-    setErrors({});
-    let validationErrors = {};
-    if (!profileData.firstName) validationErrors.firstName = 'First name is required.';
-    if (!profileData.lastName) validationErrors.lastName = 'Last name is required.';
-    if (!profileData.email) {
-      validationErrors.email = 'Email is required.';
-    } else if (!/\S+@\S+\.\S+/.test(profileData.email)) {
-      validationErrors.email = 'Email is invalid.';
-    }
+    const token = localStorage.getItem('accessToken');
 
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+    if (!token) {
+      alert("You are not logged in. Please log in to save your profile.");
       setIsSaving(false);
       return;
     }
-    
-    console.log('Saving profile data:', profileData);
-    await new Promise(resolve => setTimeout(resolve, 1500)); 
 
-    setInitialData(profileData);
-    setIsSaving(false);
-    setUnsavedChanges(false);
-  };
+    try {
+      const response = await fetch('http://localhost:4028/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileData),
+      });
 
-  const tabs = [
-    { id: 'personal', label: 'Personal Info', icon: <User /> },
-    { id: 'preferences', label: 'Preferences', icon: <Heart /> },
-    { id: 'goals', label: 'Goals', icon: <Target /> },
-    { id: 'account', label: 'Account', icon: <Settings /> },
-  ];
+      const data = await response.json();
 
-  // FIX: This function was missing but is needed to render the content for each tab
-  const renderTabContent = () => {
-    const props = {
-        data: profileData,
-        errors,
-        updateData,
-        updateNestedData,
-        setUnsavedChanges,
-    };
-    switch (activeTab) {
-        case 'personal': return <PersonalInfoSection {...props} />;
-        case 'preferences': return <PreferencesSection {...props} />;
-        case 'goals': return <GoalsSection {...props} />;
-        case 'account': return <AccountSection {...props} />;
-        default: return null;
+      if (!response.ok) {
+        throw new Error(data.error || 'An unknown error occurred.');
+      }
+
+      alert('Profile saved successfully!');
+      
+      // IMPORTANT: Update the state with the fresh data from the server
+      // This ensures the page is in sync after saving
+      setProfileData(data.user);
+      setInitialData(data.user);
+
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      alert(`Error saving profile: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
   };
+  
+  // Helper functions for drag-and-drop
+  const handleDrop = (e) => { e.preventDefault(); setDragActive(false); handleFileUpload(e.dataTransfer.files[0]); };
+  const handleDragOver = (e) => { e.preventDefault(); setDragActive(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); setDragActive(false); };
+  const removeProfilePicture = () => { setPreviewUrl(null); updateData({ profilePicture: null }); };
 
   return (
     <div>
@@ -140,44 +135,55 @@ const ClientProfileEditor = () => {
           Keep your profile updated to get the best matches with coaches.
         </p>
       </div>
-      <div className="flex flex-col md:flex-row gap-8">
-        <aside className="w-full md:w-1/4">
-          <nav className="space-y-2">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {React.cloneElement(tab.icon, { className: 'w-5 h-5' })}
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
-        <main className="flex-1">
-          {renderTabContent()}
-        </main>
-      </div>
 
-      <footer className="mt-8 pt-6 border-t border-gray-200 flex items-center justify-end space-x-4">
-        {unsavedChanges && (
-          <div className="flex items-center text-sm text-yellow-600">
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            You have unsaved changes.
+      <main className="space-y-6">
+        {/* Profile Picture Upload Section */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Profile Picture</h3>
+          <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                {previewUrl ? <img src={previewUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
+              </div>
+              {previewUrl && <button onClick={removeProfilePicture} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>}
+            </div>
+            <div className="flex-1">
+              <div onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} className={cn("border-2 border-dashed rounded-lg p-6 text-center", dragActive ? "border-blue-400 bg-blue-50" : "border-gray-300")}>
+                <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-sm text-gray-600"><span className="font-medium">Click to upload</span> or drag and drop</p>
+                <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current && fileInputRef.current.click()} className="mt-4">Choose File</Button>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])} className="hidden" />
+              </div>
+            </div>
           </div>
-        )}
-        <Button
-          onClick={handleSave}
-          disabled={isSaving || !unsavedChanges}
-          size="lg"
-        >
-          <Save className="w-5 h-5 mr-2" />
-          {isSaving ? 'Saving...' : 'Save Changes'}
+        </div>
+
+        {/* Personal Information Form */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Input label="First Name" required value={profileData.firstName || ''} onChange={(e) => updateData({ firstName: e.target.value })} />
+          <Input label="Last Name" required value={profileData.lastName || ''} onChange={(e) => updateData({ lastName: e.target.value })} />
+        </div>
+
+        {/* Contact Information */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
+          <Input label="Email Address" type="email" required value={profileData.email || ''} onChange={(e) => updateData({ email: e.target.value })} />
+          <Input
+            label="Phone Number (Optional)"
+            type="tel"
+            value={profileData.phone || ''}
+            onChange={(e) => updateData({ phone: e.target.value })}
+            placeholder="+1 (555) 123-4567"
+          />
+        </div>
+      </main>
+
+      {/* The Save button footer */}
+      <footer className="mt-8 pt-6 border-t border-gray-200 flex items-center justify-end space-x-4">
+        {unsavedChanges && <div className="flex items-center text-sm text-yellow-600"><AlertTriangle className="w-4 h-4 mr-2" />You have unsaved changes.</div>}
+        <Button onClick={handleSave} disabled={isSaving || !unsavedChanges} size="lg">
+          <Save className="w-5 h-5 mr-2" />{isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       </footer>
     </div>
