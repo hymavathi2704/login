@@ -15,15 +15,6 @@ const SocialLoginButtons = ({ onSocialLogin, isLoading }) => {
       textColor: 'text-gray-700',
       borderColor: 'border-gray-300',
       hoverBg: 'hover:bg-gray-50'
-    },
-    {
-      id: 'github',
-      name: 'GitHub',
-      icon: 'Github',
-      bgColor: 'bg-gray-900',
-      textColor: 'text-white',
-      borderColor: 'border-gray-900',
-      hoverBg: 'hover:bg-gray-800'
     }
   ];
 
