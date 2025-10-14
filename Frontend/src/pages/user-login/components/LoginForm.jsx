@@ -183,7 +183,7 @@ const LoginForm = ({ onSubmit, isLoading, error, showCaptcha }) => {
         <p className="text-sm text-muted-foreground">
           Don't have an account?{' '}
           <Link 
-            to="/user-registration" 
+            to="/register" 
             className="text-primary hover:text-primary/80 font-medium transition-colors"
           >
             Sign up here
