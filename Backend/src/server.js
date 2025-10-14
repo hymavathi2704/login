@@ -135,7 +135,8 @@ const PORT = process.env.PORT || 4028;
         await sequelize.sync(); 
         console.log('✅ Database synchronized');
 
-        app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
+        app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at http://65.1.126.156:${PORT}`));
+
     } catch (err) {
         console.error('❌ Failed to start server:', err);
         process.exit(1);
