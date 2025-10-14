@@ -8,19 +8,19 @@ const coachProfileController = require('../controllers/coachProfileController');
 const sessionController = require('../controllers/sessionController'); 
 
 const { 
-    getFollowStatus,    // <-- ADD THIS
-    followCoach,        // <-- ADD THIS
-    unfollowCoach       // <-- ADD THIS
+    getFollowStatus,    
+    followCoach,        
+    unfollowCoach       
 } = coachProfileController;
 
 // 🚨 FIX: Middleware to skip the 'authenticate' middleware for OPTIONS requests
 const skipAuthForOptions = (req, res, next) => {
-    if (req.method === 'OPTIONS') {
-        // Respond with 200/204 to allow the browser to proceed with the actual request
-        // Since global CORS is handled in server.js, a simple end() is often sufficient.
-        return res.status(200).end(); 
-    }
-    next();
+    if (req.method === 'OPTIONS') {
+        // Respond with 200/204 to allow the browser to proceed with the actual request
+        // Since global CORS is handled in server.js, a simple end() is often sufficient.
+        return res.status(200).end(); 
+    }
+    next();
 };
 
 
@@ -28,11 +28,27 @@ const skipAuthForOptions = (req, res, next) => {
 // Logged-in coach profile routes
 // ==============================
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
-// Apply skipAuthForOptions to POST/PUT/DELETE
-router.put('/profile', skipAuthForOptions, authenticate, coachProfileController.updateCoachProfile);
+
+// ✅ FIX 1: ADDED 'upload.single' to the main PUT /profile route
+router.put(
+    '/profile', 
+    skipAuthForOptions, 
+    authenticate, 
+    upload.single('profilePicture'), // <--- ADDED: Handle file upload for profile picture
+    coachProfileController.updateCoachProfile
+);
+
 router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addItem);
 router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeItem);
-router.post('/profile/upload-picture', skipAuthForOptions, authenticate, upload.single('profilePicture'), coachProfileController.uploadProfilePicture);
+
+// ✅ FIX 2: Corrected middleware order for dedicated upload route (if used)
+router.post(
+    '/profile/upload-picture', 
+    skipAuthForOptions, 
+    authenticate, 
+    upload.single('profilePicture'), 
+    coachProfileController.uploadProfilePicture
+);
 
 
 // ==============================

@@ -98,12 +98,25 @@ export const updateCoachProfile = async (req, res) => {
         let coachProfile = user.CoachProfile;
         if (!coachProfile) coachProfile = await CoachProfile.create({ userId });
 
+        // ✅ ADDED LOGIC: Check for uploaded file and prepare the database path
+        let profilePictureUrl;
+        if (req.file) {
+            // Assuming your Multer setup stores files in an accessible '/uploads' directory
+            // and provides the file name in req.file.filename
+            profilePictureUrl = `/uploads/${req.file.filename}`;
+        }
+        // ----------------------------------------------------------------------
+
         await coachProfile.update({
             professionalTitle,
             bio, 
             yearsOfExperience: parseInt(yearsOfExperience) || 0,
             dateOfBirth, gender, ethnicity, country,
             linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
+            
+            // ✅ ADDED: Update the profilePicture field in the database
+            profilePicture: profilePictureUrl || coachProfile.profilePicture, 
+            
             pricing: pricing || '{}',
             availability: availability || '{}'
         });
@@ -135,7 +148,6 @@ export const updateCoachProfile = async (req, res) => {
         res.status(500).json({ error: 'Failed to update profile' });
     }
 };
-
 // ==============================
 // ADD Item (certification/education/specialties)
 // ==============================
