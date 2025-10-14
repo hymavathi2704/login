@@ -73,7 +73,14 @@ const ExploreCoaches = () => {
             setCoaches(response.data.coaches || []);
         } catch (err) {
             console.error(`Failed to fetch ${activeTab} coaches:`, err);
-            setError(`Failed to load coaches: ${err.response?.data?.error || err.message}`);
+            
+            // FIX: Check for 401 Unauthorized error specifically for the 'followed' tab
+            if (activeTab === 'followed' && err.response?.status === 401) {
+                setError("Your session may have expired. Please log out and log back in to view your followed coaches.");
+            } else {
+                setError(`Failed to load coaches: ${err.response?.data?.error || err.message}`);
+            }
+
             setCoaches([]); 
         } finally {
             setIsLoading(false);

@@ -587,6 +587,10 @@ export const getFollowedCoaches = async (req, res) => {
         // Direct access (record.followingId) often fails when attributes are explicitly limited.
         const followedCoachIds = followedRecords.map(record => record.get('followingId'));
 
+        // === DEBUG LOG ADDED: Check which IDs were retrieved from the Follow table ===
+        console.log(`[FollowedCoaches Debug] User ${followerId} is following these coach IDs:`, followedCoachIds);
+        // ==============================================================================
+
         if (followedCoachIds.length === 0) {
             return res.status(200).json({ coaches: [] });
         }
@@ -647,6 +651,16 @@ export const getFollowedCoaches = async (req, res) => {
                 totalReviews: ratings.length,
             };
         });
+        
+        // === DEBUG LOG ADDED: Check which profiles were successfully processed ===
+        const fetchedCoachIds = processedCoaches.map(c => c.id);
+        console.log(`[FollowedCoaches Debug] Found and processed profiles for these coach IDs:`, fetchedCoachIds);
+        if (fetchedCoachIds.length !== followedCoachIds.length) {
+            const missingIds = followedCoachIds.filter(id => !fetchedCoachIds.includes(id));
+            console.warn(`[FollowedCoaches Debug] Mismatch: Follow records found (${followedCoachIds.length}) but profiles returned (${fetchedCoachIds.length}). Missing IDs:`, missingIds);
+            console.warn('[FollowedCoaches Debug] Check if missing IDs have a "coach" role and a CoachProfile record in the database.');
+        }
+        // ==========================================================================
 
         res.status(200).json({ coaches: processedCoaches });
 
