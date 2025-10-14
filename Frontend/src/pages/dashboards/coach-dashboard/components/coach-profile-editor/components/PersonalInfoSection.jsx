@@ -1,12 +1,13 @@
 // Frontend/src/pages/dashboards/coach-dashboard/components/coach-profile-editor/components/PersonalInfoSection.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { Upload, X, Camera } from 'lucide-react';
-import { toast } from 'react-toastify';
+// ⚠️ FIX: If you use toast, make sure the import is correct based on your setup (e.g., 'sonner' or 'react-toastify')
+import { toast } from 'react-toastify'; 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/auth/AuthContext';
-// import { uploadProfilePicture } from '@/auth/authApi'; // ⚠️ REMOVED: No longer uploading separately
+// import { uploadProfilePicture } from '@/auth/authApi'; // ⚠️ Correctly REMOVED from the previous steps
 
 // Load backend URL from .env (fallback to localhost)
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
@@ -15,21 +16,21 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
     const fileInputRef = useRef(null);
     const { user, setUser } = useAuth();
     const [dragActive, setDragActive] = useState(false);
-    // ⚠️ RENAMED: To reflect local processing, not final upload
+    // Using isProcessing to indicate file selection/preview time
     const [isProcessing, setIsProcessing] = useState(false); 
     
-    // State to hold the Base64/URL for immediate preview
+    // State to hold the Base64 string or the final URL path for display
     const [previewUrl, setPreviewUrl] = useState(data?.profilePicture || user?.profilePicture || null);
 
-    // State to hold the file object locally before the final save.
-    // NOTE: The file object is passed to the parent via updateData({ profilePictureFile: file })
-    const [selectedFile, setSelectedFile] = useState(null); 
+    // State to track the local file object
+    const [selectedFile, setSelectedFile] = useState(null); 
 
     useEffect(() => {
-        // Only update preview if no new file is selected, to prevent overwriting Base64 preview
-        if (!selectedFile) {
+        // If no file is locally selected, update the preview from the data/user context
+        if (!selectedFile) {
             setPreviewUrl(data?.profilePicture || user?.profilePicture || null);
-        }
+        }
+        // The dependency array now correctly tracks changes that could affect the preview
     }, [user?.profilePicture, data?.profilePicture, selectedFile]);
 
     const handleInputChange = (field, value) => {
@@ -44,7 +45,8 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         return pathOrBase64;
     };
 
-    const handleFileUpload = (file) => { // ⚠️ Removed 'async'
+    // ⚠️ CRITICAL FIX: Staging the file object
+    const handleFileUpload = (file) => {
         if (!file || !file?.type?.startsWith('image/')) {
             toast.error("Please select a valid image file.");
             return;
@@ -55,22 +57,20 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         }
 
         setIsProcessing(true);
-        setSelectedFile(file); // Store the file object locally
+        setSelectedFile(file); // Store the file object locally
 
         const reader = new FileReader();
         reader.onload = (e) => {
-            setPreviewUrl(e.target.result); // Set Base64 for immediate preview
-            
-            // ✅ CRITICAL CHANGE: Pass the file object to the parent data for final submission
-            // The parent component must look for 'profilePictureFile' when building FormData.
-            updateData({ profilePictureFile: file }); 
-            
-            setUnsavedChanges(true);
-            setIsProcessing(false);
+            setPreviewUrl(e.target.result); // Set Base64 for immediate preview
+            
+            // ✅ ACTION 1: Pass the file object to the parent data
+            updateData({ profilePictureFile: file }); 
+            
+            // ✅ ACTION 2: Trigger the parent component to activate the Save button
+            setUnsavedChanges(true); 
+            setIsProcessing(false);
         };
         reader.readAsDataURL(file);
-        
-        // ⚠️ REMOVED: The dedicated API call (uploadProfilePicture) is now removed.
     };
 
     const handleDrop = (e) => {
@@ -85,12 +85,11 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
 
     const removeProfilePicture = () => {
         setPreviewUrl(null);
-        setSelectedFile(null); // Clear the staged file
+        setSelectedFile(null); // Clear the staged file
         
-        // ✅ CRITICAL CHANGE: Tell the parent to clear both the existing and the staged file
-        // profilePicture: null tells the backend to clear the existing path
-        updateData({ profilePicture: null, profilePictureFile: null }); 
-        
+        // ✅ ACTION: Send two flags: clear existing path (profilePicture: null) and clear staged file (profilePictureFile: null)
+        updateData({ profilePicture: null, profilePictureFile: null }); 
+        
         setUser(prevUser => ({ ...prevUser, profilePicture: null }));
         setUnsavedChanges(true);
         toast.info("Profile picture removed. Click 'Save Changes' to confirm.");

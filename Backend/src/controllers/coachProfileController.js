@@ -73,6 +73,8 @@ export const getCoachProfile = async (req, res) => {
   }
 };
 
+// ... (omitted imports and helper functions)
+
 // ==============================
 // UPDATE Coach Profile 
 // ==============================
@@ -90,37 +92,48 @@ export const updateCoachProfile = async (req, res) => {
             yearsOfExperience, 
             dateOfBirth, gender, ethnicity, country,
             linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-            pricing, availability
+            // The JSON fields (now strings in req.body due to FormData)
+            specialties, certifications, education 
+            // pricing, availability (removed from the payload in the previous step)
         } = req.body; 
 
-        await user.update({ firstName, lastName, email, phone });
+        // ⚠️ CRITICAL FIX 1: Add logic to handle req.file and update User.profilePicture
+        const userData = { firstName, lastName, email, phone };
+
+        if (req.file) {
+            // A new file was uploaded via the FormData request
+            userData.profilePicture = `/uploads/${req.file.filename}`;
+        } else if (req.body.profilePicture === 'null' || req.body.profilePicture === '') {
+            // The user removed the picture (sent 'null' or empty string)
+            userData.profilePicture = null;
+        } else if (req.body.profilePicture) {
+            // The user sent the existing path/URL, keep it.
+            userData.profilePicture = req.body.profilePicture;
+        }
+        
+        // Update User Model (Handles core user fields and profilePicture)
+        await user.update(userData); // ✅ FIX: This now updates the profilePicture column
 
         let coachProfile = user.CoachProfile;
         if (!coachProfile) coachProfile = await CoachProfile.create({ userId });
 
-        // ✅ ADDED LOGIC: Check for uploaded file and prepare the database path
-        let profilePictureUrl;
-        if (req.file) {
-            // Assuming your Multer setup stores files in an accessible '/uploads' directory
-            // and provides the file name in req.file.filename
-            profilePictureUrl = `/uploads/${req.file.filename}`;
-        }
-        // ----------------------------------------------------------------------
-
+        // Update CoachProfile Model (Handles coach-specific fields, including JSON strings)
         await coachProfile.update({
             professionalTitle,
             bio, 
             yearsOfExperience: parseInt(yearsOfExperience) || 0,
             dateOfBirth, gender, ethnicity, country,
             linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-            
-            // ✅ ADDED: Update the profilePicture field in the database
-            profilePicture: profilePictureUrl || coachProfile.profilePicture, 
-            
-            pricing: pricing || '{}',
-            availability: availability || '{}'
+            // JSON fields from req.body (already stringified on frontend)
+            specialties: specialties, 
+            certifications: certifications, 
+            education: education,
+            // ... (remove pricing/availability if they aren't meant to be here)
+            // pricing: pricing || '{}', 
+            // availability: availability || '{}'
         });
 
+        // ⚠️ CRITICAL FIX 2: Fetch and return the updated user object with the new profilePicture value
         const updatedUser = await User.findByPk(userId, {
             include: [
                 { 
@@ -134,12 +147,11 @@ export const updateCoachProfile = async (req, res) => {
 
         const plainUpdatedUser = updatedUser.get({ plain: true });
         
+        // Ensure JSON fields are parsed before sending back
         if (plainUpdatedUser.CoachProfile) {
             plainUpdatedUser.CoachProfile.specialties = safeParse(plainUpdatedUser.CoachProfile.specialties);
             plainUpdatedUser.CoachProfile.education = safeParse(plainUpdatedUser.CoachProfile.education);
             plainUpdatedUser.CoachProfile.certifications = safeParse(plainUpdatedUser.CoachProfile.certifications);
-            plainUpdatedUser.CoachProfile.pricing = safeParse(plainUpdatedUser.CoachProfile.pricing);
-            plainUpdatedUser.CoachProfile.availability = safeParse(plainUpdatedUser.CoachProfile.availability);
         }
 
         res.json({ user: plainUpdatedUser });
@@ -148,6 +160,7 @@ export const updateCoachProfile = async (req, res) => {
         res.status(500).json({ error: 'Failed to update profile' });
     }
 };
+// ... (rest of file)
 // ==============================
 // ADD Item (certification/education/specialties)
 // ==============================

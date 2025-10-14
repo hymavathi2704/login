@@ -29,12 +29,14 @@ const Header = () => {
       // User is authenticated
       return (
         <div className="hidden md:flex items-center space-x-4">
-          <Button
+          {/* ⚠️ REMOVED BUTTON: "Go to Dashboard" button is removed here */}
+          {/* <Button
             variant="primary"
             onClick={() => navigate('/dashboard')}
           >
             Go to Dashboard
           </Button>
+          */}
           <Button
             variant="ghost"
             size="icon"
@@ -81,6 +83,16 @@ const Header = () => {
                   <p className="text-sm text-muted-foreground">{user.email}</p>
                 </div>
               </div>
+              <Button
+                variant="ghost"
+                fullWidth
+                // FIX: Navigate directly to the user's current dashboard role for easy access
+                onClick={() => navigate(`/dashboard/${user?.currentRole || 'client'}`)} 
+                iconName="LayoutDashboard"
+                iconPosition="left"
+              >
+                Go to Dashboard
+              </Button>
               <Button
                 variant="ghost"
                 fullWidth

@@ -54,7 +54,7 @@ const CoachProfileEditor = () => {
     phone: '',
     professionalTitle: '',
     // NEW: Field to hold the File object before submission
-    profilePictureFile: null, 
+    profilePictureFile: null, 
     // REMOVED: profilePicture (handled via user context now)
     // REMOVED: websiteUrl (consolidated)
     bio: '',
@@ -150,11 +150,16 @@ const CoachProfileEditor = () => {
   useEffect(() => {
     if (!isFetching) {
       // NOTE: Exclude the dynamic 'sessions' array and the 'profilePictureFile' (which is volatile) from the change check.
-      const dataToCompare = JSON.stringify({ ...formData, sessions: [], profilePictureFile: null });
-      const initialDataToCompare = JSON.stringify({ ...initialData, sessions: [], profilePictureFile: null });
-      setUnsavedChanges(dataToCompare !== initialDataToCompare);
+      const cleanFormData = { ...formData, sessions: [], profilePictureFile: null };
+      const cleanInitialData = { ...initialData, sessions: [], profilePictureFile: null };
+      
+      // ✅ FIX: Check if a file is staged OR if other data has changed
+      const hasFileStaged = !!formData.profilePictureFile; 
+      const hasOtherChanges = JSON.stringify(cleanFormData) !== JSON.stringify(cleanInitialData);
+      
+      setUnsavedChanges(hasOtherChanges || hasFileStaged);
     }
-  }, [formData, initialData, isFetching]);
+  }, [formData, initialData, isFetching]); // ⚠️ Now this correctly tracks file changes
 
   const tabs = [
     { id: 'personal', label: 'Personal Info', icon: <User /> },
@@ -243,43 +248,45 @@ const CoachProfileEditor = () => {
     // 1. Create FormData object
     const payload = new FormData();
 
-    // 2. Iterate over all fields in formData
-    for (const key in formData) {
-        const value = formData[key];
+    // 2. Iterate over all fields in formData
+    for (const key in formData) {
+        const value = formData[key];
 
-        if (value === undefined || value === null) {
-            continue;
-        }
+        if (value === undefined || value === null) {
+            continue;
+        }
 
-        // Handle the staged file (profilePictureFile)
-        if (key === 'profilePictureFile' && value instanceof File) {
-            // Append the File object with the backend's expected field name: 'profilePicture'
-            payload.append('profilePicture', value);
-        } 
-        // Handle fields that need to be JSON stringified
-        else if (['specialties', 'certifications', 'education'].includes(key)) {
-            payload.append(key, JSON.stringify(value));
-        } 
-        // Handle all other standard string/number fields (including profilePicture, if it holds the old path)
-        else if (key !== 'profilePictureFile' && key !== 'sessions') {
-            payload.append(key, value);
-        }
-    }
-    // ⚠️ Note: formData.profilePicture (the URL string) is sent in the payload.
-    // If a new file is uploaded, formData.profilePictureFile (the File object) is sent as 'profilePicture'.
-    // The backend logic (coachProfileController.js) will handle which one to save.
+        // A. Handle the staged file (profilePictureFile)
+        if (key === 'profilePictureFile' && value instanceof File) {
+            // Append the File object with the backend's expected field name: 'profilePicture'
+            payload.append('profilePicture', value);
+        } 
+        // B. Handle fields that need to be JSON stringified
+        else if (['specialties', 'certifications', 'education'].includes(key)) {
+            payload.append(key, JSON.stringify(value));
+        } 
+        // C. Handle all other standard string/number fields 
+        // We send formData.profilePicture (which is the existing URL/null) 
+        // unless we have a new file, which the backend will handle by prioritizing req.file.
+        else if (key !== 'profilePictureFile' && key !== 'sessions') {
+            payload.append(key, value);
+        }
+    }
 
     try {
-      // 3. Send the FormData object. Axios automatically sets Content-Type: multipart/form-data.
+      // 3. Send the FormData object.
       const response = await updateUserProfile(payload);
       
       toast.success('Saved successfully! 🎉', { description: 'Your coach profile has been updated.' });
       
-      // Update user context and initial state with the full response data
+      // 4. Update user context and initial state with the full response data
       const updatedMappedData = mapApiToForm(response.data);
       setUser(response.data.user); // Update global AuthContext user
       setInitialData(updatedMappedData);
-      setFormData(updatedMappedData);
+      
+      // 5. Reset formData and ensure profilePictureFile is explicitly null
+      setFormData({ ...updatedMappedData, profilePictureFile: null }); 
+      
       setUnsavedChanges(false);
 
     } catch (error) {

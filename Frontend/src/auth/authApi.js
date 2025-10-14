@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 // 🚀 FIX: Define API_BASE_URL so it's accessible to all functions
@@ -10,6 +9,7 @@ const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
+    // ⚠️ Base instance defaults to JSON, but this will be overridden/removed for FormData requests
     "Content-Type": "application/json",
   },
 });
@@ -81,6 +81,8 @@ export const resetPassword = (data) => {
 };
 
 // <<< NEW STABLE IMAGE UPLOAD FUNCTION >>>
+// ⚠️ Note: This function is not used anymore if you implemented the staged file saving correctly.
+// I will adjust the URL, but the logic in updateUserProfile is now the main path.
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
   // 'profilePicture' must match the multer field name in the backend
@@ -88,13 +90,13 @@ export const uploadProfilePicture = (file) => {
 
   // Create a separate axios instance to correctly handle file headers
   return axios.create({
-    baseURL: API,
+    baseURL: API_BASE_URL, // ⚠️ FIX: Use the constant API_BASE_URL instead of 'API'
     withCredentials: true,
     headers: {
       'Content-Type': 'multipart/form-data', 
       'Authorization': `Bearer ${localStorage.getItem("accessToken")}`,
     },
-  }).post('/api/auth/profile/upload-picture', formData);
+  }).post('/api/coach/profile/upload-picture', formData); // ⚠️ FIX: Updated route to the dedicated coach endpoint
 };
 // <<< END NEW FUNCTION >>>
 
@@ -168,10 +170,23 @@ export const removeProfileItem = (payload) => {
   return axiosInstance.post('api/coach/profile/remove-item', payload); 
 };
 
-// FIX 1: UPDATE PROFILE TO USE DEDICATED COACH ROUTE
+// ✅ CRITICAL FIX: Conditionally remove Content-Type for FormData (file upload)
 export const updateUserProfile = (profileData) => {
+  // Check if the payload is FormData
+  const isFormData = profileData instanceof FormData;
+  
+  const config = {};
+  if (isFormData) {
+    // When sending FormData, explicitly set Content-Type to undefined.
+    // Axios/browser will correctly set it to 'multipart/form-data; boundary=...'
+    config.headers = {
+        'Content-Type': undefined 
+    };
+  }
+
   // Keep leading slash as it seems to work for dedicated routes
-  return axiosInstance.put('/api/coach/profile', profileData);
+  // AxiosInstance already handles Authorization header via interceptor
+  return axiosInstance.put('/api/coach/profile', profileData, config);
 };
 
 // FIX 2: ADD DEDICATED FETCH FUNCTION
@@ -185,19 +200,23 @@ export const getCoachProfile = () => {
 // =========================================================
 
 export const createSession = async (sessionData) => {
-    return axios.post(`${API_BASE_URL}/api/coach/sessions`, sessionData, {
-        withCredentials: true, // <-- CRITICAL FIX
-    });
+    return axios.post(`${API_BASE_URL}/api/coach/sessions`, sessionData, {
+        withCredentials: true, // <-- CRITICAL FIX
+        // ⚠️ FIX: You should probably rely on the global interceptor or ensure Content-Type is set here.
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
+    });
 };
 
 export const updateSession = async (sessionId, sessionData) => {
-    return axios.put(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, sessionData, {
-        withCredentials: true, // <-- CRITICAL FIX
-    });
+    return axios.put(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, sessionData, {
+        withCredentials: true, // <-- CRITICAL FIX
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
+    });
 };
 
 export const deleteSession = async (sessionId) => {
-    return axios.delete(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, {
-        withCredentials: true, // <-- CRITICAL FIX
-    });
+    return axios.delete(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, {
+        withCredentials: true, // <-- CRITICAL FIX
+        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
+    });
 };
