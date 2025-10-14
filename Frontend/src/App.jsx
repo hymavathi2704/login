@@ -1,7 +1,7 @@
 // Frontend/src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
-import Auth0ProviderWithHistory from './auth/Auth0ProviderWithHistory'; // <-- NEW IMPORT
+// import Auth0ProviderWithHistory from './auth/Auth0ProviderWithHistory'; // <-- COMMENTED OUT
 import { AuthProvider } from './auth/AuthContext';
 import AppRoutes from './Routes';
 import { Toaster } from 'sonner';
@@ -9,14 +9,15 @@ import { Toaster } from 'sonner';
 function App() {
   return (
     <Router>
-      <Auth0ProviderWithHistory> {/* <-- NEW WRAPPER */}
+      {/* ⚠️ TEMPORARILY DISABLED Auth0 Social Login */}
+      {/* <Auth0ProviderWithHistory> */}
         <AuthProvider>
           <div className="App">
             <Toaster richColors position="top-right" />
             <AppRoutes />
           </div>
         </AuthProvider>
-      </Auth0ProviderWithHistory> {/* <-- NEW WRAPPER */}
+      {/* </Auth0ProviderWithHistory> */}
     </Router>
   );
 }

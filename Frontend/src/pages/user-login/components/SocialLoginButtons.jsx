@@ -4,6 +4,8 @@ import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../../../components/AppIcon';
 
 const SocialLoginButtons = ({ isLoading }) => {
+  // ⚠️ TEMPORARILY DISABLED SOCIAL LOGIN UI
+  /*
   const { loginWithRedirect } = useAuth0();
 
   const socialProviders = [
@@ -35,7 +37,7 @@ const SocialLoginButtons = ({ isLoading }) => {
           <span className="px-2 bg-card text-muted-foreground">Or continue with</span>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-3"> {/* FIX APPLIED: 'sm:grid-cols-2' was removed here */}
+      <div className="grid grid-cols-1 gap-3">
         {socialProviders?.map((provider) => (
           <button
             key={provider?.id}
@@ -61,6 +63,8 @@ const SocialLoginButtons = ({ isLoading }) => {
       </div>
     </div>
   );
+  */
+ return null; // <--- ADDED: Hide the component entirely
 };
 
 export default SocialLoginButtons;

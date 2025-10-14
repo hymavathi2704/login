@@ -131,6 +131,8 @@ async function login(req, res) {
 // Social Login
 // ==============================
 async function socialLogin(req, res) {
+	// ⚠️ TEMPORARILY DISABLED SOCIAL LOGIN
+	/*
 	try {
 		const authHeader = req.headers.authorization;
 		if (!authHeader) return res.status(401).json({ error: 'Missing Authorization header' });
@@ -199,8 +201,10 @@ async function socialLogin(req, res) {
 		console.error('Auth0 login error:', err.response?.data || err);
 		res.status(500).json({ error: 'Failed to process social login' });
 	}
+	*/
+	// <--- ADDED: Return 503 error instead of attempting login
+	return res.status(503).json({ error: 'Social login functionality is currently disabled.' }); 
 }
-
 // ==============================
 // Get current user (with profiles)
 // ==============================

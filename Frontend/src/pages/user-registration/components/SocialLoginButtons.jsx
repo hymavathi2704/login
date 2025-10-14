@@ -1,9 +1,11 @@
-// Frontend/src/pages/user-login/components/SocialLoginButtons.jsx
+// Frontend/src/pages/user-registration/components/SocialLoginButtons.jsx
 import React from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import Icon from '../../../components/AppIcon';
 
 const SocialLoginButtons = ({ isLoading }) => {
+  // ⚠️ TEMPORARILY DISABLED SOCIAL LOGIN UI
+  /*
   const { loginWithRedirect } = useAuth0();
 
   const socialProviders = [
@@ -31,7 +33,7 @@ const SocialLoginButtons = ({ isLoading }) => {
 
   return (
     <div className="space-y-4">
-      {/* Divider */}
+      
       <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-border" />
@@ -40,8 +42,7 @@ const SocialLoginButtons = ({ isLoading }) => {
           <span className="px-4 bg-card text-muted-foreground">Or continue with</span>
         </div>
       </div>
-      {/* Social Login Buttons */}
-      {/* FIX: Removed sm:grid-cols-2 to ensure full width for one or two buttons */}
+      
       <div className="grid grid-cols-1 gap-3">
         {socialProviders?.map((provider) => (
           <button
@@ -69,7 +70,7 @@ const SocialLoginButtons = ({ isLoading }) => {
           </button>
         ))}
       </div>
-      {/* Security Notice */}
+      
       <div className="mt-4 p-3 bg-muted rounded-lg">
         <div className="flex items-start space-x-2">
           <Icon name="Shield" size={16} className="text-primary mt-0.5 flex-shrink-0" />
@@ -80,6 +81,8 @@ const SocialLoginButtons = ({ isLoading }) => {
       </div>
     </div>
   );
+  */
+ return null; // <--- ADDED: Hide the component entirely
 };
 
 export default SocialLoginButtons;

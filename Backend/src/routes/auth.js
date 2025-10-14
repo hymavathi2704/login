@@ -19,8 +19,9 @@ const { authLimiter } = require('../middleware/rateLimiter');
 router.options('*', cors());
 
 // ==============================
-// Auth0 JWKS client for social login (KEEP)
+// ⚠️ TEMPORARILY DISABLED: Auth0 JWKS client for social login
 // ==============================
+/*
 const client = jwksClient({
   jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
 });
@@ -59,6 +60,7 @@ const verifyAuth0Token = (req, res, next) => {
         }
     );
 };
+*/
 
 
 // ==============================
@@ -66,7 +68,12 @@ const verifyAuth0Token = (req, res, next) => {
 // ==============================
 router.post('/register', authLimiter, auth.register);
 router.post('/login', authLimiter, auth.login);
-router.post('/social-login', authLimiter, verifyAuth0Token, auth.socialLogin);
+
+// ❌ DISABLED SOCIAL LOGIN ROUTE: Replace the original route with a placeholder
+// router.post('/social-login', authLimiter, verifyAuth0Token, auth.socialLogin); 
+router.post('/social-login', authLimiter, (req, res) => {
+    return res.status(503).json({ error: 'Social login is temporarily disabled.' });
+});
 
 router.post('/send-verification', authLimiter, auth.resendVerification);
 router.post('/verify-email', auth.verifyEmail);

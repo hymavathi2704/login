@@ -2,6 +2,8 @@ import { Auth0Provider } from "@auth0/auth0-react";
 import { useNavigate } from "react-router-dom";
 
 const Auth0ProviderWithHistory = ({ children }) => {
+  // ⚠️ TEMPORARILY DISABLED Auth0 Social Login
+  /*
   const navigate = useNavigate();
 
   const domain = import.meta.env.VITE_AUTH0_DOMAIN;
@@ -26,6 +28,8 @@ const Auth0ProviderWithHistory = ({ children }) => {
       {children}
     </Auth0Provider>
   );
+  */
+ return children; // <--- ADDED: Render children directly when disabled
 };
 
 export default Auth0ProviderWithHistory;

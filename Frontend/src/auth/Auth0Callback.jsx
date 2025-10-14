@@ -7,6 +7,8 @@ import axios from 'axios';
 import Icon from '../components/AppIcon';
 
 const Auth0Callback = () => {
+  // ⚠️ TEMPORARILY DISABLED Auth0 Social Login
+  /*
   const { isAuthenticated, getAccessTokenSilently } = useAuth0();
   // FIX 1: Correctly de-structure the 'login' function from AuthContext
   const { login } = useAuth();
@@ -60,6 +62,13 @@ const Auth0Callback = () => {
     processAuth0Login();
     // FIX 3: Updated dependency array
   }, [isAuthenticated, getAccessTokenSilently, login, navigate]); 
+  */
+
+  // ADDED: Immediate redirect when flow is disabled
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -68,10 +77,10 @@ const Auth0Callback = () => {
           <Icon name="Loader2" size={32} className="text-primary" />
         </div>
         <h1 className="text-xl font-medium text-foreground">
-          Completing your login...
+          Redirecting...
         </h1>
         <p className="text-sm text-muted-foreground mt-2">
-          Please wait while we set up your account.
+          Social login is temporarily disabled.
         </p>
       </div>
     </div>
