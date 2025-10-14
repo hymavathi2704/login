@@ -12,7 +12,7 @@ export default defineConfig({
   // ✅ FIX FOR PRODUCTION BUILD PATHS (index.html issue):
   // Ensures all asset paths in the final build are relative, preventing issues when deploying
   // to a non-root path or for simple static hosting.
-  base: './', 
+  base: '/', 
   
   build: {
     outDir: "build",
