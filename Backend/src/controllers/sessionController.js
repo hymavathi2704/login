@@ -144,8 +144,50 @@ const deleteSession = async (req, res) => {
     }
 };
 
+// ==========================================
+// 4. BOOK SESSION (NEW)
+// ==========================================
+const bookSession = async (req, res) => {
+    try {
+        const clientId = req.user.userId;
+        const { sessionId } = req.params;
+        
+        const session = await Session.findByPk(sessionId);
+        if (!session) {
+            return res.status(404).json({ error: 'Session not found.' });
+        }
+        
+        // 🚨 IMPORTANT: You would typically handle payment processing here
+        // If payment is successful, set status to 'confirmed'. If no payment required, set to 'pending' or 'confirmed'.
+        const booking = await Booking.create({ clientId, sessionId, status: 'confirmed' });
+
+        // Optional: Fetch the session details with the coach's info to return to the client
+        const bookedSession = await Booking.findByPk(booking.id, {
+            include: [
+                {
+                    model: Session,
+                    attributes: ['title', 'duration', 'price', 'type'],
+                    include: [{
+                        model: CoachProfile, 
+                        as: 'coachProfile',
+                        attributes: ['userId'],
+                        include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName'] }]
+                    }]
+                }
+            ]
+        });
+
+        return res.status(201).json({ message: 'Session booked successfully.', booking: bookedSession });
+    } catch (error) {
+        console.error("Session Booking Error:", error);
+        return res.status(500).json({ error: 'Failed to book session.' });
+    }
+};
+
 module.exports = {
     createSession,
     updateSession,
-    deleteSession
+    deleteSession,
+    bookSession, // <-- ADDED EXPORT
 };
+

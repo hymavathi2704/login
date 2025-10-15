@@ -220,3 +220,13 @@ export const deleteSession = async (sessionId) => {
         headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
     });
 };
+
+// NEW: Client books a session
+export const bookSession = async (sessionId) => {
+    return axiosInstance.post(`/api/coach/public/${sessionId}/book`);
+};
+
+// NEW: Get clients who follow the logged-in coach
+export const getClientsWhoFollow = () => {
+    return axiosInstance.get('/api/coach/clients-who-follow');
+};

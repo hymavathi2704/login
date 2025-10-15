@@ -680,3 +680,50 @@ export const getFollowedCoaches = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch followed coaches' });
     }
 };
+
+
+// ==============================
+// NEW: GET Clients Who Follow This Coach
+// ==============================
+export const getClientsWhoFollow = async (req, res) => {
+    try {
+        const coachId = req.user.userId; 
+
+        // 1. Find all Follow records where the current coach is the 'followingId'
+        const followerRecords = await Follow.findAll({
+            where: { followingId: coachId },
+            attributes: ['followerId'] 
+        });
+        
+        const followerIds = followerRecords.map(record => record.get('followerId'));
+
+        if (followerIds.length === 0) {
+            return res.status(200).json({ clients: [] });
+        }
+        
+        // 2. Fetch the full User data for all followers, ensuring they are clients
+        const clients = await User.findAll({
+            where: { 
+                id: { [Op.in]: followerIds },
+                roles: { [Op.like]: '%"client"%' } // Optional: Filter for only 'client' roles
+            },
+            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'roles'],
+            include: [
+                { model: ClientProfile, as: 'ClientProfile', required: false, attributes: ['coachingGoals'] }
+            ]
+        });
+
+        const processedClients = clients.map(client => client.get({ plain: true }));
+
+        return res.status(200).json({ clients: processedClients });
+
+    } catch (error) {
+        console.error('Error fetching clients who follow coach:', error);
+        return res.status(500).json({ error: 'Failed to fetch follower clients.' });
+    }
+};
+
+module.exports = {
+// ... (omitted existing exports)
+    getClientsWhoFollow // <-- ADDED EXPORT
+};

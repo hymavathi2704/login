@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react'; // <-- ADDED useState
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
-import { Clock, DollarSign, Users, Tag, TrendingUp } from 'lucide-react'; // Added TrendingUp for subscriptions
-
-// Assuming the coach object has 'availableSessions' array populated from the backend
-// The session objects look like: { id, title, description, type, duration, price, ... }
+import { Clock, DollarSign, Users, Tag, TrendingUp, ArrowRight } from 'lucide-react'; // Added ArrowRight
+// IMPORT NECESSARY HOOKS AND API
+import { useAuth } from '@/auth/AuthContext';
+import { bookSession } from '@/auth/authApi'; 
+import { toast } from 'sonner';
 
 const ServicesSection = ({ coach, onServiceClick }) => {
-  // Removed state for activeTab since we're only showing Sessions now
+  const { isAuthenticated, roles } = useAuth();
+  const isClient = isAuthenticated && roles?.includes('client');
+  const [isBooking, setIsBooking] = useState(false); // New loading state
 
   const formatPrice = (price) => {
     const p = parseFloat(price);
@@ -28,16 +31,39 @@ const ServicesSection = ({ coach, onServiceClick }) => {
   
   // Helper to determine button text based on session type
   const getButtonConfig = (sessionType) => {
-      // NOTE: This logic assumes you will manage the 'type' field to denote ongoing services
-      if (sessionType.toLowerCase().includes('subscription') || sessionType.toLowerCase().includes('package')) {
-          return { label: 'Subscribe Now', icon: 'TrendingUp', variant: 'success' };
-      }
-      return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default' };
+    if (sessionType.toLowerCase().includes('subscription') || sessionType.toLowerCase().includes('package')) {
+      return { label: 'Subscribe Now', icon: 'TrendingUp', variant: 'success' };
+    }
+    return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default' };
   }
 
-  // --- Start of JSX ---
+  // NEW: Handle the booking action
+  const handleBookSession = async (sessionId, sessionTitle) => {
+      if (!isAuthenticated) {
+          toast.error("Please log in to book a session.");
+          return;
+      }
+      if (!isClient) {
+          toast.error("Only clients can book sessions.");
+          return;
+      }
 
-  // Check if availableSessions exists and is an array, defaulting to an empty array
+      if (!window.confirm(`Confirm booking for: ${sessionTitle}?`)) return;
+
+      setIsBooking(true);
+      try {
+          // This call triggers the backend API you implemented in step 2
+          await bookSession(sessionId);
+          toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
+          // OPTIONAL: Optionally redirect to the client's dashboard or refresh the coach profile
+      } catch (error) {
+          console.error("Booking failed:", error);
+          toast.error(error.response?.data?.error || 'Failed to book session. Please try again.');
+      } finally {
+          setIsBooking(false);
+      }
+  };
+
   const availableSessions = Array.isArray(coach?.availableSessions) ? coach.availableSessions : [];
 
   return (
@@ -46,7 +72,6 @@ const ServicesSection = ({ coach, onServiceClick }) => {
         Digital Services Offered
       </h2>
       
-      {/* Sessions List - Replaces the tab content */}
       <div className="space-y-4">
         {availableSessions.length > 0 ? (
           availableSessions.map((session) => {
@@ -87,14 +112,17 @@ const ServicesSection = ({ coach, onServiceClick }) => {
                       <span className="capitalize">{session?.type || 'Individual'}</span>
                     </div>
                   </div>
+                  {/* NEW: Use the booking handler */}
                   <Button
                     variant={buttonVariant}
                     size="sm"
-                    // Removed onClick={onServiceClick} to keep flow simple per request
+                    onClick={() => handleBookSession(session?.id, session?.title)} 
                     iconName={buttonIconName}
                     iconPosition="right"
+                    isLoading={isBooking}
+                    disabled={isBooking || !isClient}
                   >
-                    {buttonLabel}
+                    {isBooking ? 'Processing...' : buttonLabel}
                   </Button>
                 </div>
               </div>

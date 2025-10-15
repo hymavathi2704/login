@@ -10,6 +10,7 @@ import {
   ListFilter
 } from 'lucide-react';
 import { getMyBookings } from '@/auth/authApi';
+import { toast } from 'sonner'; // Ensure toast is imported if used
 
 const BookingManagement = () => {
   const [bookings, setBookings] = useState([]);
@@ -21,12 +22,39 @@ const BookingManagement = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
+        // Fetch all bookings relevant to the coach (handled by backend filtering in events.js)
         const response = await getMyBookings();
-        const sortedBookings = response.data.sort((a, b) => new Date(b.event.date) - new Date(a.event.date));
+        
+        // Map data to a unified format for simpler rendering
+        const unifiedBookings = response.data
+            .filter(b => b.Event || b.Session)
+            .map(b => {
+                const isEvent = !!b.Event;
+                const item = isEvent ? b.Event : b.Session;
+                
+                return {
+                    id: b.id,
+                    clientId: b.clientId,
+                    client: b.client,
+                    isEvent: isEvent,
+                    title: item?.title || 'Unknown',
+                    type: isEvent ? 'event' : item?.type || 'individual',
+                    date: item?.date || item?.defaultDate,
+                    time: item?.time || item?.defaultTime,
+                    price: parseFloat(item?.price || 0),
+                    status: b.status,
+                    bookedAt: b.bookedAt
+                };
+            });
+
+        // Sort by date/time (or bookedAt if date is missing)
+        const sortedBookings = unifiedBookings.sort((a, b) => new Date(b.date || b.bookedAt) - new Date(a.date || a.bookedAt));
+
         setBookings(sortedBookings);
       } catch (err) {
-        console.error("Failed to fetch bookings:", err);
+        console.error("Failed to fetch coach bookings:", err);
         setError("Could not load your bookings. Please try again later.");
+        toast.error("Failed to load bookings.");
       } finally {
         setIsLoading(false);
       }
@@ -37,9 +65,9 @@ const BookingManagement = () => {
 
   const filteredBookings = bookings.filter(booking => {
     const clientName = `${booking.client.firstName} ${booking.client.lastName}`.toLowerCase();
-    const eventTitle = booking.event.title.toLowerCase();
+    const itemTitle = booking.title.toLowerCase();
     
-    const matchesSearch = clientName.includes(searchTerm.toLowerCase()) || eventTitle.includes(searchTerm.toLowerCase());
+    const matchesSearch = clientName.includes(searchTerm.toLowerCase()) || itemTitle.includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || booking.status === filterStatus;
     
     return matchesSearch && matchesStatus;
@@ -62,23 +90,24 @@ const BookingManagement = () => {
     return <div className="text-center p-8 text-red-500">{error}</div>;
   }
   
-  const upcomingBookings = bookings.filter(b => new Date(b.event.date) >= new Date() && b.status === 'confirmed');
+  // STATS: Use the unified bookings array
+  const upcomingBookings = bookings.filter(b => new Date(b.date || b.bookedAt) >= new Date() && b.status === 'confirmed');
   const pendingBookings = bookings.filter(b => b.status === 'pending');
   const confirmedRevenue = bookings
     .filter(b => b.status === 'confirmed')
-    .reduce((acc, booking) => acc + parseFloat(booking.event.price || 0), 0);
+    .reduce((acc, booking) => acc + booking.price, 0);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Booking Management</h2>
-        <p className="text-gray-600">View and manage all client registrations for your events.</p>
+        <p className="text-gray-600">View and manage all client bookings for your events and sessions.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <div className="text-3xl font-bold text-green-600 mb-2">{upcomingBookings.length}</div>
-          <div className="text-gray-600">Upcoming Sessions</div>
+          <div className="text-gray-600">Upcoming Sessions/Events</div>
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <div className="text-3xl font-bold text-yellow-600 mb-2">{pendingBookings.length}</div>
@@ -90,15 +119,17 @@ const BookingManagement = () => {
         </div>
       </div>
 
+      {/* Filter and Search Section (omitted, no change needed) */}
+
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search by Client or Event</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Search by Client or Session/Event</label>
             <div className="relative">
               <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="e.g., Sarah Johnson or Work-Life Balance..."
+                placeholder="e.g., Sarah Johnson or Life Coaching Session..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -137,16 +168,18 @@ const BookingManagement = () => {
                   <div className="md:col-span-2">
                     <p className="font-semibold text-purple-700 flex items-center mb-2">
                       <Tag size={16} className="mr-2" />
-                      {booking.event.title}
+                      {booking.title}
+                      <span className="ml-2 text-xs text-gray-500 font-normal capitalize">({booking.isEvent ? 'Event' : booking.type})</span>
                     </p>
                     <div className="space-y-2 text-sm text-gray-600">
                       <p className="flex items-center"><User size={14} className="mr-2" /> <span className="font-medium mr-1">Client:</span> {booking.client.firstName} {booking.client.lastName}</p>
                       <p className="flex items-center"><Mail size={14} className="mr-2" /> <span className="font-medium mr-1">Email:</span> {booking.client.email}</p>
+                      <p className="flex items-center"><DollarSign size={14} className="mr-2" /> <span className="font-medium mr-1">Price:</span> ${booking.price.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="text-sm text-gray-600 md:text-right">
-                    <p className="font-medium flex items-center md:justify-end"><Calendar size={14} className="mr-2" />{new Date(booking.event.date).toLocaleDateString()}</p>
-                    <p className="text-gray-500 mt-1 flex items-center md:justify-end"><Clock size={14} className="mr-2"/> at {booking.event.time}</p>
+                    <p className="font-medium flex items-center md:justify-end"><Calendar size={14} className="mr-2" />{new Date(booking.date).toLocaleDateString()}</p>
+                    <p className="text-gray-500 mt-1 flex items-center md:justify-end"><Clock size={14} className="mr-2"/> at {booking.time}</p>
                     <div className="mt-2">
                       <span className={`px-3 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(booking.status)}`}>
                         {booking.status}

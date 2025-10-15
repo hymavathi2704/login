@@ -64,6 +64,16 @@ router.put('/sessions/:sessionId', skipAuthForOptions, authenticate, sessionCont
 // DELETE /api/coach/sessions/:sessionId - Delete a session
 router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, sessionController.deleteSession);
 
+// ==============================
+// SESSION BOOKING ROUTE (NEW)
+// ==============================
+
+// POST /api/coach/public/:sessionId/book - Client books a session (protected route)
+router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); // <--- ADDED ROUTE
+
+
+// GET /api/coach/clients-who-follow - Get clients who have followed this coach (NEW)
+router.get('/clients-who-follow', authenticate, coachProfileController.getClientsWhoFollow); // <--- ADDED ROUTE
 
 // ==============================
 // Public coach profile (No authentication required)
