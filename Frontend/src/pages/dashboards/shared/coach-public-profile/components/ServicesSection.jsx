@@ -1,65 +1,62 @@
-import React, { useState } from 'react'; // 🚨 FIX: ADDED useState
+import React, { useState } from 'react';
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
-import { Clock, DollarSign, Users, Tag, TrendingUp, ArrowRight } from 'lucide-react'; // Added ArrowRight
-// 🚨 FIX: IMPORT NECESSARY HOOKS AND API
+import { Clock, Tag, DollarSign, TrendingUp, ArrowRight } from 'lucide-react';
+// Imports necessary for authentication, API call, and user feedback
 import { useAuth } from '@/auth/AuthContext';
-import { bookSession } from '@/auth/authApi'; 
-import { toast } from 'sonner'; // Assuming sonner is installed for toast notifications
+import { bookSession } from '@/auth/authApi';
+import { toast } from 'sonner';
 
 const ServicesSection = ({ coach, onServiceClick }) => {
   const { isAuthenticated, roles } = useAuth();
   const isClient = isAuthenticated && roles?.includes('client');
-  const [isBooking, setIsBooking] = useState(false); // New loading state for the button
+  const [bookingSessionId, setBookingSessionId] = useState(null); // Track which session is loading
 
   const formatPrice = (price) => {
     const p = parseFloat(price);
     if (p === 0) return 'FREE';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    })?.format(p);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p);
   };
 
   const formatDuration = (minutes) => {
     const m = parseInt(minutes, 10);
     if (m < 60) return `${m} min`;
     const hours = Math.floor(m / 60);
-    const remainingMinutes = m % 60;
-    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    const remaining = m % 60;
+    return remaining > 0 ? `${hours}h ${remaining}m` : `${hours}h`;
   };
-  
+
   const getButtonConfig = (sessionType) => {
-    if (sessionType.toLowerCase().includes('subscription') || sessionType.toLowerCase().includes('package')) {
+    if (!sessionType) return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default' };
+    const type = sessionType.toLowerCase();
+    if (type.includes('subscription') || type.includes('package')) {
       return { label: 'Subscribe Now', icon: 'TrendingUp', variant: 'success' };
     }
     return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default' };
-  }
+  };
 
-  // 🚨 NEW: Handle the booking action
   const handleBookSession = async (sessionId, sessionTitle) => {
-      if (!isAuthenticated) {
-          toast.error("Please log in to book a session.");
-          return;
-      }
-      if (!isClient) {
-          toast.error("Only clients can book sessions.");
-          return;
-      }
+    if (!isAuthenticated) {
+      toast.error("Please log in to purchase/book this session.");
+      return;
+    }
+    if (!isClient) {
+      toast.error("Only clients can book sessions.");
+      return;
+    }
+    if (!window.confirm(`Confirm booking for: ${sessionTitle}?`)) return;
 
-      if (!window.confirm(`Confirm booking for: ${sessionTitle}?`)) return;
-
-      setIsBooking(true);
-      try {
-          await bookSession(sessionId);
-          toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
-          // Optionally, redirect user or update a local state here
-      } catch (error) {
-          console.error("Booking failed:", error);
-          toast.error(error.response?.data?.error || 'Failed to book session. Please try again.');
-      } finally {
-          setIsBooking(false);
-      }
+    setBookingSessionId(sessionId); // Start spinner for this session
+    try {
+      await bookSession(sessionId);
+      toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
+    } catch (err) {
+      console.error("Booking Error:", err);
+      // The err object may contain a .message property from our custom interceptor in authApi.js
+      toast.error(err.message || 'Booking failed. Please try again.');
+    } finally {
+      setBookingSessionId(null); // Stop spinner
+    }
   };
 
   const availableSessions = Array.isArray(coach?.availableSessions) ? coach.availableSessions : [];
@@ -69,12 +66,13 @@ const ServicesSection = ({ coach, onServiceClick }) => {
       <h2 className="text-2xl font-heading font-semibold text-foreground mb-6">
         Digital Services Offered
       </h2>
-      
+
       <div className="space-y-4">
         {availableSessions.length > 0 ? (
           availableSessions.map((session) => {
-            const { label: buttonLabel, icon: buttonIconName, variant: buttonVariant } = getButtonConfig(session?.type);
-            
+            const { label, icon, variant } = getButtonConfig(session?.type);
+            const isLoading = bookingSessionId === session?.id;
+
             return (
               <div
                 key={session?.id}
@@ -82,17 +80,11 @@ const ServicesSection = ({ coach, onServiceClick }) => {
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1 pr-4">
-                    <h3 className="font-semibold text-foreground mb-1">
-                      {session?.title}
-                    </h3>
-                    <p className="text-muted-foreground text-sm mb-2">
-                      {session?.description}
-                    </p>
+                    <h3 className="font-semibold text-foreground mb-1">{session?.title}</h3>
+                    <p className="text-muted-foreground text-sm mb-2">{session?.description}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="text-xl font-bold text-primary">
-                      {formatPrice(session?.price)}
-                    </div>
+                    <div className="text-xl font-bold text-primary">{formatPrice(session?.price)}</div>
                     <div className="text-sm text-muted-foreground">
                       {session?.price > 0 ? 'per session' : 'free offer'}
                     </div>
@@ -110,17 +102,19 @@ const ServicesSection = ({ coach, onServiceClick }) => {
                       <span className="capitalize">{session?.type || 'Individual'}</span>
                     </div>
                   </div>
-                  {/* 🚨 FIX: Connect the handler and state */}
+
                   <Button
-                    variant={buttonVariant}
+                    variant={variant}
                     size="sm"
-                    onClick={() => handleBookSession(session?.id, session?.title)} 
-                    iconName={buttonIconName}
+                    onClick={() => handleBookSession(session?.id, session?.title)}
+                    iconName={icon}
                     iconPosition="right"
-                    isLoading={isBooking}
-                    disabled={isBooking || !isClient} // Disable if not a client or currently booking
+                    // ✅ FIX: Use the 'loading' prop
+                    loading={isLoading} 
+                    // Disable if not a client OR if this button is currently loading
+                    disabled={!isClient || isLoading} 
                   >
-                    {isBooking ? 'Processing...' : buttonLabel}
+                    {isLoading ? 'Processing...' : label}
                   </Button>
                 </div>
               </div>
