@@ -10,25 +10,23 @@ const Session = require('../models/Session');
 const CoachProfile = require('../models/CoachProfile'); 
 
 // ... (omitted existing event routes: GET /, /my-events, POST, PUT, DELETE, POST /:eventId/book) ...
-
-// GET /api/events/my-bookings - Get a client's session bookings (MODIFIED to Session-Only)
+// GET /api/events/my-bookings - Get a client's session bookings (FIXED Alias)
 router.get('/my-bookings', authenticate, async (req, res) => {
     try {
         const userId = req.user.userId;
         
-        // Find bookings associated with the current user AND a sessionId
         const bookings = await Booking.findAll({
             where: { 
                 clientId: userId,
-                sessionId: { [Op.ne]: null } // Only look for Session bookings
+                sessionId: { [Op.ne]: null } 
             },
             attributes: ['id', 'clientId', 'sessionId', 'status', 'bookedAt'],
             include: [
                 {
                     model: Session,
-                    // Session fields needed for the client dashboard
+                    as: 'Session', // 🚨 CRITICAL FIX: Use the 'Session' alias
                     attributes: ['id', 'title', 'duration', 'price', 'type', 'defaultDate', 'defaultTime', 'meetingLink'],
-                    required: true, // Only show bookings with an associated Session
+                    required: true,
                     include: [{ 
                         model: CoachProfile, 
                         as: 'coachProfile', 
@@ -43,6 +41,7 @@ router.get('/my-bookings', authenticate, async (req, res) => {
         res.json(bookings);
     } catch (error) {
         console.error('Failed to fetch client session bookings:', error);
+        // This is the error seen in the console
         res.status(500).json({ error: 'Failed to fetch session bookings.' });
     }
 });

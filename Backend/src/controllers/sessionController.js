@@ -3,6 +3,8 @@
 const Session = require('../models/Session');
 const CoachProfile = require('../models/CoachProfile');
 const { Op } = require('sequelize');
+const Booking = require('../models/Booking'); // 🚨 FIX: ADDED MISSING IMPORT
+const User = require('../models/user');       // 🚨 FIX: ADDED MISSING IMPORT
 
 // ==============================
 // Helper: Sanitize & Map Data
@@ -51,7 +53,6 @@ const createSession = async (req, res) => {
 
         const sanitizedData = sanitizeSessionData(data);
         
-        // This line is where the Sequelize validation error occurred.
         const newSession = await Session.create({
             coachProfileId: coachProfile.id,
             ...sanitizedData, // Now contains a valid 'title' field
@@ -64,13 +65,13 @@ const createSession = async (req, res) => {
 
     } catch (error) {
         console.error('Error creating session:', error);
-        // This is necessary to debug validation errors during development
         if (error.name === 'SequelizeValidationError') {
             console.error('Sequelize Validation Errors:', error.errors.map(e => e.message));
         }
         return res.status(500).json({ error: 'Failed to create session' });
     }
 };
+
 // ==========================================
 // 2. UPDATE SESSION
 // ==========================================
@@ -144,8 +145,9 @@ const deleteSession = async (req, res) => {
     }
 };
 
+
 // ==========================================
-// 4. BOOK SESSION (NEW)
+// 4. BOOK SESSION (Copied from previous step for completeness)
 // ==========================================
 const bookSession = async (req, res) => {
     try {
@@ -157,48 +159,29 @@ const bookSession = async (req, res) => {
             return res.status(404).json({ error: 'Session not found.' });
         }
         
-        // 🚨 IMPORTANT: You would typically handle payment processing here
-        // If payment is successful, set status to 'confirmed'. If no payment required, set to 'pending' or 'confirmed'.
         const booking = await Booking.create({ clientId, sessionId, status: 'confirmed' });
 
-        // Optional: Fetch the session details with the coach's info to return to the client
-        const bookedSession = await Booking.findByPk(booking.id, {
-            include: [
-                {
-                    model: Session,
-                    attributes: ['title', 'duration', 'price', 'type'],
-                    include: [{
-                        model: CoachProfile, 
-                        as: 'coachProfile',
-                        attributes: ['userId'],
-                        include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName'] }]
-                    }]
-                }
-            ]
-        });
-
-        return res.status(201).json({ message: 'Session booked successfully.', booking: bookedSession });
+        return res.status(201).json({ message: 'Session booked successfully.', booking });
     } catch (error) {
         console.error("Session Booking Error:", error);
         return res.status(500).json({ error: 'Failed to book session.' });
     }
 };
 
+
 // ==========================================
-// 5. GET COACH SESSION BOOKINGS (NEW)
+// 5. GET COACH SESSION BOOKINGS (FIXED)
 // ==========================================
 const getCoachSessionBookings = async (req, res) => {
     try {
         const coachId = req.user.userId;
         
-        // 1. Find the coachProfileId using the coach's userId
         const coachProfile = await CoachProfile.findOne({ where: { userId: coachId } });
         if (!coachProfile) {
              return res.status(404).json({ error: 'Coach profile not found.' });
         }
         const coachProfileId = coachProfile.id;
 
-        // 2. Find all bookings that match a session belonging to this coach
         const bookings = await Booking.findAll({
             where: { 
                 sessionId: { [Op.ne]: null } // Only look for Session bookings
@@ -206,20 +189,20 @@ const getCoachSessionBookings = async (req, res) => {
             include: [
                 {
                     model: Session,
+                    as: 'Session', // 🚨 CRITICAL FIX: Use the 'Session' alias matching server.js
                     required: true,
                     where: { coachProfileId: coachProfileId }, // Filter by this coach's sessions
                     attributes: ['id', 'title', 'duration', 'price', 'type', 'defaultDate', 'defaultTime', 'meetingLink'],
                 },
                 {
                     model: User,
-                    as: 'client', // Include client details for the coach view
+                    as: 'client', // Alias for the client user
                     attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
                 }
             ],
             order: [['bookedAt', 'DESC']]
         });
         
-        // 3. The `required: true` in the include clause already filters correctly.
         return res.json(bookings);
 
     } catch (error) {
@@ -233,6 +216,5 @@ module.exports = {
     updateSession,
     deleteSession,
     bookSession,
-    getCoachSessionBookings // <-- ADDED EXPORT
+    getCoachSessionBookings // <-- EXPORTED
 };
-

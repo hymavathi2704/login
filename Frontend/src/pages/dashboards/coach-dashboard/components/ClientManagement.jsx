@@ -4,6 +4,7 @@ import { getMyClients } from '@/auth/authApi';
 // NEW IMPORT: for followed clients
 import { getClientsWhoFollow } from '@/auth/authApi'; 
 import { cn } from '@/utils/cn'; // Assuming you have a utility for combining class names
+import { toast } from 'sonner'; // 🚨 FIX: ADDED MISSING IMPORT
 
 // Constants to separate client types
 const CLIENT_TYPE_BOOKED = 'booked';
