@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Video, MapPin, User, Tag } from 'lucide-react';
-// FIX: Use the new simplified API function name
-import { getMyClientSessions } from '@/auth/authApi'; 
+// FIX: Using the currently exported function name 'getMyBookings'
+import { getMyBookings } from '@/auth/authApi'; 
 import { toast } from 'sonner';
 
 const UpcomingSessions = ({ preview = false }) => {
@@ -12,8 +12,8 @@ const UpcomingSessions = ({ preview = false }) => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        // Fetch only client session bookings
-        const response = await getMyClientSessions(); 
+        // FIX: Calling the existing exported function
+        const response = await getMyBookings(); 
         
         const sessionsData = response.data
             // Map to a consistent display format, focusing only on Session data
