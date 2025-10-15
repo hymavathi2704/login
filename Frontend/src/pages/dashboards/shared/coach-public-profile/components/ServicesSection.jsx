@@ -1,16 +1,16 @@
-import React, { useState } from 'react'; // <-- ADDED useState
+import React, { useState } from 'react'; // 🚨 FIX: ADDED useState
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
 import { Clock, DollarSign, Users, Tag, TrendingUp, ArrowRight } from 'lucide-react'; // Added ArrowRight
-// IMPORT NECESSARY HOOKS AND API
+// 🚨 FIX: IMPORT NECESSARY HOOKS AND API
 import { useAuth } from '@/auth/AuthContext';
 import { bookSession } from '@/auth/authApi'; 
-import { toast } from 'sonner';
+import { toast } from 'sonner'; // Assuming sonner is installed for toast notifications
 
 const ServicesSection = ({ coach, onServiceClick }) => {
   const { isAuthenticated, roles } = useAuth();
   const isClient = isAuthenticated && roles?.includes('client');
-  const [isBooking, setIsBooking] = useState(false); // New loading state
+  const [isBooking, setIsBooking] = useState(false); // New loading state for the button
 
   const formatPrice = (price) => {
     const p = parseFloat(price);
@@ -29,7 +29,6 @@ const ServicesSection = ({ coach, onServiceClick }) => {
     return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
   };
   
-  // Helper to determine button text based on session type
   const getButtonConfig = (sessionType) => {
     if (sessionType.toLowerCase().includes('subscription') || sessionType.toLowerCase().includes('package')) {
       return { label: 'Subscribe Now', icon: 'TrendingUp', variant: 'success' };
@@ -37,7 +36,7 @@ const ServicesSection = ({ coach, onServiceClick }) => {
     return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default' };
   }
 
-  // NEW: Handle the booking action
+  // 🚨 NEW: Handle the booking action
   const handleBookSession = async (sessionId, sessionTitle) => {
       if (!isAuthenticated) {
           toast.error("Please log in to book a session.");
@@ -52,10 +51,9 @@ const ServicesSection = ({ coach, onServiceClick }) => {
 
       setIsBooking(true);
       try {
-          // This call triggers the backend API you implemented in step 2
           await bookSession(sessionId);
           toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
-          // OPTIONAL: Optionally redirect to the client's dashboard or refresh the coach profile
+          // Optionally, redirect user or update a local state here
       } catch (error) {
           console.error("Booking failed:", error);
           toast.error(error.response?.data?.error || 'Failed to book session. Please try again.');
@@ -112,7 +110,7 @@ const ServicesSection = ({ coach, onServiceClick }) => {
                       <span className="capitalize">{session?.type || 'Individual'}</span>
                     </div>
                   </div>
-                  {/* NEW: Use the booking handler */}
+                  {/* 🚨 FIX: Connect the handler and state */}
                   <Button
                     variant={buttonVariant}
                     size="sm"
@@ -120,7 +118,7 @@ const ServicesSection = ({ coach, onServiceClick }) => {
                     iconName={buttonIconName}
                     iconPosition="right"
                     isLoading={isBooking}
-                    disabled={isBooking || !isClient}
+                    disabled={isBooking || !isClient} // Disable if not a client or currently booking
                   >
                     {isBooking ? 'Processing...' : buttonLabel}
                   </Button>
