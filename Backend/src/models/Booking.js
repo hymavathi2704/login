@@ -16,19 +16,10 @@ const Booking = db.define('booking', {
       key: 'id',
     },
   },
-  // Existing field for Event booking
-  eventId: { 
-    type: DataTypes.INTEGER,
-    allowNull: true, // MAKE THIS NULLABLE
-    references: {
-      model: 'events',
-      key: 'id',
-    },
-  },
-  // NEW field for Session booking
-  sessionId: { 
+  // REMOVED: eventId field entirely, as you are sessions-only.
+  sessionId: { // <--- ADDED & REQUIRED
     type: DataTypes.CHAR(36),
-    allowNull: true, // MAKE THIS NULLABLE
+    allowNull: false, // Booking MUST belong to a Session now
     references: {
       model: 'coach_sessions', // References the Session model's table name
       key: 'id',

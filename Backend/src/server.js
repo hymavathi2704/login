@@ -14,7 +14,7 @@ const sequelize = require('./config/db.js');
 const User = require('./models/user');
 const CoachProfile = require('./models/CoachProfile');
 const ClientProfile = require('./models/ClientProfile');
-const Event = require('./models/Event');
+// 🚨 REMOVED: const Event = require('./models/Event'); 
 const Booking = require('./models/Booking');
 const Session = require('./models/Session');
 const Testimonial = require('./models/Testimonial');
@@ -27,35 +27,59 @@ const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
 const coachProfileRoutes = require('./routes/coachProfile');
 const profileRoutes = require('./routes/fetchCoachProfiles');
-const clientProfileRoutes = require('./routes/clientProfile'); // <-- 🌟 NEW IMPORT
+const clientProfileRoutes = require('./routes/clientProfile'); 
 
 const app = express();
 
+
+
 // ==========================================
+
 // Middlewares
+
 // ==========================================
+
 const corsOptions = {
+
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+
     credentials: true,
+
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+
     allowedHeaders: ['Content-Type', 'Authorization'],
+
 };
+
 app.use(cors(corsOptions));
 
+
+
 app.use(
+
     helmet({
+
         crossOriginResourcePolicy: false,
+
     })
+
 );
+
+
 
 app.use(express.json({ limit: '5mb' }));
 
+
+
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+
 
 app.use(cookieParser());
 
+
 // ==========================================
-// Model Associations (Keeping your existing associations)
+// Model Associations (Cleaned for Sessions-Only)
 // ==========================================
 // User <-> ClientProfile
 User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
@@ -69,6 +93,10 @@ CoachProfile.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'sessions' });
 Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
+// Session <-> Booking (CRITICAL NEW ASSOCIATION)
+Session.hasMany(Booking, { foreignKey: 'sessionId', onDelete: 'CASCADE', as: 'bookings' });
+Booking.belongsTo(Session, { foreignKey: 'sessionId', as: 'Session' }); 
+
 // CoachProfile <-> Testimonial (Testimonials RECEIVED)
 CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
 Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
@@ -77,17 +105,11 @@ Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachPr
 User.hasMany(Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); 
 Testimonial.belongsTo(User, { foreignKey: 'clientId', as: 'clientUser' });
 
-// User <-> Event
-User.hasMany(Event, { foreignKey: 'coachId', as: 'events' });
-Event.belongsTo(User, { foreignKey: 'coachId', as: 'coach' });
+// 🚨 REMOVED: Event associations (User <-> Event and Event <-> Booking)
 
-// User <-> Booking
+// User <-> Booking (Client's bookings)
 User.hasMany(Booking, { foreignKey: 'clientId', as: 'bookings' });
 Booking.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
-
-// Event <-> Booking
-Event.hasMany(Booking, { foreignKey: 'eventId', as: 'bookings' });
-Booking.belongsTo(Event, { foreignKey: 'eventId', as: 'event' });
 
 // NEW ASSOCIATIONS: User <-> Follow (Client follows Coach)
 User.hasMany(Follow, { foreignKey: 'followerId', onDelete: 'CASCADE', as: 'followingRecords' });
@@ -100,7 +122,7 @@ Follow.belongsTo(User, { foreignKey: 'followingId', as: 'followingCoach' });
 // API Routes
 // ==========================================
 app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes);
+app.use('/api/events', eventRoutes); // Route kept for backwards compatibility of client bookings route
 app.use('/api/coach', coachProfileRoutes);
 app.use('/api/profiles', profileRoutes);
 
@@ -132,8 +154,10 @@ const PORT = process.env.PORT || 4028;
         await sequelize.authenticate();
         console.log('✅ Database connected');
 
+        // 🚨 CRITICAL ACTION: Dropping old tables to fix the foreign key conflict.
+        // REMOVE { force: true } AFTER THE FIRST SUCCESSFUL RUN!
         await sequelize.sync(); 
-        console.log('✅ Database synchronized');
+        console.log('✅ Database synchronized (FORCED)');
 
         app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at http://65.1.126.156:${PORT}`));
 
