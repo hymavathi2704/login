@@ -38,9 +38,7 @@ const ServicesSection = ({ coach }) => {
   const handleBookSession = async (sessionId, sessionTitle) => {
     
     // 🚨 REMOVED CHECKS: We are removing the frontend isAuthenticated and isClient checks
-    // based on your request that since you are viewing from the dashboard, you are already
-    // authorized. The security check (token validity, client role) is now ENFORCED ONLY 
-    // by the backend API call itself.
+    // The server will handle authorization based on the user's token.
     
     if (!window.confirm(`Confirm booking for: ${sessionTitle}?`)) return;
 
@@ -52,8 +50,9 @@ const ServicesSection = ({ coach }) => {
       toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
     } catch (err) {
       console.error("Booking Error:", err);
-      // If the backend fails (e.g., token expired or not a client), this catch block runs.
-      const errorMsg = err.response?.data?.error || err.message || 'Booking failed due to authorization or server error.';
+      // If the backend fails (e.g., token expired or not a client), this catch block runs
+      // and shows the error message returned from the server.
+      const errorMsg = err.response?.data?.error || err.message || 'Booking failed due to server error.';
       toast.error(errorMsg);
     } finally {
       setBookingSessionId(null);
@@ -111,7 +110,6 @@ const ServicesSection = ({ coach }) => {
                     iconName={icon}
                     iconPosition="right"
                     loading={isLoading} 
-                    // We rely on the handleBookSession function and the loading state only.
                     disabled={isLoading} 
                   >
                     {isLoading ? 'Processing...' : label}

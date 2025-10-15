@@ -7,24 +7,22 @@ const Booking = require('../models/Booking'); // 🚨 FIX: ADDED MISSING IMPORT
 const User = require('../models/user');       // 🚨 FIX: ADDED MISSING IMPORT
 
 // ==============================
-// Helper: Sanitize & Map Data
+// Helper: Sanitize & Map Data (UPDATED)
 // ==============================
 const sanitizeSessionData = (data) => {
-    // We expect 'name' from the frontend, but the model needs 'title'.
-    const title = data.name; // Use frontend 'name' for title
+    // Frontend is expected to send 'title', 'type', 'duration', and 'price'.
     
     // Ensure price and duration are correctly typed
-    const duration = parseInt(data.duration, 10);
-    const price = parseFloat(data.price);
+    const duration = parseInt(data.duration, 10) || 0; // Default to 0 if invalid
+    const price = parseFloat(data.price) || 0.0;     // Default to 0.0 if invalid
     
     return {
-        // Map 'name' to 'title'
-        title: title, 
+        // Ensure required fields map correctly
+        title: data.title || data.name || 'Untitled Session', 
         
-        // Map 'type' (frontend 'format') to 'type'
-        type: data.type, 
+        // This is the "section type" field you asked about.
+        type: data.type || 'individual', // Default to 'individual' if missing
 
-        // Map Duration/Price/Description
         duration: duration, 
         price: price, 
         description: data.description || null,
