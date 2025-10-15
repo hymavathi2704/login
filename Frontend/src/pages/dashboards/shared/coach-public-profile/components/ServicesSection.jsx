@@ -2,15 +2,14 @@ import React, { useState } from 'react';
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
 import { Clock, Tag, DollarSign, TrendingUp, ArrowRight } from 'lucide-react';
-// Imports necessary for authentication, API call, and user feedback
 import { useAuth } from '@/auth/AuthContext';
 import { bookSession } from '@/auth/authApi';
 import { toast } from 'sonner';
 
-const ServicesSection = ({ coach, onServiceClick }) => {
+const ServicesSection = ({ coach }) => {
   const { isAuthenticated, roles } = useAuth();
   const isClient = isAuthenticated && roles?.includes('client');
-  const [bookingSessionId, setBookingSessionId] = useState(null); // Track which session is loading
+  const [bookingSessionId, setBookingSessionId] = useState(null); // Tracks which session's button is active
 
   const formatPrice = (price) => {
     const p = parseFloat(price);
@@ -36,26 +35,33 @@ const ServicesSection = ({ coach, onServiceClick }) => {
   };
 
   const handleBookSession = async (sessionId, sessionTitle) => {
+    // 1. Check Authentication/Role and return immediately with a toast message
     if (!isAuthenticated) {
       toast.error("Please log in to purchase/book this session.");
       return;
     }
+
     if (!isClient) {
       toast.error("Only clients can book sessions.");
       return;
     }
+
+    // 2. Confirmation Check
     if (!window.confirm(`Confirm booking for: ${sessionTitle}?`)) return;
 
-    setBookingSessionId(sessionId); // Start spinner for this session
+    // 3. Start Loading State
+    setBookingSessionId(sessionId); 
+
     try {
+      // 4. API Call
       await bookSession(sessionId);
       toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
     } catch (err) {
       console.error("Booking Error:", err);
-      // The err object may contain a .message property from our custom interceptor in authApi.js
       toast.error(err.message || 'Booking failed. Please try again.');
     } finally {
-      setBookingSessionId(null); // Stop spinner
+      // 5. Stop Loading State
+      setBookingSessionId(null);
     }
   };
 
@@ -71,7 +77,7 @@ const ServicesSection = ({ coach, onServiceClick }) => {
         {availableSessions.length > 0 ? (
           availableSessions.map((session) => {
             const { label, icon, variant } = getButtonConfig(session?.type);
-            const isLoading = bookingSessionId === session?.id;
+            const isLoading = bookingSessionId === session?.id; // Check if THIS session is loading
 
             return (
               <div
@@ -109,10 +115,11 @@ const ServicesSection = ({ coach, onServiceClick }) => {
                     onClick={() => handleBookSession(session?.id, session?.title)}
                     iconName={icon}
                     iconPosition="right"
-                    // ✅ FIX: Use the 'loading' prop
+                    // ✅ FIX: Use the 'loading' prop to activate the spinner and disable implicitly
                     loading={isLoading} 
-                    // Disable if not a client OR if this button is currently loading
-                    disabled={!isClient || isLoading} 
+                    // Optional: remove `disabled={!isClient || isLoading}` 
+                    // The loading prop often handles disabling internally, 
+                    // and your handler blocks non-clients anyway.
                   >
                     {isLoading ? 'Processing...' : label}
                   </Button>
