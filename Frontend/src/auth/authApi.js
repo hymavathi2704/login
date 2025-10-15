@@ -96,8 +96,8 @@ export const getMyClientSessions = () => {
 
 // FIX: Coach's Bookings (NEW Export - Fixes the error in BookingManagement.jsx)
 export const getMyCoachBookings = () => {
-    // This corresponds to the backend route /api/coach/my-bookings
-    return axiosInstance.get("/api/coach/my-bookings"); 
+    // This corresponds to the backend route /api/coach/my-bookings
+    return axiosInstance.get("/api/coach/my-bookings"); 
 };
 
 
@@ -143,6 +143,29 @@ export const updateUserProfile = (profileData) => {
 export const getCoachProfile = () => {
   return axiosInstance.get("/api/coach/profile");
 };
+
+// --- CLIENT PROFILES API (NEW) ---
+
+export const updateClientProfile = (profileData) => {
+  // Sends JSON data to the PUT /api/client/profile endpoint
+  return axiosInstance.put('/api/client/profile', profileData);
+};
+
+export const uploadClientProfilePicture = (file) => {
+  const formData = new FormData();
+  formData.append('profilePicture', file); 
+
+  // Use custom Axios instance for multipart/form-data upload
+  return axios.create({
+    baseURL: API_BASE_URL, 
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'multipart/form-data', 
+      'Authorization': `Bearer ${localStorage.getItem("accessToken")}`,
+    },
+  }).post('/api/client/profile/upload-picture', formData); 
+};
+
 
 // =========================================================
 // SESSION MANAGEMENT FUNCTIONS (Fixed to use axiosInstance)

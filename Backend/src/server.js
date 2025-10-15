@@ -153,7 +153,7 @@ const PORT = process.env.PORT || 4028;
 
         // 🚨 CRITICAL ACTION: Dropping old tables to fix the foreign key conflict.
         // REMOVE { force: true } AFTER THE FIRST SUCCESSFUL RUN!
-        await sequelize.sync({ force: true }); 
+        await sequelize.sync(); 
         console.log('✅ Database synchronized (FORCED)');
 
         app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at http://65.1.126.156:${PORT}`));

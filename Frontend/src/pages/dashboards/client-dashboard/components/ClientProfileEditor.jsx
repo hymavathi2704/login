@@ -6,6 +6,9 @@ import Input from '@/components/ui/Input';
 import { cn } from '@/utils/cn'; 
 // 🌟 NEW: Import the reusable Demographic component
 import DemographicsFormSection from '@/pages/dashboards/shared/DemographicsFormSection'; 
+// 🌟 NEW: Import API functions
+import { getMe, updateClientProfile, uploadClientProfilePicture } from '@/auth/authApi'; 
+import { toast } from 'sonner'; 
 
 
 const ClientProfileEditor = () => {
@@ -21,26 +24,20 @@ const ClientProfileEditor = () => {
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // --- Data Fetching Logic (Correctly Merges Nested Data) ---
+  // --- Data Fetching Logic (Now uses getMe from authApi.js) ---
   useEffect(() => {
     const fetchProfileData = async () => {
       const token = localStorage.getItem('accessToken');
       if (!token) {
         console.error("Authentication Error: No token found. Please log in.");
+        toast.error("Authentication Error: Please log in.");
         return;
       }
 
       try {
-        // Fetch data from the /me endpoint
-        const response = await fetch('http://localhost:4028/api/auth/me', {
-          headers: { 'Authorization': `Bearer ${token}`, },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data from the server.');
-        }
-
-        const data = await response.json();
+        // 💡 REPLACED: hardcoded fetch with getMe() for fetching user data
+        const response = await getMe();
+        const data = response.data; // Axios response uses .data
         
         // ✅ MERGE FIX 1: Flatten ClientProfile data onto the main user object
         const userData = {
@@ -54,6 +51,7 @@ const ClientProfileEditor = () => {
 
       } catch (error) {
         console.error("Error fetching profile data:", error);
+        toast.error(error.message || "Failed to fetch profile data from server.");
       }
     };
 
@@ -95,44 +93,33 @@ const ClientProfileEditor = () => {
     }
   };
 
-  // Two-step Save function 
+  // Two-step Save function (Now uses authApi.js functions)
   const handleSave = async () => {
     setIsSaving(true);
     const token = localStorage.getItem('accessToken');
     let finalProfileData = { ...profileData };
 
     if (!token) {
-      alert("You are not logged in. Please log in to save your profile.");
+      toast.error("You are not logged in. Please log in to save your profile.");
       setIsSaving(false);
       return;
     }
 
     // --- STEP 1: Upload File to /uploads folder if a new one is pending ---
     if (imageFile) {
-        const formData = new FormData();
-        formData.append('profilePicture', imageFile);
         
         try {
-            // Use the dedicated upload endpoint (which saves to 'uploads' and returns the URL path)
-            const uploadResponse = await fetch('http://localhost:4028/api/client/profile/upload-picture', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: formData,
-            });
-
-            const uploadData = await uploadResponse.json();
-            if (!uploadResponse.ok) {
-                throw new Error(uploadData.error || 'File upload failed.');
-            }
+            // 💡 REPLACED: hardcoded fetch call with uploadClientProfilePicture()
+            const uploadResponse = await uploadClientProfilePicture(imageFile);
             
-            // CRITICAL: Use the returned URL path, NOT the Base64 data
+            const uploadData = uploadResponse.data; // Axios response uses .data
+            
+            // CRITICAL: Use the returned URL path
             finalProfileData.profilePicture = uploadData.profilePicture;
 
         } catch (uploadError) {
             console.error('Profile picture upload failed:', uploadError);
-            alert(`Error uploading picture: ${uploadError.message}`);
+            toast.error(`Error uploading picture: ${uploadError.message}`);
             setIsSaving(false);
             return;
         }
@@ -143,24 +130,12 @@ const ClientProfileEditor = () => {
 
     // --- STEP 2: Save the Profile Data (with the new file path/null) ---
     try {
-      // This PUT call is configured to hit the new /api/client/profile endpoint
-      const response = await fetch('http://localhost:4028/api/client/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        // Sends the URL path for profilePicture (from step 1) or null, plus demographics
-        body: JSON.stringify(finalProfileData),
-      });
+      // 💡 REPLACED: hardcoded fetch call with updateClientProfile(data)
+      const response = await updateClientProfile(finalProfileData);
+      
+      const data = response.data; // Axios response uses .data
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'An unknown error occurred during saving.');
-      }
-
-      alert('Profile saved successfully! 🎉');
+      toast.success('Profile saved successfully! 🎉');
       
       // 🌟🌟🌟 CRITICAL FIX: Merge the nested response data back into the flat state structure
       const savedUserData = {
@@ -176,7 +151,7 @@ const ClientProfileEditor = () => {
 
     } catch (error) {
       console.error('Failed to save profile:', error);
-      alert(`Error saving profile: ${error.message}`);
+      toast.error(`Error saving profile: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -212,7 +187,7 @@ const ClientProfileEditor = () => {
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                 {/* Displays the URL path (with full host) or the local Base64 preview */}
-                {previewUrl ? <img src={previewUrl.startsWith('/') ? `http://localhost:4028${previewUrl}` : previewUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
+                {previewUrl ? <img src={previewUrl?.startsWith('/') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028'}${previewUrl}` : previewUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
               </div>
               {previewUrl && <button onClick={removeProfilePicture} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>}
             </div>
