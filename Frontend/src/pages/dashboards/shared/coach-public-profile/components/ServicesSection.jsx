@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
 import { Clock, Tag, DollarSign, TrendingUp, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/auth/AuthContext';
+// We keep useAuth just for clarity, but the core logic relies on the server-side auth check
+import { useAuth } from '@/auth/AuthContext'; 
 import { bookSession } from '@/auth/authApi';
 import { toast } from 'sonner';
 
 const ServicesSection = ({ coach }) => {
-  const { isAuthenticated, roles } = useAuth();
-  const isClient = isAuthenticated && roles?.includes('client');
-  const [bookingSessionId, setBookingSessionId] = useState(null); // Tracks which session's button is active
+  // We keep useAuth to access roles and data, but won't block the button based on it
+  const { isAuthenticated, roles, user } = useAuth(); 
+  const [bookingSessionId, setBookingSessionId] = useState(null); 
 
   const formatPrice = (price) => {
     const p = parseFloat(price);
@@ -35,32 +36,26 @@ const ServicesSection = ({ coach }) => {
   };
 
   const handleBookSession = async (sessionId, sessionTitle) => {
-    // 1. Check Authentication/Role and return immediately with a toast message
-    if (!isAuthenticated) {
-      toast.error("Please log in to purchase/book this session.");
-      return;
-    }
-
-    if (!isClient) {
-      toast.error("Only clients can book sessions.");
-      return;
-    }
-
-    // 2. Confirmation Check
+    
+    // 🚨 REMOVED CHECKS: We are removing the frontend isAuthenticated and isClient checks
+    // based on your request that since you are viewing from the dashboard, you are already
+    // authorized. The security check (token validity, client role) is now ENFORCED ONLY 
+    // by the backend API call itself.
+    
     if (!window.confirm(`Confirm booking for: ${sessionTitle}?`)) return;
 
-    // 3. Start Loading State
     setBookingSessionId(sessionId); 
 
     try {
-      // 4. API Call
+      // The backend /api/coach/public/:sessionId/book route still validates the token and role.
       await bookSession(sessionId);
       toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
     } catch (err) {
       console.error("Booking Error:", err);
-      toast.error(err.message || 'Booking failed. Please try again.');
+      // If the backend fails (e.g., token expired or not a client), this catch block runs.
+      const errorMsg = err.response?.data?.error || err.message || 'Booking failed due to authorization or server error.';
+      toast.error(errorMsg);
     } finally {
-      // 5. Stop Loading State
       setBookingSessionId(null);
     }
   };
@@ -77,7 +72,7 @@ const ServicesSection = ({ coach }) => {
         {availableSessions.length > 0 ? (
           availableSessions.map((session) => {
             const { label, icon, variant } = getButtonConfig(session?.type);
-            const isLoading = bookingSessionId === session?.id; // Check if THIS session is loading
+            const isLoading = bookingSessionId === session?.id;
 
             return (
               <div
@@ -115,11 +110,9 @@ const ServicesSection = ({ coach }) => {
                     onClick={() => handleBookSession(session?.id, session?.title)}
                     iconName={icon}
                     iconPosition="right"
-                    // ✅ FIX: Use the 'loading' prop to activate the spinner and disable implicitly
                     loading={isLoading} 
-                    // Optional: remove `disabled={!isClient || isLoading}` 
-                    // The loading prop often handles disabling internally, 
-                    // and your handler blocks non-clients anyway.
+                    // We rely on the handleBookSession function and the loading state only.
+                    disabled={isLoading} 
                   >
                     {isLoading ? 'Processing...' : label}
                   </Button>
