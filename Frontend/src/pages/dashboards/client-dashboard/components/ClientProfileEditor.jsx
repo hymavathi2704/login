@@ -35,7 +35,7 @@ const ClientProfileEditor = () => {
       }
 
       try {
-        // 💡 REPLACED: hardcoded fetch with getMe() for fetching user data
+        // ✅ FIX: Using getMe() from authApi.js
         const response = await getMe();
         const data = response.data; // Axios response uses .data
         
@@ -109,7 +109,7 @@ const ClientProfileEditor = () => {
     if (imageFile) {
         
         try {
-            // 💡 REPLACED: hardcoded fetch call with uploadClientProfilePicture()
+            // ✅ FIX: Using uploadClientProfilePicture() from authApi.js
             const uploadResponse = await uploadClientProfilePicture(imageFile);
             
             const uploadData = uploadResponse.data; // Axios response uses .data
@@ -130,7 +130,7 @@ const ClientProfileEditor = () => {
 
     // --- STEP 2: Save the Profile Data (with the new file path/null) ---
     try {
-      // 💡 REPLACED: hardcoded fetch call with updateClientProfile(data)
+      // ✅ FIX: Using updateClientProfile(data) from authApi.js
       const response = await updateClientProfile(finalProfileData);
       
       const data = response.data; // Axios response uses .data
