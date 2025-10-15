@@ -196,37 +196,30 @@ export const getCoachProfile = () => {
 };
 
 // =========================================================
-// SESSION MANAGEMENT FUNCTIONS
+// SESSION MANAGEMENT FUNCTIONS (Fixed to use axiosInstance)
 // =========================================================
 
 export const createSession = async (sessionData) => {
-    return axios.post(`${API_BASE_URL}/api/coach/sessions`, sessionData, {
-        withCredentials: true, // <-- CRITICAL FIX
-        // ⚠️ FIX: You should probably rely on the global interceptor or ensure Content-Type is set here.
-        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
-    });
+    // FIX: Use axiosInstance and rely on interceptor for auth
+    return axiosInstance.post(`/api/coach/sessions`, sessionData);
 };
 
 export const updateSession = async (sessionId, sessionData) => {
-    return axios.put(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, sessionData, {
-        withCredentials: true, // <-- CRITICAL FIX
-        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
-    });
+    // FIX: Use axiosInstance and rely on interceptor for auth
+    return axiosInstance.put(`/api/coach/sessions/${sessionId}`, sessionData);
 };
 
 export const deleteSession = async (sessionId) => {
-    return axios.delete(`${API_BASE_URL}/api/coach/sessions/${sessionId}`, {
-        withCredentials: true, // <-- CRITICAL FIX
-        headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
-    });
+    // FIX: Use axiosInstance and rely on interceptor for auth
+    return axiosInstance.delete(`/api/coach/sessions/${sessionId}`);
 };
 
-// NEW: Client books a session
+// Client books a session
 export const bookSession = async (sessionId) => {
     return axiosInstance.post(`/api/coach/public/${sessionId}/book`);
 };
 
-// NEW: Get clients who follow the logged-in coach
+// Get clients who follow the logged-in coach
 export const getClientsWhoFollow = () => {
-    return axiosInstance.get('/api/coach/clients-who-follow');
+    return axiosInstance.get('/api/coach/clients-who-follow');
 };

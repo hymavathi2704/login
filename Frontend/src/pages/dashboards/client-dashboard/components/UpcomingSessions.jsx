@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Video, MapPin, User, Tag } from 'lucide-react';
-import { getMyBookings } from '@/auth/authApi'; 
+// FIX: Use the new simplified API function name
+import { getMyClientSessions } from '@/auth/authApi'; 
 import { toast } from 'sonner';
 
 const UpcomingSessions = ({ preview = false }) => {
@@ -11,31 +12,23 @@ const UpcomingSessions = ({ preview = false }) => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        const response = await getMyBookings(); 
+        // Fetch only client session bookings
+        const response = await getMyClientSessions(); 
         
         const sessionsData = response.data
-            // Filter out bookings where both event and session are null (shouldn't happen with proper backend)
-            .filter(b => b.Event || b.Session) 
-            // Map to a consistent display format
-            .map(b => {
-                const isEvent = !!b.eventId;
-                const item = isEvent ? b.Event : b.Session;
-                const coach = isEvent ? b.Event.coach : item?.coachProfile?.user;
-                
-                return {
-                    id: b.id,
-                    title: item?.title || 'Unknown Booking',
-                    coachName: coach ? `${coach.firstName} ${coach.lastName}` : 'Unknown Coach',
-                    // Use Event date/time if available, otherwise use Session defaults
-                    date: item?.date || item?.defaultDate,
-                    time: item?.time || item?.defaultTime,
-                    duration: item?.duration || 'N/A', 
-                    type: isEvent ? 'event' : item?.type || 'individual',
-                    status: b.status,
-                    meetingLink: item?.meetingLink,
-                    isEvent: isEvent,
-                };
-            })
+            // Map to a consistent display format, focusing only on Session data
+            .map(b => ({
+                id: b.id,
+                title: b.Session?.title || 'Session Booking',
+                // Coach details come from Session -> CoachProfile -> User
+                coachName: b.Session?.coachProfile?.user ? `${b.Session.coachProfile.user.firstName} ${b.Session.coachProfile.user.lastName}` : 'Unknown Coach',
+                date: b.Session?.defaultDate,
+                time: b.Session?.defaultTime,
+                duration: b.Session?.duration || 'N/A', 
+                type: b.Session?.type || 'individual',
+                status: b.status,
+                meetingLink: b.Session?.meetingLink,
+            }))
             .filter(item => item.date); // Filter out items with no discernible date
 
         // Sort by date/time
@@ -65,7 +58,7 @@ const UpcomingSessions = ({ preview = false }) => {
   };
 
   const getTypeIcon = (type) => {
-    return (type === 'video' || type === 'event') ? Video : MapPin;
+    return (type === 'video' || type === 'remote') ? Video : MapPin;
   };
 
   if (isLoading) return <div className="text-center p-8"><p>Loading your sessions...</p></div>;
@@ -87,7 +80,7 @@ const UpcomingSessions = ({ preview = false }) => {
                       {session.status}
                     </span>
                     <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                      {session.isEvent ? 'Event' : 'Session'}
+                      Session
                     </span>
                   </div>
                   
@@ -98,7 +91,6 @@ const UpcomingSessions = ({ preview = false }) => {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Calendar size={16} />
-                      {/* FIX: Use date string for proper parsing */}
                       <span>{new Date(session.date).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -119,7 +111,6 @@ const UpcomingSessions = ({ preview = false }) => {
                       Join Session
                     </a>
                   )}
-                  {/* Action buttons could be wrapped in a component */}
                   <button className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50 transition-colors">
                     Details
                   </button>
@@ -131,7 +122,7 @@ const UpcomingSessions = ({ preview = false }) => {
       ) : (
           <div className="text-center py-8">
             <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
-            <h4 className="text-lg font-medium text-gray-800">No Upcoming Sessions or Events</h4>
+            <h4 className="text-lg font-medium text-gray-800">No Upcoming Sessions</h4>
             <p className="text-gray-500">Book a new session or explore coaches to get started.</p>
           </div>
       )}

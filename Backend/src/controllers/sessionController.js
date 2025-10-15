@@ -184,10 +184,55 @@ const bookSession = async (req, res) => {
     }
 };
 
+// ==========================================
+// 5. GET COACH SESSION BOOKINGS (NEW)
+// ==========================================
+const getCoachSessionBookings = async (req, res) => {
+    try {
+        const coachId = req.user.userId;
+        
+        // 1. Find the coachProfileId using the coach's userId
+        const coachProfile = await CoachProfile.findOne({ where: { userId: coachId } });
+        if (!coachProfile) {
+             return res.status(404).json({ error: 'Coach profile not found.' });
+        }
+        const coachProfileId = coachProfile.id;
+
+        // 2. Find all bookings that match a session belonging to this coach
+        const bookings = await Booking.findAll({
+            where: { 
+                sessionId: { [Op.ne]: null } // Only look for Session bookings
+            },
+            include: [
+                {
+                    model: Session,
+                    required: true,
+                    where: { coachProfileId: coachProfileId }, // Filter by this coach's sessions
+                    attributes: ['id', 'title', 'duration', 'price', 'type', 'defaultDate', 'defaultTime', 'meetingLink'],
+                },
+                {
+                    model: User,
+                    as: 'client', // Include client details for the coach view
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture']
+                }
+            ],
+            order: [['bookedAt', 'DESC']]
+        });
+        
+        // 3. The `required: true` in the include clause already filters correctly.
+        return res.json(bookings);
+
+    } catch (error) {
+        console.error("Coach Session Bookings Error:", error);
+        return res.status(500).json({ error: 'Failed to fetch coach session bookings.' });
+    }
+};
+
 module.exports = {
     createSession,
     updateSession,
     deleteSession,
-    bookSession, // <-- ADDED EXPORT
+    bookSession,
+    getCoachSessionBookings // <-- ADDED EXPORT
 };
 

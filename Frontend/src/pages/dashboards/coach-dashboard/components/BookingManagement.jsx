@@ -7,10 +7,12 @@ import {
   Search, 
   Filter,
   Tag,
-  ListFilter
+  ListFilter,
+  DollarSign // Added DollarSign
 } from 'lucide-react';
-import { getMyBookings } from '@/auth/authApi';
-import { toast } from 'sonner'; // Ensure toast is imported if used
+// FIX: Use the new dedicated API for coach session bookings
+import { getMyCoachBookings } from '@/auth/authApi'; 
+import { toast } from 'sonner';
 
 const BookingManagement = () => {
   const [bookings, setBookings] = useState([]);
@@ -22,38 +24,30 @@ const BookingManagement = () => {
   useEffect(() => {
     const fetchBookings = async () => {
       try {
-        // Fetch all bookings relevant to the coach (handled by backend filtering in events.js)
-        const response = await getMyBookings();
+        // Fetch only coach session bookings from the dedicated new route
+        const response = await getMyCoachBookings();
         
-        // Map data to a unified format for simpler rendering
+        // Map data to a unified format, focusing on Session data
         const unifiedBookings = response.data
-            .filter(b => b.Event || b.Session)
-            .map(b => {
-                const isEvent = !!b.Event;
-                const item = isEvent ? b.Event : b.Session;
-                
-                return {
-                    id: b.id,
-                    clientId: b.clientId,
-                    client: b.client,
-                    isEvent: isEvent,
-                    title: item?.title || 'Unknown',
-                    type: isEvent ? 'event' : item?.type || 'individual',
-                    date: item?.date || item?.defaultDate,
-                    time: item?.time || item?.defaultTime,
-                    price: parseFloat(item?.price || 0),
-                    status: b.status,
-                    bookedAt: b.bookedAt
-                };
-            });
+            .map(b => ({
+                id: b.id,
+                clientId: b.clientId,
+                client: b.client,
+                title: b.Session?.title || 'Session Booking',
+                type: b.Session?.type || 'individual',
+                date: b.Session?.defaultDate,
+                time: b.Session?.defaultTime,
+                price: parseFloat(b.Session?.price || 0),
+                status: b.status,
+                bookedAt: b.bookedAt
+            }));
 
-        // Sort by date/time (or bookedAt if date is missing)
         const sortedBookings = unifiedBookings.sort((a, b) => new Date(b.date || b.bookedAt) - new Date(a.date || a.bookedAt));
-
         setBookings(sortedBookings);
+        
       } catch (err) {
-        console.error("Failed to fetch coach bookings:", err);
-        setError("Could not load your bookings. Please try again later.");
+        console.error("Failed to fetch coach session bookings:", err);
+        setError("Could not load your session bookings. Please try again later.");
         toast.error("Failed to load bookings.");
       } finally {
         setIsLoading(false);
@@ -90,7 +84,7 @@ const BookingManagement = () => {
     return <div className="text-center p-8 text-red-500">{error}</div>;
   }
   
-  // STATS: Use the unified bookings array
+  // STATS: Now only based on session bookings
   const upcomingBookings = bookings.filter(b => new Date(b.date || b.bookedAt) >= new Date() && b.status === 'confirmed');
   const pendingBookings = bookings.filter(b => b.status === 'pending');
   const confirmedRevenue = bookings
@@ -100,14 +94,14 @@ const BookingManagement = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Booking Management</h2>
-        <p className="text-gray-600">View and manage all client bookings for your events and sessions.</p>
+        <h2 className="text-2xl font-bold text-gray-900">Session Booking Management</h2>
+        <p className="text-gray-600">View and manage all client bookings for your one-on-one sessions and packages.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <div className="text-3xl font-bold text-green-600 mb-2">{upcomingBookings.length}</div>
-          <div className="text-gray-600">Upcoming Sessions/Events</div>
+          <div className="text-gray-600">Upcoming Sessions</div>
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200">
           <div className="text-3xl font-bold text-yellow-600 mb-2">{pendingBookings.length}</div>
@@ -119,12 +113,10 @@ const BookingManagement = () => {
         </div>
       </div>
 
-      {/* Filter and Search Section (omitted, no change needed) */}
-
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search by Client or Session/Event</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Search by Client or Session</label>
             <div className="relative">
               <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
@@ -157,7 +149,7 @@ const BookingManagement = () => {
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold">All Bookings ({filteredBookings.length})</h3>
+          <h3 className="text-lg font-semibold">All Session Bookings ({filteredBookings.length})</h3>
         </div>
 
         {filteredBookings.length > 0 ? (
@@ -169,7 +161,7 @@ const BookingManagement = () => {
                     <p className="font-semibold text-purple-700 flex items-center mb-2">
                       <Tag size={16} className="mr-2" />
                       {booking.title}
-                      <span className="ml-2 text-xs text-gray-500 font-normal capitalize">({booking.isEvent ? 'Event' : booking.type})</span>
+                      <span className="ml-2 text-xs text-gray-500 font-normal capitalize">({booking.type})</span>
                     </p>
                     <div className="space-y-2 text-sm text-gray-600">
                       <p className="flex items-center"><User size={14} className="mr-2" /> <span className="font-medium mr-1">Client:</span> {booking.client.firstName} {booking.client.lastName}</p>
@@ -193,7 +185,7 @@ const BookingManagement = () => {
         ) : (
           <div className="text-center py-12">
             <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
-            <h4 className="text-lg font-medium text-gray-800">No bookings match your criteria</h4>
+            <h4 className="text-lg font-medium text-gray-800">No session bookings match your criteria</h4>
             <p className="text-gray-500">Try adjusting your search or filters.</p>
           </div>
         )}

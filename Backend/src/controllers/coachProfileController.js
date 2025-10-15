@@ -723,7 +723,3 @@ export const getClientsWhoFollow = async (req, res) => {
     }
 };
 
-module.exports = {
-// ... (omitted existing exports)
-    getClientsWhoFollow // <-- ADDED EXPORT
-};
