@@ -89,15 +89,9 @@ export const logoutUser = () => {
   localStorage.removeItem("rememberMe");
 };
 
-
-// --- BOOKINGS API (Session-Only) ---
-
-// REMOVED: All legacy Event API functions (getEvents, bookEvent, etc.)
-
-// FIX: Client's Bookings (uses the repurposed event route for client sessions)
 export const getMyClientSessions = () => {
   // This corresponds to the backend route /api/events/my-bookings which is now session-only for clients
-  return axiosInstance.get("/api/events/my-bookings"); 
+  return axiosInstance.get("/api/bookings/client-sessions")
 };
 
 // FIX: Coach's Bookings (NEW Export - Fixes the error in BookingManagement.jsx)

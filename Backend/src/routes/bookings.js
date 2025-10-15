@@ -2,29 +2,30 @@ const express = require('express');
 const { Op } = require('sequelize');
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
-// NOTE: Event model is kept but not used in the /my-bookings logic below
-const Event = require('../models/Event');
+
+// Only import the models actually needed for *this* route
 const Booking = require('../models/Booking');
 const User = require('../models/user');
 const Session = require('../models/Session'); 
 const CoachProfile = require('../models/CoachProfile'); 
 
-// ... (omitted existing event routes: GET /, /my-events, POST, PUT, DELETE, POST /:eventId/book) ...
-// GET /api/events/my-bookings - Get a client's session bookings (FIXED Alias)
-router.get('/my-bookings', authenticate, async (req, res) => {
+// GET /api/bookings/client-sessions - Get a client's session bookings
+// Renamed the path for clarity
+router.get('/client-sessions', authenticate, async (req, res) => {
     try {
         const userId = req.user.userId;
         
         const bookings = await Booking.findAll({
             where: { 
                 clientId: userId,
+                // Ensure it only fetches Session-based bookings, not old Events
                 sessionId: { [Op.ne]: null } 
             },
             attributes: ['id', 'clientId', 'sessionId', 'status', 'bookedAt'],
             include: [
                 {
                     model: Session,
-                    as: 'Session', // 🚨 CRITICAL FIX: Use the 'Session' alias
+                    as: 'Session', 
                     attributes: ['id', 'title', 'duration', 'price', 'type', 'defaultDate', 'defaultTime', 'meetingLink'],
                     required: true,
                     include: [{ 
@@ -41,7 +42,6 @@ router.get('/my-bookings', authenticate, async (req, res) => {
         res.json(bookings);
     } catch (error) {
         console.error('Failed to fetch client session bookings:', error);
-        // This is the error seen in the console
         res.status(500).json({ error: 'Failed to fetch session bookings.' });
     }
 });

@@ -24,10 +24,10 @@ const Follow = require('./models/Follow');
 // Route Imports
 // ==========================================
 const authRoutes = require('./routes/auth');
-const eventRoutes = require('./routes/events');
 const coachProfileRoutes = require('./routes/coachProfile');
 const profileRoutes = require('./routes/fetchCoachProfiles');
 const clientProfileRoutes = require('./routes/clientProfile'); 
+const bookingRoutes = require('./routes/bookings'); // <-- New Route!
 
 const app = express();
 
@@ -105,8 +105,6 @@ Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachPr
 User.hasMany(Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); 
 Testimonial.belongsTo(User, { foreignKey: 'clientId', as: 'clientUser' });
 
-// 🚨 REMOVED: Event associations (User <-> Event and Event <-> Booking)
-
 // User <-> Booking (Client's bookings)
 User.hasMany(Booking, { foreignKey: 'clientId', as: 'bookings' });
 Booking.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
@@ -122,12 +120,11 @@ Follow.belongsTo(User, { foreignKey: 'followingId', as: 'followingCoach' });
 // API Routes
 // ==========================================
 app.use('/api/auth', authRoutes);
-app.use('/api/events', eventRoutes); // Route kept for backwards compatibility of client bookings route
 app.use('/api/coach', coachProfileRoutes);
 app.use('/api/profiles', profileRoutes);
-
 // 🌟 NEW: Mount the client-specific routes here
 app.use('/api/client', clientProfileRoutes); 
+app.use('/api/bookings', bookingRoutes); // <-- New Base Path!
 
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
