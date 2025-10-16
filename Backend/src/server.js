@@ -145,6 +145,7 @@ app.use((err, req, res, next) => {
 // Start Server and Sync Database
 // ==========================================
 const PORT = process.env.PORT || 4028;
+const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
 (async () => {
     try {
@@ -156,7 +157,7 @@ const PORT = process.env.PORT || 4028;
         await sequelize.sync(); 
         console.log('✅ Database synchronized (FORCED)');
 
-        app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at http://65.1.126.156:${PORT}`));
+        app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at ${APP_URL}`));
 
     } catch (err) {
         console.error('❌ Failed to start server:', err);
