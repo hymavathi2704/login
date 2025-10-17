@@ -91,5 +91,5 @@ router.post('/create-profile', authenticate, auth.createProfile);
 router.put('/change-password', authenticate, auth.changePassword); // <-- NEW ROUTE ADDED
 // REMOVED: The DEDICATED PROFILE PICTURE UPLOAD ROUTE is removed, 
 // it will be handled by the clientProfile route using clientProfileController.
-
+router.delete('/me', authenticate, auth.deleteAccount); // <-- ADD THIS NEW ROUTE
 module.exports = router;

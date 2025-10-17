@@ -1,6 +1,6 @@
 // src/controllers/authController.js
 const { v4: uuidv4 } = require('uuid');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const validator = require('validator');
 const axios = require('axios');
 const { Op } = require('sequelize');
@@ -515,6 +515,43 @@ const changePassword = asyncHandler(async (req, res) => {
     });
 });
 
+
+// ===================================
+// ✅ NEW: deleteAccount Controller
+// ===================================
+const deleteAccount = asyncHandler(async (req, res) => {
+    // The user ID is retrieved from the JWT token via the 'authenticate' middleware
+    const userId = req.user.userId; 
+
+    // 1. Find the user (Optional check for extra security)
+    const user = await User.findByPk(userId);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found.');
+    }
+
+    // 2. Delete the user and all associated records (due to CASCADE foreign keys)
+    const deletedRows = await User.destroy({
+        where: { id: userId }
+    });
+
+    if (deletedRows === 0) {
+        res.status(500);
+        throw new Error('Failed to delete account. Please try again.');
+    }
+
+    // 3. Clear the cookies on the server side
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('refresh_token', { httpOnly: true, secure: isProduction, sameSite: isProduction ? 'None' : 'Lax' });
+    res.clearCookie('jwt', { httpOnly: true, secure: isProduction, sameSite: isProduction ? 'None' : 'Lax' });
+
+    res.status(200).json({ 
+        success: true, 
+        message: 'Account permanently deleted.' 
+    });
+});
+
 // ==============================
 // Exports
 // ==============================
@@ -530,5 +567,6 @@ module.exports = {
 	resetPassword,
 	createProfile,
 	updateProfile,
-	changePassword, // <-- EXPORT THIS
+	changePassword,
+	deleteAccount, 
 };
