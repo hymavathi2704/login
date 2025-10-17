@@ -14,13 +14,32 @@ import {
 import DashboardLayout from "../shared/DashboardLayout";
 import ClientOverview from "./components/ClientOverview";
 import UpcomingSessions from "./components/UpcomingSessions";
-import ProgressTracker from "./components/ProgressTracker";
-import MyResources from "./components/MyResources";
-import CoachCommunication from "./components/CoachCommunication";
-// REMOVED: import BookNewSession from "./components/BookNewSession"; 
+// The original components (ProgressTracker, MyResources, CoachCommunication) 
+// are now redundant as they are replaced by ComingSoon. We keep them commented 
+// out to prevent import errors but show intent.
+
+// import ProgressTracker from "./components/ProgressTracker";
+// import MyResources from "./components/MyResources";
+// import CoachCommunication from "./components/CoachCommunication";
+
 import AccountSettings from "../shared/AccountSettings";
 import ExploreCoaches from "./components/ExploreCoaches";
 import ClientProfileEditor from "./components/ClientProfileEditor";
+
+// New component to display the placeholder message
+const ComingSoon = ({ sectionName }) => (
+    <div className="flex items-center justify-center h-96 bg-white rounded-xl border border-gray-200">
+        <div className="text-center p-8">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                {sectionName} - Coming Soon!
+            </h2>
+            <p className="text-lg text-gray-500">
+                This feature is currently under development and will be available shortly.
+            </p>
+        </div>
+    </div>
+);
+
 
 const ClientDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -47,14 +66,13 @@ const ClientDashboard = () => {
       case "explore":
         return <ExploreCoaches />;
       case "sessions":
-        // This remains, ensuring My Sessions works with sessions-only API
         return <UpcomingSessions />; 
       case "progress":
-        return <ProgressTracker />;
+        return <ComingSoon sectionName="Progress Tracker" />; // <-- MODIFIED
       case "resources":
-        return <MyResources />;
+        return <ComingSoon sectionName="My Resources" />; // <-- MODIFIED
       case "communication":
-        return <CoachCommunication />;
+        return <ComingSoon sectionName="Messages" />; // <-- MODIFIED
       // 🚨 REMOVED: The content rendering case for 'book-session'
       // case "book-session":
       //   return <BookNewSession />; 
