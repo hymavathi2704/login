@@ -461,45 +461,58 @@ async function resetPassword(req, res) {
 	}
 }
 
-// Add this new function
+// ===================================
+// ✅ NEW/FIXED: changePassword Controller
+// ===================================
 const changePassword = asyncHandler(async (req, res) => {
-    const { currentPassword, newPassword } = req.body;
-    const userId = req.user._id; // Extracted from the token by authMiddleware
+    const { currentPassword, newPassword } = req.body;
+    // ✅ FIX 1: Use req.user.userId, not req.user._id (Sequelize vs Mongoose style)
+    const userId = req.user.userId; 
 
-    if (!currentPassword || !newPassword) {
-        res.status(400);
-        throw new Error('Please provide current password and new password.');
+    if (!currentPassword || !newPassword) {
+        res.status(400);
+        throw new Error('Please provide current password and new password.');
+    }
+    
+    if (currentPassword === newPassword) {
+         res.status(400);
+         throw new Error('New password cannot be the same as the current password.');
     }
 
-    // 1. Find the user
-    const user = await User.findById(userId).select('+password'); // Select password explicitly
+    // 1. Find the user and explicitly fetch the 'password_hash' attribute
+    // ✅ FIX 2: Use Sequelize syntax to retrieve the password hash
+    const user = await User.findByPk(userId, { 
+        attributes: { include: ['password_hash'] } // Must explicitly include the hash
+    }); 
 
-    if (!user) {
-        res.status(404);
-        throw new Error('User not found.');
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found.');
+    }
+    
+    if (!user.password_hash) {
+         res.status(400);
+         throw new Error('This account was created via social login and does not have a local password to change.');
     }
 
-    // 2. Check if the current password is correct
-    // (Assuming User model has a matchPassword method or use bcrypt.compare)
-    const isMatch = await user.matchPassword(currentPassword); 
+    // 2. Check if the current password is correct (Relies on matchPassword method in user.js)
+    const isMatch = await user.matchPassword(currentPassword); 
 
-    if (!isMatch) {
-        res.status(401);
-        throw new Error('Incorrect current password.');
-    }
+    if (!isMatch) {
+        res.status(401);
+        throw new Error('Incorrect current password.');
+    }
 
-    // 3. Update the password
-    user.password = newPassword;
-    await user.save();
+    // 3. Update the password
+    // ✅ FIX 3: Set the VIRTUAL field 'password' (which your user.js hook is expecting)
+    user.password = newPassword; 
+    await user.save(); // save() triggers the beforeSave hook to hash and update password_hash
 
-    // 4. Send response and force re-login
-    // Security best practice: Revoke all existing tokens/sessions.
-    // For simplicity here, we'll clear the client-side cookie/local storage
-    // and rely on the client to redirect to login.
-    res.status(200).json({ 
-        success: true, 
-        message: 'Password updated successfully. Please log in with your new password.' 
-    });
+    // 4. Send response and force re-login
+    res.status(200).json({ 
+        success: true, 
+        message: 'Password updated successfully. Please log in with your new password.' 
+    });
 });
 
 // ==============================
