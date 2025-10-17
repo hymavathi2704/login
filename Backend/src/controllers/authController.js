@@ -10,6 +10,7 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const { signAccessToken, signEmailToken, verifyToken } = require('../utils/jwt'); 
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
+const asyncHandler = require('express-async-handler'); // <-- ADD THIS LINE
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -460,6 +461,47 @@ async function resetPassword(req, res) {
 	}
 }
 
+// Add this new function
+const changePassword = asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user._id; // Extracted from the token by authMiddleware
+
+    if (!currentPassword || !newPassword) {
+        res.status(400);
+        throw new Error('Please provide current password and new password.');
+    }
+
+    // 1. Find the user
+    const user = await User.findById(userId).select('+password'); // Select password explicitly
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found.');
+    }
+
+    // 2. Check if the current password is correct
+    // (Assuming User model has a matchPassword method or use bcrypt.compare)
+    const isMatch = await user.matchPassword(currentPassword); 
+
+    if (!isMatch) {
+        res.status(401);
+        throw new Error('Incorrect current password.');
+    }
+
+    // 3. Update the password
+    user.password = newPassword;
+    await user.save();
+
+    // 4. Send response and force re-login
+    // Security best practice: Revoke all existing tokens/sessions.
+    // For simplicity here, we'll clear the client-side cookie/local storage
+    // and rely on the client to redirect to login.
+    res.status(200).json({ 
+        success: true, 
+        message: 'Password updated successfully. Please log in with your new password.' 
+    });
+});
+
 // ==============================
 // Exports
 // ==============================
@@ -475,4 +517,5 @@ module.exports = {
 	resetPassword,
 	createProfile,
 	updateProfile,
+	changePassword, // <-- EXPORT THIS
 };

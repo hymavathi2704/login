@@ -8,7 +8,6 @@ const jwksClient = require('jwks-rsa');
 
 // VITAL CONTROLLERS
 const auth = require('../controllers/authController');
-// REMOVED: const coachProfileController = require('../controllers/coachProfileController'); 
 
 // VITAL MIDDLEWARE (Destructuring for clarity)
 const { authenticate, authorize } = require('../middleware/authMiddleware');  
@@ -89,7 +88,7 @@ router.get('/me', authenticate, auth.me);
 // Handles role selection after registration (KEEP)
 router.post('/create-profile', authenticate, auth.createProfile);
 // -----------------
-
+router.put('/change-password', authenticate, auth.changePassword); // <-- NEW ROUTE ADDED
 // REMOVED: The DEDICATED PROFILE PICTURE UPLOAD ROUTE is removed, 
 // it will be handled by the clientProfile route using clientProfileController.
 

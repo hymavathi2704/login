@@ -1,146 +1,136 @@
-import React, { useState } from 'react';
-import { Shield, Bell, CreditCard, User, Trash2 } from 'lucide-react';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
-import { Checkbox } from '@/components/ui/Checkbox';
+import React, { useState } from "react";
+import { Lock } from "lucide-react";
+import Input from "../../../components/ui/Input";
+import Button from "../../../components/ui/Button";
+import { useAuth } from "../../../auth/AuthContext";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { toast } from "react-toastify"; // <-- MODIFIED
 
 const AccountSettings = () => {
-  const [formData, setFormData] = useState({
-    // Security
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-    enable2FA: true,
-    // Notifications
-    emailNotifications: true,
-    pushNotifications: false,
-    // Billing
-    cardName: '',
-    cardNumber: '',
-    expiryDate: '',
-    cvc: '',
-  });
+    const [formData, setFormData] = useState({
+        currentPassword: "",
+        newPassword: "",
+        confirmNewPassword: "",
+    });
+    const [isLoading, setIsLoading] = useState(false);
+    const { logout } = useAuth(); // Assuming useAuth provides a logout function
+    const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
 
-  const handleSaveChanges = (e) => {
-    e.preventDefault();
-    // Add logic to save changes to the backend
-    console.log('Saving changes:', formData);
-    // You might want to show a toast notification here
-  };
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        if (formData.newPassword !== formData.confirmNewPassword) {
+            return toast.error("New passwords do not match.");
+        }
 
-  const handleDeleteAccount = () => {
-    // Add confirmation modal before deleting
-    console.log('Deleting account...');
-  };
+        if (formData.newPassword.length < 6) { // Example length check
+            return toast.error("New password must be at least 6 characters long.");
+        }
 
-  return (
-    <div className="space-y-12">
-      {/* Security Settings */}
-      <section>
-        <div className="flex items-center space-x-3 mb-6">
-          <Shield className="w-6 h-6 text-gray-700" />
-          <h2 className="text-2xl font-semibold text-gray-800">Security</h2>
+        setIsLoading(true);
+
+        try {
+            // Adjust the API_BASE_URL as needed from your .env
+            const apiUrl = `${import.meta.env.VITE_API_BASE_URL}/api/auth/change-password`; 
+
+            await axios.put(apiUrl, {
+                currentPassword: formData.currentPassword,
+                newPassword: formData.newPassword,
+            }, {
+                // Assuming your authentication context handles adding the Authorization header
+                withCredentials: true // Important for sending cookies/tokens
+            });
+
+            toast.success("Password updated successfully. You will now be redirected to log in.");
+            
+            // Redirect to login after successful change
+            setTimeout(() => {
+                logout(); // Clear local session state (context/storage)
+                navigate("/login"); // Redirect to the login page
+            }, 1000);
+
+        } catch (error) {
+            const message = error.response?.data?.message || 'Failed to change password.';
+            toast.error(message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-8 max-w-2xl mx-auto">
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                <Lock className="w-6 h-6 mr-3 text-indigo-600" />
+                Account Security Settings
+            </h1>
+
+            <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-800 mb-6 border-b pb-3">
+                    Change Your Password
+                </h2>
+                <p className="text-sm text-gray-500 mb-6">
+                    To change your password, please enter your current password and your new password. You will be logged out and required to sign in again after the change is complete.
+                </p>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <Input
+                        label="Current Password"
+                        name="currentPassword"
+                        type="password"
+                        value={formData.currentPassword}
+                        onChange={handleChange}
+                        required
+                    />
+                    <Input
+                        label="New Password"
+                        name="newPassword"
+                        type="password"
+                        value={formData.newPassword}
+                        onChange={handleChange}
+                        required
+                        placeholder="At least 6 characters"
+                    />
+                    <Input
+                        label="Confirm New Password"
+                        name="confirmNewPassword"
+                        type="password"
+                        value={formData.confirmNewPassword}
+                        onChange={handleChange}
+                        required
+                    />
+                    <div className="pt-4">
+                        <Button
+                            type="submit"
+                            isLoading={isLoading}
+                            disabled={isLoading}
+                            className="w-full sm:w-auto"
+                        >
+                            Update Password and Log Out
+                        </Button>
+                    </div>
+                </form>
+
+                {/* Optional: Add a link to the public password reset flow for forgotten passwords */}
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500">
+                        Forgot your current password? If you cannot remember your current password, you must use the public password reset link:
+                        <a 
+                            href="/password-reset" 
+                            className="text-indigo-600 hover:text-indigo-800 font-medium ml-2"
+                        >
+                            Reset Password
+                        </a>
+                    </p>
+                </div>
+            </div>
+
+            {/* You can add other settings here, e.g., email notifications, account deletion */}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input
-            id="currentPassword"
-            name="currentPassword"
-            type="password"
-            label="Current Password"
-            value={formData.currentPassword}
-            onChange={handleChange}
-          />
-          <div />
-          <Input
-            id="newPassword"
-            name="newPassword"
-            type="password"
-            label="New Password"
-            value={formData.newPassword}
-            onChange={handleChange}
-          />
-          <Input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            label="Confirm New Password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="mt-6 flex items-center space-x-3">
-          <Checkbox
-            id="enable2FA"
-            name="enable2FA"
-            checked={formData.enable2FA}
-            onCheckedChange={(checked) => handleChange({ target: { name: 'enable2FA', type: 'checkbox', checked } })}
-          />
-          <label htmlFor="enable2FA" className="text-sm font-medium text-gray-700">
-            Enable Two-Factor Authentication (2FA)
-          </label>
-        </div>
-      </section>
-
-      {/* Notification Settings */}
-      <section>
-        <div className="flex items-center space-x-3 mb-6">
-          <Bell className="w-6 h-6 text-gray-700" />
-          <h2 className="text-2xl font-semibold text-gray-800">Notifications</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center space-x-3">
-            <Checkbox
-              id="emailNotifications"
-              name="emailNotifications"
-              checked={formData.emailNotifications}
-              onCheckedChange={(checked) => handleChange({ target: { name: 'emailNotifications', type: 'checkbox', checked } })}
-            />
-            <label htmlFor="emailNotifications" className="text-sm font-medium text-gray-700">
-              Receive email notifications for messages and updates
-            </label>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Checkbox
-              id="pushNotifications"
-              name="pushNotifications"
-              checked={formData.pushNotifications}
-              onCheckedChange={(checked) => handleChange({ target: { name: 'pushNotifications', type: 'checkbox', checked } })}
-            />
-            <label htmlFor="pushNotifications" className="text-sm font-medium text-gray-700">
-              Enable push notifications on your devices
-            </label>
-          </div>
-        </div>
-      </section>
-
-      {/* Account Deletion */}
-      <section>
-        <div className="flex items-center space-x-3 mb-6">
-          <Trash2 className="w-6 h-6 text-red-600" />
-          <h2 className="text-2xl font-semibold text-gray-800">Account Management</h2>
-        </div>
-        <p className="text-sm text-gray-600 mb-4">
-          Permanently delete your account and all associated data. This action is irreversible.
-        </p>
-        <Button variant="destructive" onClick={handleDeleteAccount}>
-          Delete My Account
-        </Button>
-      </section>
-
-      {/* Save Button */}
-      <div className="flex justify-end pt-6 border-t">
-        <Button onClick={handleSaveChanges}>Save Changes</Button>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default AccountSettings;
