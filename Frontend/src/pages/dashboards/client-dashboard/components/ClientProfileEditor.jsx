@@ -6,10 +6,11 @@ import Input from '@/components/ui/Input';
 import { cn } from '@/utils/cn'; 
 // 🌟 NEW: Import the reusable Demographic component
 import DemographicsFormSection from '@/pages/dashboards/shared/DemographicsFormSection'; 
-// 🌟 NEW: Import API functions
-import { getMe, updateClientProfile, uploadClientProfilePicture } from '@/auth/authApi'; 
+// 🌟 NEW: Import API functions and DELETE function
+import { getMe, updateClientProfile, uploadClientProfilePicture, deleteClientProfilePicture } from '@/auth/authApi'; 
 import { toast } from 'sonner'; 
 
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028';
 
 const ClientProfileEditor = () => {
   const [isSaving, setIsSaving] = useState(false);
@@ -24,26 +25,28 @@ const ClientProfileEditor = () => {
   const [dragActive, setDragActive] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // --- Data Fetching Logic (Now uses getMe from authApi.js) ---
+  // --- Data Fetching Logic ---
   useEffect(() => {
     const fetchProfileData = async () => {
       const token = localStorage.getItem('accessToken');
       if (!token) {
-        console.error("Authentication Error: No token found. Please log in.");
         toast.error("Authentication Error: Please log in.");
         return;
       }
 
       try {
-        // ✅ FIX: Using getMe() from authApi.js
         const response = await getMe();
-        const data = response.data; // Axios response uses .data
+        const data = response.data;
         
-        // ✅ MERGE FIX 1: Flatten ClientProfile data onto the main user object
         const userData = {
             ...data.user,
             ...data.user.ClientProfile 
         };
+
+        // 🔑 FIX 1: Set +91 default if phone is empty or null
+        if (!userData.phone || userData.phone === '') {
+            userData.phone = '+91';
+        }
 
         setProfileData(userData); 
         setInitialData(userData);
@@ -59,26 +62,31 @@ const ClientProfileEditor = () => {
   }, []); 
 
   
-  // Detects if any changes have been made to the form (UNCHANGED)
+  // Detects if any changes have been made to the form
   useEffect(() => {
     const hasUnsavedChanges = JSON.stringify(profileData) !== JSON.stringify(initialData) || imageFile !== null;
     setUnsavedChanges(hasUnsavedChanges);
   }, [profileData, initialData, imageFile]);
 
-  // Updates the state in real-time as you type in a form field (UNCHANGED)
+  // Updates the state in real-time as you type in a form field
   const updateData = useCallback((newData) => {
     setProfileData(prev => ({ ...prev, ...newData }));
   }, []);
   
-  // 🌟 NEW: Universal change handler for inputs and selects (UNCHANGED)
+  // Universal change handler for inputs and selects
   const handleChange = useCallback((e) => {
-    // DemographicsFormSection passes event object, use name/value
     const { name, value } = e.target;
-    updateData({ [name]: value });
+    
+    // Enforce +91 prefix if the user deletes it entirely
+    if (name === 'phone' && value.length > 0 && !value.startsWith('+') && !value.startsWith('(')) {
+        updateData({ [name]: '+' + value.replace(/[^0-9]/g, '') });
+    } else {
+        updateData({ [name]: value });
+    }
   }, [updateData]);
 
 
-  // Handles file preview and saves the file object (UNCHANGED)
+  // Handles file preview and saves the file object
   const handleFileUpload = (file) => {
     if (file && file?.type?.startsWith('image/')) {
       const reader = new FileReader();
@@ -87,13 +95,41 @@ const ClientProfileEditor = () => {
       };
       reader.readAsDataURL(file);
 
-      // Save the actual File object to be uploaded in handleSave
       setImageFile(file); 
       setUnsavedChanges(true); 
     }
   };
 
-  // Two-step Save function (Now uses authApi.js functions)
+  // 🔑 FIX 2: Implement dedicated API call for photo deletion
+  const removeProfilePicture = async () => { 
+    if (!window.confirm("Are you sure you want to permanently delete your profile picture? This cannot be undone.")) {
+      return;
+    }
+    
+    // If the image is already null and there's no file pending, just clear local state
+    if (!profileData.profilePicture && !imageFile) {
+        return;
+    }
+    
+    try {
+        // Only call API if a URL exists (i.e., it's saved in the DB)
+        if (profileData.profilePicture) {
+            await deleteClientProfilePicture(); 
+            toast.success("Profile picture successfully deleted from server.");
+        }
+
+        setPreviewUrl(null); 
+        setImageFile(null); // Clear the temporary file object
+        updateData({ profilePicture: null }); // Set DB path to null
+        setUnsavedChanges(true); 
+    } catch (error) {
+        console.error("Failed to delete profile picture:", error);
+        toast.error(error.response?.data?.message || "Failed to delete profile picture.");
+    }
+  };
+
+
+  // Two-step Save function
   const handleSave = async () => {
     setIsSaving(true);
     const token = localStorage.getItem('accessToken');
@@ -105,53 +141,44 @@ const ClientProfileEditor = () => {
       return;
     }
 
-    // --- STEP 1: Upload File to /uploads folder if a new one is pending ---
+    // --- STEP 1: Upload File if a new one is pending ---
     if (imageFile) {
-        
         try {
-            // ✅ FIX: Using uploadClientProfilePicture() from authApi.js
             const uploadResponse = await uploadClientProfilePicture(imageFile);
-            
-            const uploadData = uploadResponse.data; // Axios response uses .data
-            
-            // CRITICAL: Use the returned URL path
+            const uploadData = uploadResponse.data; 
             finalProfileData.profilePicture = uploadData.profilePicture;
-
         } catch (uploadError) {
             console.error('Profile picture upload failed:', uploadError);
             toast.error(`Error uploading picture: ${uploadError.message}`);
             setIsSaving(false);
             return;
         }
-    } else if (profileData.profilePicture === null) {
-        // If the user clicked 'X', ensure null is sent
+    } else if (profileData.profilePicture === null && initialData.profilePicture !== null) {
+        // This case is handled by the dedicated removeProfilePicture, but kept for safety.
         finalProfileData.profilePicture = null;
     }
 
-    // --- STEP 2: Save the Profile Data (with the new file path/null) ---
+    // --- STEP 2: Save the Profile Data ---
     try {
-      // ✅ FIX: Using updateClientProfile(data) from authApi.js
       const response = await updateClientProfile(finalProfileData);
       
-      const data = response.data; // Axios response uses .data
+      const data = response.data; 
 
       toast.success('Profile saved successfully! 🎉');
       
-      // 🌟🌟🌟 CRITICAL FIX: Merge the nested response data back into the flat state structure
       const savedUserData = {
         ...data.user,
-        ...data.user.ClientProfile // This flattens demographics and ensures persistence
+        ...data.user.ClientProfile 
       };
       
-      // Update ALL state variables based on the new, merged data
       setProfileData(savedUserData);
       setInitialData(savedUserData);
-      setImageFile(null); // Clears the temporary file object
-      setPreviewUrl(savedUserData.profilePicture); // Persists the new image URL
+      setImageFile(null); 
+      setPreviewUrl(savedUserData.profilePicture); 
 
     } catch (error) {
       console.error('Failed to save profile:', error);
-      toast.error(`Error saving profile: ${error.message}`);
+      toast.error(`Error saving profile: ${error.response?.data?.error || error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -161,13 +188,10 @@ const ClientProfileEditor = () => {
   const handleDrop = (e) => { e.preventDefault(); setDragActive(false); e.dataTransfer.files[0] && handleFileUpload(e.dataTransfer.files[0]); };
   const handleDragOver = (e) => { e.preventDefault(); setDragActive(true); };
   const handleDragLeave = (e) => { e.preventDefault(); setDragActive(false); };
-  const removeProfilePicture = () => { 
-    setPreviewUrl(null); 
-    setImageFile(null); // Crucial: clear the file object
-    updateData({ profilePicture: null }); // Set state to null (will be sent to backend in Step 2)
-    setUnsavedChanges(true); 
-  };
 
+
+  // 🔑 FIX 3: Calculate the maximum allowed date (Today)
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="max-w-4xl mx-auto py-10">
@@ -186,8 +210,14 @@ const ClientProfileEditor = () => {
           <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                {/* Displays the URL path (with full host) or the local Base64 preview */}
-                {previewUrl ? <img src={previewUrl?.startsWith('/') ? `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028'}${previewUrl}` : previewUrl} alt="Profile preview" className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
+                {/* 🔑 FIX 4: Image fetching fix for production */}
+                {previewUrl 
+                    ? <img 
+                        src={previewUrl?.startsWith('/') ? `${API_BASE_URL}${previewUrl}` : previewUrl} 
+                        alt="Profile preview" 
+                        className="w-full h-full object-cover" 
+                      /> 
+                    : <Camera className="w-8 h-8 text-gray-400" />}
               </div>
               {previewUrl && <button onClick={removeProfilePicture} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>}
             </div>
@@ -217,11 +247,12 @@ const ClientProfileEditor = () => {
           <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
           <Input label="Email Address" type="email" required value={profileData.email || ''} onChange={(e) => updateData({ email: e.target.value })} disabled={true} description="Email cannot be changed." />
           <Input
-            label="Phone Number (Optional)"
+            label="Phone Number (Default: +91)"
             type="tel"
+            name="phone"
             value={profileData.phone || ''}
-            onChange={(e) => updateData({ phone: e.target.value })}
-            placeholder="+1 (555) 123-4567"
+            onChange={handleChange} // Use the consolidated handleChange
+            placeholder="+91 98765 43210"
           />
         </div>
         
@@ -229,6 +260,8 @@ const ClientProfileEditor = () => {
         <DemographicsFormSection 
             formData={profileData} 
             handleChange={handleChange} 
+            // 🔑 FIX 5: Pass max date to prevent future dates in Date of Birth selector
+            maxDate={today}
         />
       </main>
 
