@@ -145,7 +145,7 @@ const deleteSession = async (req, res) => {
 
 
 // ==========================================
-// 4. BOOK SESSION (Copied from previous step for completeness)
+// 4. BOOK SESSION
 // ==========================================
 const bookSession = async (req, res) => {
     try {
@@ -156,6 +156,16 @@ const bookSession = async (req, res) => {
         if (!session) {
             return res.status(404).json({ error: 'Session not found.' });
         }
+        
+        // 🚨 NEW LOGIC: Check for existing active booking for this client and session
+        const existingBooking = await Booking.findOne({ 
+            where: { clientId, sessionId, status: { [Op.ne]: 'cancelled' } } 
+        });
+
+        if (existingBooking) {
+            return res.status(400).json({ error: 'You have already booked this session or a booking is pending.' });
+        }
+        // 🚨 END NEW LOGIC
         
         const booking = await Booking.create({ clientId, sessionId, status: 'confirmed' });
 

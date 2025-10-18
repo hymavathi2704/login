@@ -10,6 +10,8 @@ import CoachProfile from '../models/CoachProfile.js';
 import Testimonial from '../models/Testimonial.js'; 
 import Session from '../models/Session.js'; 
 import Follow from '../models/Follow.js'; 
+import Booking from '../models/Booking.js'; // <-- ADDED IMPORT
+import ClientProfile from '../models/ClientProfile.js'; // For getClientsWhoFollow
 // ---------------------
 
 // === Helper: Safe JSON parse (required for database fields) ===
@@ -26,6 +28,8 @@ const safeParse = (value) => {
 export const getPublicCoachProfile = async (req, res) => { 
   try {
     const coachId = req.params.id;
+    // 🚨 NEW: Get viewer ID from authentication middleware if available
+    const viewerId = req.user?.userId || null; 
 
     // Step 1: Find the coach profile
     const coachProfile = await CoachProfile.findOne({
@@ -60,7 +64,7 @@ export const getPublicCoachProfile = async (req, res) => {
     }
 
     // CRITICAL: Parse JSON strings before sending to the frontend
-    const plainCoachProfile = coachProfile.get({ plain: true });
+    let plainCoachProfile = coachProfile.get({ plain: true });
     
     if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
     if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
@@ -69,6 +73,34 @@ export const getPublicCoachProfile = async (req, res) => {
     if (plainCoachProfile.availability) plainCoachProfile.availability = safeParse(plainCoachProfile.availability);
 
     const user = plainCoachProfile.user;
+
+    // 🚨 NEW LOGIC: Post-process sessions to check for existing bookings
+    let availableSessions = plainCoachProfile.sessions || [];
+
+    if (viewerId && availableSessions.length > 0) {
+        // Find active bookings for this client for any of these sessions
+        const clientBookings = await Booking.findAll({
+            where: { 
+                clientId: viewerId,
+                sessionId: { [Op.in]: availableSessions.map(s => s.id) },
+                // Check for any active status (confirmed, pending, etc.) excluding 'cancelled'
+                status: { [Op.ne]: 'cancelled' } 
+            },
+            attributes: ['sessionId', 'status'],
+        });
+
+        const bookedMap = clientBookings.reduce((map, b) => {
+            map.set(b.sessionId, b.status);
+            return map;
+        }, new Map());
+        
+        availableSessions = availableSessions.map(session => ({
+            ...session,
+            isBooked: bookedMap.has(session.id), // <-- NEW FLAG: true if an active booking exists
+            bookingStatus: bookedMap.get(session.id) || null // <-- NEW STATUS
+        }));
+    }
+    // 🚨 END NEW LOGIC
 
     // Format testimonials to include the client's name/avatar from the User model
     const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
@@ -91,7 +123,7 @@ export const getPublicCoachProfile = async (req, res) => {
       phone: user.phone,
       profileImage: plainCoachProfile.profilePicture || user.profilePicture, 
       testimonials: formattedTestimonials,
-      availableSessions: plainCoachProfile.sessions || [], 
+      availableSessions: availableSessions, // <-- Use the processed array
       title: plainCoachProfile.professionalTitle,
       rating: 4.9, 
       totalReviews: formattedTestimonials.length,
