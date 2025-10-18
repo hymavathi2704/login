@@ -1,21 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-// ADDED EYE ICON
 import { User, Briefcase, DollarSign, Phone, Save, AlertTriangle, Eye } from 'lucide-react';
 import PersonalInfoSection from './components/PersonalInfoSection';
 import ProfessionalSection from './components/ProfessionalSection';
 import ContactSection from './components/ContactSection';
 import SocialLinksSection from './components/SocialLinksSection'; 
-// 🔴 REMOVED: DemographicsFormSection import, as it is now used within PersonalInfoSection
 import Button from '../../../../../components/ui/Button';
 import { cn } from '../../../../../utils/cn';
 import { useAuth } from '@/auth/AuthContext';
-// *** MODIFIED IMPORT: ADDED addProfileItem, removeProfileItem ***
 import { getCoachProfile, updateUserProfile, addProfileItem, removeProfileItem } from '../../../../../auth/authApi';
 import { toast } from 'sonner';
-// ADDED IMPORT: Link for navigation
 import { Link } from 'react-router-dom';
 
-// Utility functions (parsing remains the same for Certs/Education/etc.)
 const parseCorruptedState = (value) => {
   if (typeof value === 'string' && (value.trim().startsWith('[') || value.trim().startsWith('{'))) {
     try { return JSON.parse(value); } catch { return null; }
