@@ -12,8 +12,8 @@ const coachProfileController = require('../controllers/coachProfileController');
 // ✅ Import discovery/follow functions from the dedicated Explore Controller
 const { 
     getPublicCoachProfile,
-    getFollowStatus,    
-    followCoach,        
+    getFollowStatus, 
+    followCoach, 
     unfollowCoach,
     getClientsWhoFollow 
 } = require('../controllers/exploreCoachesController'); 
@@ -30,10 +30,10 @@ const {
 
 // Helper for CORS preflight handling
 const skipAuthForOptions = (req, res, next) => {
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end(); 
-    }
-    next();
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end(); 
+    }
+    next();
 };
 
 
@@ -43,20 +43,20 @@ const skipAuthForOptions = (req, res, next) => {
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
 
 router.put(
-    '/profile', 
-    skipAuthForOptions, 
-    authenticate, 
-    upload.single('profilePicture'), 
-    coachProfileController.updateCoachProfile
+    '/profile', 
+    skipAuthForOptions, 
+    authenticate, 
+    upload.single('profilePicture'), 
+    coachProfileController.updateCoachProfile
 );
 
 // Dedicated Picture management
 router.post(
-    '/profile/upload-picture', 
-    skipAuthForOptions, 
-    authenticate, 
-    upload.single('profilePicture'), 
-    coachProfileController.uploadProfilePicture
+    '/profile/upload-picture', 
+    skipAuthForOptions, 
+    authenticate, 
+    upload.single('profilePicture'), 
+    coachProfileController.uploadProfilePicture
 );
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
 
@@ -93,7 +93,9 @@ router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSes
 // ==============================
 
 // GET Public Coach Profile 
-router.get('/public/:id', getPublicCoachProfile);
+// FIX: Add 'authenticate' middleware here. This populates req.user.userId, which is 
+// used by getPublicCoachProfile to check if the viewing client has already booked a session.
+router.get('/public/:id', authenticate, getPublicCoachProfile);
 
 // Follow/Unfollow Routes 
 router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
