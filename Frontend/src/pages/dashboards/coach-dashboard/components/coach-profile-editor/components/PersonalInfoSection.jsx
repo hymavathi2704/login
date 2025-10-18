@@ -1,16 +1,26 @@
 // Frontend/src/pages/dashboards/coach-dashboard/components/coach-profile-editor/components/PersonalInfoSection.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { Upload, X, Camera } from 'lucide-react';
-// ⚠️ FIX: If you use toast, make sure the import is correct based on your setup (e.g., 'sonner' or 'react-toastify')
 import { toast } from 'react-toastify'; 
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/auth/AuthContext';
-// import { uploadProfilePicture } from '@/auth/authApi'; // ⚠️ Correctly REMOVED from the previous steps
+// ✅ NEW IMPORT: Demographics Form Section
+import DemographicsFormSection from '@/pages/dashboards/shared/DemographicsFormSection'; 
 
 // Load backend URL from .env (fallback to localhost)
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
+
+// Helper function to calculate max date (18 years ago) for Date of Birth
+const calculateMaxDate = () => {
+    const today = new Date();
+    today.setFullYear(today.getFullYear() - 18);
+    // Format YYYY-MM-DD
+    return today.toISOString().split('T')[0]; 
+};
+const MAX_DATE_OF_BIRTH = calculateMaxDate();
+
 
 const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) => {
     const fileInputRef = useRef(null);
@@ -88,6 +98,7 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         setSelectedFile(null); // Clear the staged file
         
         // ✅ ACTION: Send two flags: clear existing path (profilePicture: null) and clear staged file (profilePictureFile: null)
+        // This signals the parent component (index.jsx) to send 'profilePicture: null' to the backend for deletion.
         updateData({ profilePicture: null, profilePictureFile: null }); 
         
         setUser(prevUser => ({ ...prevUser, profilePicture: null }));
@@ -193,9 +204,20 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
                 description="This title will appear prominently on your profile"
             />
 
+            {/* Demographics Form Section - MOVED HERE */}
+            <DemographicsFormSection 
+                formData={data} 
+                handleChange={e => {
+                    // Use the local handler to update parent data and set unsaved changes
+                    handleInputChange(e.target.name, e.target.value);
+                }}
+                maxDate={MAX_DATE_OF_BIRTH} // Enforce 18+ requirement
+            />
+            {/* End Demographics Form Section */}
+
             {/* Profile Preview Card */}
             <div className="bg-gray-50 rounded-lg p-6">
-                <h4 className="text-sm font-medium text-gray-900 mb-4">Profile Preview</h4>
+                <h4 className="text-sm font-semibold text-gray-900 mb-4">Profile Preview</h4>
                 <div className="flex items-center space-x-4">
                     <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 flex items-center justify-center">
                         {isProcessing ? (

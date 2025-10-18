@@ -5,7 +5,7 @@ import PersonalInfoSection from './components/PersonalInfoSection';
 import ProfessionalSection from './components/ProfessionalSection';
 import ContactSection from './components/ContactSection';
 import SocialLinksSection from './components/SocialLinksSection'; 
-import DemographicsFormSection from "../../../shared/DemographicsFormSection";
+// 🔴 REMOVED: DemographicsFormSection import, as it is now used within PersonalInfoSection
 import Button from '../../../../../components/ui/Button';
 import { cn } from '../../../../../utils/cn';
 import { useAuth } from '@/auth/AuthContext';
@@ -53,7 +53,7 @@ const CoachProfileEditor = () => {
     professionalTitle: '',
     // NEW: Field to hold the File object before submission
     profilePictureFile: null, 
-    // REMOVED: profilePicture (handled via user context now)
+    profilePicture: null, // KEEP: Used for display and the signal for deletion
     // REMOVED: websiteUrl (consolidated)
     bio: '',
     yearsOfExperience: 0,
@@ -151,8 +151,8 @@ const CoachProfileEditor = () => {
       const cleanFormData = { ...formData, sessions: [], profilePictureFile: null };
       const cleanInitialData = { ...initialData, sessions: [], profilePictureFile: null };
       
-      // ✅ FIX: Check if a file is staged OR if other data has changed
-      const hasFileStaged = !!formData.profilePictureFile; 
+      // ✅ FIX: Check if a file is staged OR if the file deletion flag is set OR if other data has changed
+      const hasFileStaged = !!formData.profilePictureFile || (formData.profilePicture === null && initialData.profilePicture !== ''); 
       const hasOtherChanges = JSON.stringify(cleanFormData) !== JSON.stringify(cleanInitialData);
       
       setUnsavedChanges(hasOtherChanges || hasFileStaged);
@@ -238,7 +238,7 @@ const CoachProfileEditor = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ CORRECTED FUNCTION: Uses FormData for file upload
+  // ✅ CORRECTED FUNCTION: Uses FormData for file upload AND handles deletion
   const handleSave = async () => {
     if (!validateForm()) return;
     setIsLoading(true);
@@ -251,22 +251,31 @@ const CoachProfileEditor = () => {
     for (const key in formData) {
         const value = formData[key];
 
+        // A. Handle the staged file (profilePictureFile) for upload OR deletion
+        if (key === 'profilePictureFile') {
+            if (value instanceof File) {
+                // If a new file is staged, append it as 'profilePicture' (backend field name)
+                payload.append('profilePicture', value);
+            } else if (formData.profilePicture === null && initialData.profilePicture !== '') {
+                // If the file was explicitly removed (profilePicture: null in state, but was not null initially), 
+                // signal deletion to the backend by sending the string 'null'.
+                payload.append('profilePicture', 'null');
+            }
+            continue; // Skip further processing for this key
+        }
+
+        // Skip undefined or null values that are not part of an explicit change (like file deletion, which is handled above)
         if (value === undefined || value === null) {
             continue;
         }
 
-        // A. Handle the staged file (profilePictureFile)
-        if (key === 'profilePictureFile' && value instanceof File) {
-            // Append the File object with the backend's expected field name: 'profilePicture'
-            payload.append('profilePicture', value);
-        } 
         // B. Handle fields that need to be JSON stringified
         else if (['specialties', 'certifications', 'education'].includes(key)) {
             payload.append(key, JSON.stringify(value));
         } 
         // C. Handle all other standard string/number fields 
-        // Exclude the dynamic 'sessions' array, which is managed by a separate tool now.
-        else if (key !== 'profilePictureFile' && key !== 'sessions') {
+        // Exclude the dynamic 'sessions' array and the temporary 'profilePicture' string path.
+        else if (key !== 'sessions' && key !== 'profilePicture') {
             payload.append(key, value);
         }
     }
@@ -307,10 +316,7 @@ const CoachProfileEditor = () => {
                   updateData={handleUpdateFormData} 
                   setUnsavedChanges={setUnsavedChanges} 
               />
-              <DemographicsFormSection 
-                  formData={formData} 
-                  handleChange={e => handleUpdateFormData({ [e.target.name]: e.target.value })} 
-              />
+                {/* 🔴 REMOVED: DemographicsFormSection is now rendered inside PersonalInfoSection */}
             </div>
         );
       case 'contact':
