@@ -29,6 +29,7 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges, onAd
 
   const editItemInLocalState = (field, id, key, value) => {
     // Only updates the item locally for a better UX while the main save is pending
+    // This correctly updates the formData array in the parent index.jsx
     const currentList = Array.isArray(data[field]) ? data[field] : [];
     updateData({
       [field]: currentList.map(x => x.id === id ? { ...x, [key]: value } : x)
