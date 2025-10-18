@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/ui/Header";
 import RegistrationForm from "./components/RegistrationForm";
-// import SocialLoginButtons from "./components/SocialLoginButtons"; // ⚠️ COMMENTED OUT: Social login UI
+// import SocialLoginButtons from "./components/SocialLoginButtons"; 
 import CaptchaVerification from "./components/CaptchaVerification";
 import RegistrationSuccess from "./components/RegistrationSuccess";
 import Icon from "../../components/AppIcon";
@@ -26,9 +26,11 @@ const UserRegistration = () => {
   const [isResendingEmail, setIsResendingEmail] = useState(false);
 
   const handleFormSubmit = async (formData) => {
-    // Parse full name into first and last name
-    const [firstName, ...lastNameParts] = formData.fullName.split(' ');
-    const lastName = lastNameParts.join(' ');
+    // ❌ REMOVED: const [firstName, ...lastNameParts] = formData.fullName.split(' ');
+    // ❌ REMOVED: const lastName = lastNameParts.join(' ');
+
+    // ✅ FIXED: Directly use firstName and lastName from the updated form data
+    const { firstName, lastName } = formData;
 
     setFormDataForCaptcha({ ...formData, firstName, lastName, role });
     setShowCaptcha(true);
@@ -173,13 +175,13 @@ const UserRegistration = () => {
               </div>
             )}
           </div>
+          <CaptchaVerification
+            isVisible={showCaptcha}
+            onVerify={handleCaptchaVerification}
+            onClose={() => setShowCaptcha(false)}
+          />
         </div>
       </main>
-      <CaptchaVerification
-        isVisible={showCaptcha}
-        onVerify={handleCaptchaVerification}
-        onClose={() => setShowCaptcha(false)}
-      />
     </div>
   );
 };
