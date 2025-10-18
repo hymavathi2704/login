@@ -1,19 +1,16 @@
 // Frontend/src/pages/dashboards/shared/coach-public-profile/index.jsx
 
-import React, { useState, useEffect } from 'react';
-// MODIFIED: Added useNavigate
+import React, { useState, useEffect, useCallback } from 'react'; // 🚨 MODIFIED: Added useCallback
 import { useParams, useNavigate } from 'react-router-dom'; 
 import { getCoachById } from '@/auth/authApi'; 
 
 import NavigationLoadingStates from '@/components/ui/NavigationLoadingStates';
-// ADDED: Import Button
 import Button from '@/components/ui/Button'; 
 import ProfileHeader from './components/ProfileHeader';
 import AboutSection from './components/AboutSection';
 import ServicesSection from './components/ServicesSection';
 import TestimonialsSection from './components/TestimonialsSection';
 
-// FIX: Accept coachId as a prop (aliased as propCoachId)
 const CoachPublicProfile = ({ coachId: propCoachId }) => {
   // Use useParams to extract the 'id' from the URL (used when navigating directly)
   const { id: urlCoachId } = useParams(); 
@@ -28,13 +25,13 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchCoachData = async () => {
+  // 🚨 MODIFIED: Wrapped fetchCoachData in useCallback to prevent infinite useEffect loop
+  const fetchCoachData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       // Use the determined finalCoachId
       if (!finalCoachId) {
-        // This error should now only trigger if rendered without a prop OR a URL ID
         throw new Error('Coach ID is missing from the URL.');
       }
       
@@ -55,12 +52,18 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
     } finally {
       setLoading(false);
     }
+  }, [finalCoachId]); // Dependency on finalCoachId
+
+  // 🚨 NEW: Function to re-fetch data after a session is successfully booked
+  const handleSessionBooked = () => {
+      // Re-run the fetch logic to update the coach data, including the session booking status
+      fetchCoachData();
   };
 
   useEffect(() => {
-    // Depend on finalCoachId. This re-runs only when the ID changes (either prop or URL).
+    // Depend on finalCoachId and fetchCoachData (due to useCallback)
     fetchCoachData();
-  }, [finalCoachId]); 
+  }, [finalCoachId, fetchCoachData]); 
 
   // --- Handlers for interactivity ---
   // Note: ServicesSection child component now handles its own booking logic directly
@@ -101,6 +104,8 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
         <AboutSection coach={coach} />
         <ServicesSection 
           coach={coach} 
+          // 🚨 NEW PROP: Pass the callback to refresh the coach data
+          onSessionBooked={handleSessionBooked}
           onServiceClick={handleServiceClick}
         />
         <TestimonialsSection testimonials={testimonials} />

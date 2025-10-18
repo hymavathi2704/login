@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
-// 🚨 MODIFIED: Added CheckCircle to imports
 import { Clock, Tag, DollarSign, TrendingUp, ArrowRight, CheckCircle } from 'lucide-react';
-// We keep useAuth just for clarity, but the core logic relies on the server-side auth check
 import { useAuth } from '@/auth/AuthContext'; 
 import { bookSession } from '@/auth/authApi';
 import { toast } from 'sonner';
 
-const ServicesSection = ({ coach }) => {
+// 🚨 MODIFIED: Added onSessionBooked prop
+const ServicesSection = ({ coach, onSessionBooked }) => {
   // We keep useAuth to access roles and data, but won't block the button based on it
   const { isAuthenticated, roles, user } = useAuth(); 
   const [bookingSessionId, setBookingSessionId] = useState(null); 
@@ -27,20 +26,20 @@ const ServicesSection = ({ coach }) => {
     return remaining > 0 ? `${hours}h ${remaining}m` : `${hours}h`;
   };
 
-  // 🚨 MODIFIED: Added isBooked argument
+  // Added isBooked argument
   const getButtonConfig = (sessionType, isBooked) => {
-    // 1. Logic for already booked session
+    // Logic for already booked session
     if (isBooked) {
         return { 
-            label: 'Purchased / Booked', // The required text change
+            label: 'Purchased / Booked', 
             icon: 'CheckCircle', 
             variant: 'success', 
-            disabled: true, // Disable button
-            className: 'opacity-80 cursor-default' // Style for disabled/booked state
+            disabled: true, 
+            className: 'opacity-80 cursor-default'
         };
     }
     
-    // 2. Original logic for unbooked sessions
+    // Original logic for unbooked sessions
     if (!sessionType) return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default', disabled: false, className: '' };
     const type = sessionType.toLowerCase();
     if (type.includes('subscription') || type.includes('package')) {
@@ -51,20 +50,21 @@ const ServicesSection = ({ coach }) => {
 
   const handleBookSession = async (sessionId, sessionTitle) => {
     
-    // 🚨 REMOVED CHECKS: We are removing the frontend isAuthenticated and isClient checks
-    // The server will handle authorization based on the user's token.
-    
     if (!window.confirm(`Confirm booking for: ${sessionTitle}?`)) return;
 
     setBookingSessionId(sessionId); 
 
     try {
-      // The backend /api/coach/public/:sessionId/book route still validates the token and role.
       await bookSession(sessionId);
       toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
+        
+      // 🚨 NEW: Call the callback function to tell the parent component to refresh data
+      if (onSessionBooked) {
+          onSessionBooked();
+      }
+
     } catch (err) {
       console.error("Booking Error:", err);
-      // If the backend fails (e.g., token expired or already booked), this block runs
       const errorMsg = err.response?.data?.error || err.message || 'Booking failed due to server error.';
       toast.error(errorMsg);
     } finally {
@@ -83,14 +83,12 @@ const ServicesSection = ({ coach }) => {
       <div className="space-y-4">
         {availableSessions.length > 0 ? (
           availableSessions.map((session) => {
-            // 🚨 NEW: Destructure isBooked flag
             const isBooked = session?.isBooked;
 
-            // 🚨 MODIFIED: Pass isBooked and destructure the new properties
+            // MODIFIED: Pass isBooked
             const { label, icon, variant, disabled: configDisabled, className: configClassName } = getButtonConfig(session?.type, isBooked);
             const isLoading = bookingSessionId === session?.id;
             
-            // Combine loading state with configured disabled state
             const isDisabled = isLoading || configDisabled;
 
             return (
@@ -130,8 +128,8 @@ const ServicesSection = ({ coach }) => {
                     iconName={icon}
                     iconPosition="right"
                     loading={isLoading} 
-                    disabled={isDisabled} // 🚨 MODIFIED: Use isDisabled
-                    className={configClassName} // 🚨 NEW: Apply conditional class
+                    disabled={isDisabled} 
+                    className={configClassName}
                   >
                     {isLoading ? 'Processing...' : label}
                   </Button>
