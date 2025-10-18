@@ -145,10 +145,11 @@ const deleteSession = async (req, res) => {
 
 
 // ==========================================
-// 4. BOOK SESSION
+// 4. BOOK SESSION (Anti-Duplication Logic)
 // ==========================================
 const bookSession = async (req, res) => {
     try {
+        // Assuming your authMiddleware adds req.user.userId
         const clientId = req.user.userId;
         const { sessionId } = req.params;
         
@@ -157,17 +158,28 @@ const bookSession = async (req, res) => {
             return res.status(404).json({ error: 'Session not found.' });
         }
         
-        // 🚨 NEW LOGIC: Check for existing active booking for this client and session
+        // 🚨 CRITICAL CHECK: Prevent multiple active bookings for the same session by one client
         const existingBooking = await Booking.findOne({ 
-            where: { clientId, sessionId, status: { [Op.ne]: 'cancelled' } } 
+            where: { 
+                clientId, 
+                sessionId, 
+                // Status must NOT be 'cancelled'. Adjust if you have other terminal statuses.
+                status: { [Op.ne]: 'cancelled' } 
+            } 
         });
 
         if (existingBooking) {
-            return res.status(400).json({ error: 'You have already booked this session or a booking is pending.' });
+            // This is the error message returned when a client tries to re-book.
+            return res.status(400).json({ 
+                error: 'You have already purchased or booked this session.' 
+            });
         }
-        // 🚨 END NEW LOGIC
         
+        // Create the new booking
         const booking = await Booking.create({ clientId, sessionId, status: 'confirmed' });
+
+        // Optional: Send confirmation email (assuming functionality exists)
+        // await sendBookingConfirmation(clientId, session.id); 
 
         return res.status(201).json({ message: 'Session booked successfully.', booking });
     } catch (error) {
