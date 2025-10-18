@@ -247,12 +247,12 @@ const ClientProfileEditor = () => {
           <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
           <Input label="Email Address" type="email" required value={profileData.email || ''} onChange={(e) => updateData({ email: e.target.value })} disabled={true} description="Email cannot be changed." />
           <Input
-            label="Phone Number (Default: +91)"
+            label="Phone Number (Optional)"
             type="tel"
             name="phone"
             value={profileData.phone || ''}
             onChange={handleChange} // Use the consolidated handleChange
-            placeholder="+91 98765 43210"
+            placeholder="+91 XXXXXXXXXX"
           />
         </div>
         
