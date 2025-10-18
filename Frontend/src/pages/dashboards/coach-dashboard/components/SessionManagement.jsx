@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react'; // ADDED memo
+import React, { useState, useEffect, useCallback, memo } from 'react'; 
 import { Plus, X, Clock, Users, DollarSign, Calendar, Globe, Edit3, Save } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
@@ -23,23 +23,25 @@ const sessionFormats = [
     { value: 'in-person', label: 'In-Person' }
 ];
 
-// --- NEW ISOLATED EDIT FORM COMPONENT ---
-// This component encapsulates the editing logic and state to prevent the focus issue.
+// --- ISOLATED EDIT FORM COMPONENT (Kept local state to maintain input focus) ---
 const EditSessionForm = memo(({ session, todayDate, isSubmitting, onSave, onCancel }) => {
     const [formData, setFormData] = useState({});
     
-    // Initialize form data when session prop changes
+    // Initialize form data when session prop changes (only runs on initial edit click)
     useEffect(() => {
         setFormData({
             ...session,
             price: session.price.toString(),
             duration: session.duration.toString(),
+            // Ensure defaultDate is set to match the input format (YYYY-MM-DD)
             defaultDate: session.defaultDate ? new Date(session.defaultDate).toISOString().split('T')[0] : '', 
         });
     }, [session]);
     
     const handleEditChange = (e) => {
         const { name, value } = e.target;
+        // Setting state here does NOT trigger a re-render of the parent component,
+        // which preserves focus on the input field.
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -173,7 +175,6 @@ const SessionManagement = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingSessionId, setEditingSessionId] = useState(null);
-    // Removed editFormData state as it is now local to EditSessionForm
     
     // Calculate today's date
     const todayDate = getTodayDate();
@@ -290,7 +291,10 @@ const SessionManagement = () => {
     const handleEditSave = async (sessionId, formData) => {
         if (!validateSessionData(formData)) return;
 
-        setIsSubmitting(true);
+        // 🚨 CRITICAL STEP TO PREVENT FLICKER: Set both submitting state and the ID of the item being submitted
+        setIsSubmitting(true); 
+        setEditingSessionId(sessionId); 
+
         try {
             await updateSession(sessionId, {
                 ...formData,
@@ -298,14 +302,16 @@ const SessionManagement = () => {
                 price: parseFloat(formData.price),
             });
 
-            setEditingSessionId(null); // Exit editing mode
-            await fetchSessions();
+            setEditingSessionId(null); // Exit editing mode before fetching to show success
+            await fetchSessions(); // Fetch new data
             toast.success('Session updated successfully.');
         } catch (error) {
             console.error("Failed to update session:", error);
             toast.error(error.response?.data?.error || 'Failed to update session.');
+            // On failure, return to edit mode
+            setEditingSessionId(sessionId); 
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false); 
         }
     };
 
@@ -317,10 +323,21 @@ const SessionManagement = () => {
 
     // Component to render a single session card or the edit form
     const SessionCard = ({ session }) => {
-        const isEditing = editingSessionId === session.id;
+        const isEditing = editingSessionId === session.id && !isSubmitting;
+        const isSaving = editingSessionId === session.id && isSubmitting;
+        
+        // 1. Show Saving state during API call to prevent flickering back to old data
+        if (isSaving) {
+            return (
+                <div className="flex items-center justify-center p-4 border rounded-lg bg-yellow-50 text-yellow-700">
+                    <Save className="w-5 h-5 mr-3 animate-pulse" />
+                    <span>Saving changes for {session.title}...</span>
+                </div>
+            );
+        }
 
+        // 2. Show Edit Form
         if (isEditing) {
-            // Render the isolated Edit Form
             return (
                 <EditSessionForm 
                     session={session}
@@ -332,7 +349,7 @@ const SessionManagement = () => {
             );
         }
 
-        // Render Read-only Card
+        // 3. Render Read-only Card
         const formattedPrice = `₹${parseInt(session.price, 10)}`;
         const formatLabel = sessionFormats.find(f => f.value === session.type)?.label;
         
@@ -340,11 +357,11 @@ const SessionManagement = () => {
         if (session.defaultDate) {
             try {
                  const date = new Date(session.defaultDate);
-                 if (!isNaN(date.getTime())) { // Check if date is valid
+                 if (!isNaN(date.getTime())) { 
                     formattedDateAndTime = `${date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })} @ ${session.defaultTime}`;
                  }
             } catch {
-                formattedDateAndTime = session.defaultDate; // Fallback to raw string
+                formattedDateAndTime = session.defaultDate; 
             }
         }
         
@@ -367,7 +384,7 @@ const SessionManagement = () => {
                     </div>
                 </div>
                 <div className="flex space-x-2">
-                    {/* ADDED: Edit Button */}
+                    {/* Disable buttons if any other session is being edited or submitted */}
                     <button 
                         onClick={() => handleEditStart(session.id)} 
                         className="text-gray-500 hover:text-blue-500 p-1"
@@ -376,7 +393,6 @@ const SessionManagement = () => {
                     >
                         <Edit3 className="w-4 h-4" />
                     </button>
-                    {/* Existing Delete Button */}
                     <button 
                         onClick={() => handleRemoveSession(session.id)} 
                         className="text-gray-400 hover:text-red-500 p-1"
