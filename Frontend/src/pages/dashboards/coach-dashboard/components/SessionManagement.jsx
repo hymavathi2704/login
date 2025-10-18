@@ -1,28 +1,29 @@
-// Frontend/src/pages/dashboards/coach-dashboard/components/coach-profile-editor/components/ServiceSection.jsx
+// Frontend/src/pages/dashboards/coach-dashboard/components/SessionManagement.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Clock, Users, DollarSign, Calendar, Globe } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-// Use the new API functions
-import { createSession, deleteSession } from '@/auth/authApi'; 
+// Import necessary API functions for CRUD and fetching
+import { createSession, deleteSession, getCoachProfile } from '@/auth/authApi'; 
 import { toast } from 'sonner';
 
-// Pass coachSessions (the actual array of sessions) and onSessionsUpdated (a function to refetch/update the profile state)
-const ServiceSection = ({ sessions, onSessionsUpdated }) => {
+const SessionManagement = () => {
+    const [sessions, setSessions] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // FIX 1: Standardize the state field to 'duration' and 'type' to match the backend model/controller
-    const [newSessionType, setNewSessionType] = useState({
-        name: '',
-        duration: '', // CHANGED from durationMinutes
+    // State to manage the input form for new sessions
+    const [newSessionData, setNewSessionData] = useState({
+        title: '',
+        duration: '',
         price: '',           
         description: '',
         type: 'individual', 
         defaultDate: '', 
         defaultTime: '', 
-        meetingLink: '',
+        meetingLink: '', // Field to update Meeting Link
     });
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const sessionFormats = [
         { value: 'individual', label: '1-on-1 Individual' },
@@ -32,31 +33,50 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
         { value: 'in-person', label: 'In-Person' }
     ];
 
+    // Function to fetch the coach's entire session data
+    const fetchSessions = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            // Fetches the entire profile to extract the associated sessions
+            const response = await getCoachProfile();
+            const fetchedSessions = response.data.user?.CoachProfile?.sessions || [];
+            setSessions(fetchedSessions);
+        } catch (error) {
+            console.error("Failed to load sessions:", error);
+            toast.error("Failed to load sessions.");
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { 
+        fetchSessions(); 
+    }, [fetchSessions]);
+
     // --- Handlers ---
     const handleAddSession = async () => {
-        // FIX 2: Check for the correct 'duration' state field in validation
-        if (!newSessionType.name.trim() || !newSessionType.duration || !newSessionType.price) {
+        if (!newSessionData.title.trim() || !newSessionData.duration || !newSessionData.price) {
             toast.error('Please fill in Session Name, Duration, and Price.');
             return; 
         }
 
         setIsSubmitting(true);
         try {
+            // Calls the dedicated API endpoint for creating a session
             await createSession({
-                ...newSessionType,
-                // Ensure duration is parsed correctly before sending
-                duration: parseInt(newSessionType.duration, 10), 
-                price: parseFloat(newSessionType.price),
-                // Backend will sanitize date/time to null if empty
+                ...newSessionData,
+                duration: parseInt(newSessionData.duration, 10), 
+                price: parseFloat(newSessionData.price),
             });
 
-            // Clear form on success
-            setNewSessionType({ 
-                name: '', duration: '', price: '', description: '', 
+            // Clear form and trigger a re-fetch
+            setNewSessionData({ 
+                title: '', duration: '', price: '', description: '', 
                 type: 'individual', defaultDate: '', defaultTime: '', meetingLink: '' 
             });
 
-            onSessionsUpdated(); 
+            await fetchSessions();
+            toast.success('Session created successfully.');
 
         } catch (error) {
             console.error("Failed to create session:", error);
@@ -71,7 +91,7 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
 
         try {
             await deleteSession(sessionId);
-            onSessionsUpdated();
+            await fetchSessions();
             toast.success('Session deleted successfully.');
         } catch (error) {
             console.error("Failed to delete session:", error);
@@ -79,15 +99,22 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
         }
     };
 
-    // --- JSX ---
+    if (isLoading) {
+        return <p className="text-center py-8">Loading session data...</p>;
+    }
+
     return (
         <div className="space-y-8">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold text-gray-800">Session Management</h1>
+                <p className="text-gray-600 mt-2">
+                    Define, update, and manage your one-on-one sessions, group calls, or workshops.
+                </p>
+            </div>
+            
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Your Session Types (Service Offerings)</h3>
-                <p className="text-sm text-gray-600">
-                    Define the types of sessions you offer. These services will be visible on your public profile.
-                </p>
-
+                
                 <div className="space-y-3">
                     {sessions && sessions.length > 0 ? sessions.map(session => (
                         <div key={session.id} className="flex items-start justify-between p-4 border rounded-lg">
@@ -130,8 +157,9 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
                         <div className="md:col-span-2">
                             <Input 
                                 label="Session Name"
-                                value={newSessionType.name}
-                                onChange={e => setNewSessionType(p => ({ ...p, name: e.target.value }))}
+                                name="title"
+                                value={newSessionData.title}
+                                onChange={e => setNewSessionData(p => ({ ...p, title: e.target.value }))}
                                 placeholder="e.g., Discovery Call"
                                 required
                             />
@@ -140,8 +168,9 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
                         <Input 
                             label="Price" 
                             type="number"
-                            value={newSessionType.price}
-                            onChange={e => setNewSessionType(p => ({ ...p, price: e.target.value }))}
+                            name="price"
+                            value={newSessionData.price}
+                            onChange={e => setNewSessionData(p => ({ ...p, price: e.target.value }))}
                             placeholder="100.00"
                             min="0"
                             step="0.01"
@@ -152,10 +181,9 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
                         <Input
                             label="Duration (minutes)"
                             type="number"
-                            // FIX 3: Change value to use the standardized 'duration' field
-                            value={newSessionType.duration}
-                            // FIX 4: Change onChange to update the standardized 'duration' field
-                            onChange={e => setNewSessionType(p => ({ ...p, duration: e.target.value }))}
+                            name="duration"
+                            value={newSessionData.duration}
+                            onChange={e => setNewSessionData(p => ({ ...p, duration: e.target.value }))}
                             placeholder="60"
                             min="1"
                             required
@@ -166,24 +194,25 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
                         <Input
                             label="Default Date (Optional)"
                             type="date"
-                            value={newSessionType.defaultDate}
-                            onChange={e => setNewSessionType(p => ({ ...p, defaultDate: e.target.value }))}
+                            name="defaultDate"
+                            value={newSessionData.defaultDate}
+                            onChange={e => setNewSessionData(p => ({ ...p, defaultDate: e.target.value }))}
                         />
 
                         <Input
                             label="Default Time (Optional)"
                             type="time"
-                            value={newSessionType.defaultTime}
-                            onChange={e => setNewSessionType(p => ({ ...p, defaultTime: e.target.value }))}
+                            name="defaultTime"
+                            value={newSessionData.defaultTime}
+                            onChange={e => setNewSessionData(p => ({ ...p, defaultTime: e.target.value }))}
                         />
                         
                         <div className="md:col-span-1">
                             <label className="block text-sm font-medium mb-2">Session Format</label>
                             <select
-                                // FIX 5: Change value to use the standardized 'type' field
-                                value={newSessionType.type}
-                                // FIX 6: Change onChange to update the standardized 'type' field
-                                onChange={e => setNewSessionType(p => ({ ...p, type: e.target.value }))}
+                                name="type"
+                                value={newSessionData.type}
+                                onChange={e => setNewSessionData(p => ({ ...p, type: e.target.value }))}
                                 className="w-full rounded-md border py-2 px-3 text-sm h-[42px]"
                             >
                                 {sessionFormats.map(f => (
@@ -194,16 +223,18 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
 
                         <Input 
                             label="Meeting Link (e.g., Zoom/Meet URL)"
-                            value={newSessionType.meetingLink}
-                            onChange={e => setNewSessionType(p => ({ ...p, meetingLink: e.target.value }))}
+                            name="meetingLink"
+                            value={newSessionData.meetingLink}
+                            onChange={e => setNewSessionData(p => ({ ...p, meetingLink: e.target.value }))}
                             placeholder="https://zoom.us/j/..."
                             className="md:col-span-4"
                         />
                     </div>
 
                     <textarea
-                        value={newSessionType.description}
-                        onChange={e => setNewSessionType(p => ({ ...p, description: e.target.value }))}
+                        name="description"
+                        value={newSessionData.description}
+                        onChange={e => setNewSessionData(p => ({ ...p, description: e.target.value }))}
                         rows={2}
                         className="w-full rounded-md border px-3 py-2 text-sm"
                         placeholder="Brief description of this session type..."
@@ -211,7 +242,7 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
                     
                     <Button
                         onClick={handleAddSession}
-                        disabled={isSubmitting || !newSessionType.name.trim() || !newSessionType.duration || !newSessionType.price}
+                        disabled={isSubmitting || !newSessionData.title.trim() || !newSessionData.duration || !newSessionData.price}
                         size="sm"
                     >
                         <Plus className="w-4 h-4 mr-2" /> {isSubmitting ? 'Adding...' : 'Add Session Type'}
@@ -223,4 +254,4 @@ const ServiceSection = ({ sessions, onSessionsUpdated }) => {
 };
 
 
-export default ServiceSection;
+export default SessionManagement;

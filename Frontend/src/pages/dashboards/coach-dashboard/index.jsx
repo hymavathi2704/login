@@ -8,7 +8,7 @@ import {
   PieChart,
   Settings,
   User,
-  Zap, // Keep Zap if you want for Sessions, or use a different icon
+  DollarSign, // Imported for the new session management tab
 } from "lucide-react";
 import DashboardLayout from "../shared/DashboardLayout";
 import CoachOverview from "./components/CoachOverview";
@@ -19,7 +19,7 @@ import ResourcesLibrary from "./components/ResourcesLibrary";
 import CoachAnalytics from "./components/CoachAnalytics";
 import AccountSettings from "../shared/AccountSettings";
 import CoachProfileEditor from "./components/coach-profile-editor";
-// REMOVED: import EventManagement from "./components/EventManagement";
+import SessionManagement from "./components/SessionManagement"; // ADDED: Import the new component
 
 const CoachDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -31,9 +31,8 @@ const CoachDashboard = () => {
     { id: "communication", label: "Communication", icon: MessageSquare },
     { id: "resources", label: "Resources", icon: BookOpen },
     { id: "analytics", label: "Analytics", icon: PieChart },
+    { id: "sessions", label: "Session Management", icon: DollarSign }, // MODIFIED: New Tab for Sessions
     { id: "profile", label: "Edit Profile", icon: User },
-    // 🚨 REMOVED: The navigation item for Events
-    // { id: "events", label: "Events", icon: Zap },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -51,11 +50,10 @@ const CoachDashboard = () => {
         return <ResourcesLibrary />;
       case "analytics":
         return <CoachAnalytics />;
+      case "sessions": // ADDED: Case to render the new component
+        return <SessionManagement />;
       case "profile":
         return <CoachProfileEditor />;
-      // 🚨 REMOVED: The rendering case for Events
-      // case "events":
-      //   return <EventManagement />;
       case "settings":
         return <AccountSettings />;
       default:

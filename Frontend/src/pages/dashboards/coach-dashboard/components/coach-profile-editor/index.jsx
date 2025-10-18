@@ -3,9 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, Briefcase, DollarSign, Phone, Save, AlertTriangle, Eye } from 'lucide-react';
 import PersonalInfoSection from './components/PersonalInfoSection';
 import ProfessionalSection from './components/ProfessionalSection';
-import ServiceSection from './components/ServiceSection';
 import ContactSection from './components/ContactSection';
-// ADDED IMPORTS: SocialLinksSection and DemographicsFormSection
 import SocialLinksSection from './components/SocialLinksSection'; 
 import DemographicsFormSection from "../../../shared/DemographicsFormSection";
 import Button from '../../../../../components/ui/Button';
@@ -63,7 +61,7 @@ const CoachProfileEditor = () => {
     certifications: [],
     education: [],
     
-    // NEW/UPDATED: Sessions array comes from direct association
+    // NEW/UPDATED: Sessions array comes from direct association (kept in state/form for mapping only)
     sessions: [], // Array of Session objects
     
     // RE-ADDED: Demographics 
@@ -166,7 +164,8 @@ const CoachProfileEditor = () => {
     { id: 'contact', label: 'Contact', icon: <Phone /> },
     { id: 'social', label: 'Social Links', icon: <User /> },
     { id: 'professional', label: 'Professional', icon: <Briefcase /> },
-    { id: 'services', label: 'Services', icon: <DollarSign /> }
+    // REMOVED: The 'services' tab entry as it is now a separate menu item
+    // { id: 'services', label: 'Services', icon: <DollarSign /> }
   ];
 
   const handleUpdateFormData = useCallback((newPartialData) => {
@@ -266,8 +265,7 @@ const CoachProfileEditor = () => {
             payload.append(key, JSON.stringify(value));
         } 
         // C. Handle all other standard string/number fields 
-        // We send formData.profilePicture (which is the existing URL/null) 
-        // unless we have a new file, which the backend will handle by prioritizing req.file.
+        // Exclude the dynamic 'sessions' array, which is managed by a separate tool now.
         else if (key !== 'profilePictureFile' && key !== 'sessions') {
             payload.append(key, value);
         }
@@ -284,9 +282,9 @@ const CoachProfileEditor = () => {
       setUser(response.data.user); // Update global AuthContext user
       setInitialData(updatedMappedData);
       
-      // 5. Reset formData and ensure profilePictureFile is explicitly null
+      // 5. Reset formData and ensure profilePictureFile is explicitly null
       setFormData({ ...updatedMappedData, profilePictureFile: null }); 
-      
+      
       setUnsavedChanges(false);
 
     } catch (error) {
@@ -296,8 +294,8 @@ const CoachProfileEditor = () => {
   };
 
   const renderTabContent = () => {
-    // Determine the coachProfileId for session CRUD operations
-    const coachProfileId = initialData.id; 
+    // coachProfileId is no longer strictly needed here but kept for clarity/potential future use
+    // const coachProfileId = initialData.id; 
     
     switch (activeTab) {
       case 'personal':
@@ -331,15 +329,7 @@ const CoachProfileEditor = () => {
             onRemoveListItem={handleRemoveListItem}
           />
         );
-      case 'services':
-        // NEW INTEGRATION: Pass the sessions array and the fetchProfile handler to ServiceSection
-        return (
-            <ServiceSection 
-                coachProfileId={coachProfileId} 
-                sessions={formData.sessions} 
-                onSessionsUpdated={fetchProfile} // This triggers a refresh after CRUD success
-            />
-        );
+      // REMOVED: case 'services' which is now a dedicated top-level dashboard item
       default: return null;
     }
   };
@@ -347,7 +337,6 @@ const CoachProfileEditor = () => {
   if (isFetching) return (
     <div className="flex items-center justify-center py-12">
       <div className="animate-spin mr-3"><Save className="w-5 h-5 text-blue-600" /></div>
-      <p className="text-gray-600">Loading profile data...</p>
       <p className="text-gray-600">Loading profile data...</p>
     </div>
   );
