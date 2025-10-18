@@ -222,14 +222,21 @@ const ClientProfileEditor = () => {
               {previewUrl && <button onClick={removeProfilePicture} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>}
             </div>
             <div className="flex-1">
-              <div onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} className={cn("border-2 border-dashed rounded-lg p-6 text-center", dragActive ? "border-blue-400 bg-blue-50" : "border-gray-300")}>
-                <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-sm text-gray-600"><span className="font-medium">Click to upload</span> or drag and drop</p>
-                <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
-                <Button variant="outline" size="sm" onClick={() => fileInputRef.current && fileInputRef.current.click()} className="mt-4">Choose File</Button>
+              {/* 🔑 CRITICAL FIX 6: The small, single-line upload component */}
+              <div 
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()} // Make the whole div clickable
+                    onDrop={handleDrop} 
+                    onDragOver={handleDragOver} 
+                    onDragLeave={handleDragLeave} 
+                    className={cn("border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors hover:border-indigo-400", dragActive ? "border-blue-400 bg-blue-50" : "border-gray-300")}
+                >
+                <p className="text-sm text-gray-600 flex items-center justify-center space-x-2">
+                    <Upload className="h-5 w-5 text-gray-400" />
+                    <span><span className="font-medium">Click to upload</span> or drag and drop (PNG, JPG, GIF up to 5MB)</span>
+                </p>
                 <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])} className="hidden" />
+              </div>
             </div>
-          </div>
           </div>
         </div>
 
