@@ -1,21 +1,21 @@
 // Backend/src/controllers/coachProfileController.js
 
-import { v4 as uuidv4 } from 'uuid';
-import path from 'path'; 
-import fs from 'fs/promises'; // ✅ USING FS/PROMISES for async file ops
-import { fileURLToPath } from 'url';
-import User from '../models/user.js'; 
-import CoachProfile from '../models/CoachProfile.js'; 
-import ClientProfile from '../models/ClientProfile.js'; 
-import Testimonial from '../models/Testimonial.js'; 
-import Session from '../models/Session.js'; 
-// 🚨 REMOVED: Follow, Op (no longer needed here)
+const { v4: uuidv4 } = require('uuid');
+const path = require('path'); 
+const fs = require('fs/promises'); // Use fs/promises for async file ops
 
-// === Environment and Path Setup ===
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
-// ==================================
+// Convert ES Module imports to CommonJS requires
+const User = require('../models/user'); 
+const CoachProfile = require('../models/CoachProfile'); 
+const ClientProfile = require('../models/ClientProfile'); 
+const Testimonial = require('../models/Testimonial'); 
+const Session = require('../models/Session'); 
+
+// === Environment and Path Setup (Using standard Node.js variables) ===
+// Assuming your server is run from the root of the 'Backend' directory.
+// This constructs the path: <Backend Root>/src/uploads
+const UPLOADS_DIR = path.join(process.cwd(), 'src', 'uploads'); 
+// ====================================================================
 
 // ==============================
 // Helper: Safe JSON parse
@@ -31,28 +31,28 @@ const safeParse = (value) => {
 // Helper: Delete Old Profile Picture (Fixes previous delete issue)
 // ==============================
 const deleteOldProfilePicture = async (publicPath) => {
-    if (!publicPath) return;
+    if (!publicPath) return;
 
-    // Extract filename from public path (e.g., '/uploads/image.jpg' -> 'image.jpg')
-    const fileName = path.basename(publicPath);
-    const filePath = path.join(UPLOADS_DIR, fileName);
+    // Extract filename from public path (e.g., '/uploads/image.jpg' -> 'image.jpg')
+    const fileName = path.basename(publicPath);
+    const filePath = path.join(UPLOADS_DIR, fileName);
 
-    try {
-        await fs.unlink(filePath);
-        console.log(`Successfully deleted old file: ${filePath}`);
-    } catch (error) {
-        // Ignore "file not found" errors, but log others
-        if (error.code !== 'ENOENT') {
-            console.error('Error deleting old profile picture:', error);
-        }
-    }
+    try {
+        await fs.unlink(filePath);
+        console.log(`Successfully deleted old file: ${filePath}`);
+    } catch (error) {
+        // Ignore "file not found" errors, but log others
+        if (error.code !== 'ENOENT') {
+            console.error('Error deleting old profile picture:', error);
+        }
+    }
 };
 
 
 // ==============================
-// GET Coach Profile (logged-in)
+// GET Coach Profile (No 'export' keyword)
 // ==============================
-export const getCoachProfile = async (req, res) => { 
+const getCoachProfile = async (req, res) => { 
   try {
     const userId = req.user?.userId; 
     if (!userId) return res.status(401).json({ error: 'User ID missing from token' });
@@ -91,9 +91,9 @@ export const getCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// UPDATE Coach Profile 
+// UPDATE Coach Profile (No 'export' keyword)
 // ==============================
-export const updateCoachProfile = async (req, res) => { 
+const updateCoachProfile = async (req, res) => { 
     try {
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
@@ -110,20 +110,20 @@ export const updateCoachProfile = async (req, res) => {
             specialties, certifications, education 
         } = req.body; 
 
-        // Store the old picture path before updating
-        const oldProfilePicturePath = user.profilePicture; 
+        // Store the old picture path before updating
+        const oldProfilePicturePath = user.profilePicture; 
         
         const userData = { firstName, lastName, email, phone };
         
-        if (req.file) {
+        if (req.file) {
             // A new file was uploaded: update path and delete the old one.
             userData.profilePicture = `/uploads/${req.file.filename}`;
-            if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
+            if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
 
         } else if (req.body.profilePicture === 'null' || req.body.profilePicture === '') {
             // User explicitly removed the picture: update to null and delete the old file.
             userData.profilePicture = null;
-            if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
+            if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
 
         } else if (oldProfilePicturePath) {
             // The user did not upload a new file, and did not remove the old one: keep it.
@@ -176,23 +176,84 @@ export const updateCoachProfile = async (req, res) => {
 };
 
 // ==============================
-// ADD Item (certification/education/specialties)
+// ADD Item (certification/education/specialties) (No 'export' keyword)
 // ==============================
-export const addItem = async (req, res) => { 
-  // ... (original addItem logic remains here)
+const addItem = async (req, res) => { 
+    try {
+        const { type, item } = req.body; 
+        const allowedTypes = ['certifications', 'education', 'specialties'];
+        if (!allowedTypes.includes(type)) {
+            return res.status(400).json({ error: 'Invalid item type specified.' });
+        }
+        
+        const userId = req.user.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
+        
+        const coachProfile = await CoachProfile.findOne({ where: { userId } });
+        if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
+
+        const dataFromDb = safeParse(coachProfile[type]);
+        const currentItems = Array.isArray(dataFromDb) ? dataFromDb : [];
+        
+        currentItems.push(type === 'specialties' ? item : { ...item, id: uuidv4() }); 
+
+        // Data is stored as a JSON string in the database
+        await coachProfile.update({ [type]: JSON.stringify(currentItems) });
+        
+        const updatedProfile = await CoachProfile.findOne({ where: { userId } });
+        const currentItemsParsed = safeParse(updatedProfile[type]);
+
+        // Return the specific type field array, now guaranteed to be refreshed from DB
+        res.json({ [type]: currentItemsParsed });
+    } catch (error) {
+        console.error('Error adding item:', error);
+        res.status(500).json({ error: 'Failed to add item' });
+    }
 };
 
 // ==============================
-// REMOVE Item (certification/education/specialties)
+// REMOVE Item (certification/education/specialties) (No 'export' keyword)
 // ==============================
-export const removeItem = async (req, res) => { 
-  // ... (original removeItem logic remains here)
+const removeItem = async (req, res) => { 
+    try {
+        const { type, id } = req.body;
+        const allowedTypes = ['certifications', 'education', 'specialties'];
+        if (!allowedTypes.includes(type)) {
+            return res.status(400).json({ error: 'Invalid item type specified.' });
+        }
+
+        const userId = req.user.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized: User ID missing.' });
+
+        const coachProfile = await CoachProfile.findOne({ where: { userId } });
+        if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
+
+        const dataFromDb = safeParse(coachProfile[type]);
+        const listToFilter = Array.isArray(dataFromDb) ? dataFromDb : [];
+        
+        // Filtering logic: filter by string value for specialties, filter by object id for Certs/Edu
+        const currentItems = listToFilter.filter(item => 
+            type === 'specialties' ? item !== id : item.id !== id
+        );
+
+        // Data is stored as a JSON string in the database
+        await coachProfile.update({ [type]: JSON.stringify(currentItems) });
+        
+        const updatedProfile = await CoachProfile.findOne({ where: { userId } });
+        const currentItemsParsed = safeParse(updatedProfile[type]);
+
+        // Return the specific type field array, now guaranteed to be refreshed from DB
+        res.json({ [type]: currentItemsParsed });
+    } catch (error) {
+        console.error('Error removing item:', error);
+        res.status(500).json({ error: 'Failed to remove item' });
+    }
 };
 
 // ==============================
-// UPLOAD Profile Picture
+// UPLOAD Profile Picture (No 'export' keyword)
 // ==============================
-export const uploadProfilePicture = async (req, res) => { 
+const uploadProfilePicture = async (req, res) => { 
     const userId = req.user?.userId;
     if (!userId) {
         // Cleanup uploaded file if auth fails
@@ -211,10 +272,10 @@ export const uploadProfilePicture = async (req, res) => {
             await fs.unlink(path.join(UPLOADS_DIR, req.file.filename));
             return res.status(404).json({ message: 'User not found' });
         }
-        
-        // ⚠️ CRITICAL FIX: Delete the OLD file before saving the NEW path
-        const oldProfilePicturePath = user.profilePicture;
-        if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
+        
+        // ⚠️ Delete the OLD file before saving the NEW path
+        const oldProfilePicturePath = user.profilePicture;
+        if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
         
         const newFilename = req.file.filename;
         const publicPath = `/uploads/${newFilename}`;
@@ -240,40 +301,40 @@ export const uploadProfilePicture = async (req, res) => {
 };
 
 // ==============================
-// ✅ NEW: DELETE Profile Picture (for the delete button)
+// DELETE Profile Picture (for the delete button) (No 'export' keyword)
 // ==============================
-export const deleteProfilePicture = async (req, res) => {
-    const userId = req.user.userId;
+const deleteProfilePicture = async (req, res) => {
+    const userId = req.user.userId;
 
-    const user = await User.findByPk(userId);
-    if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
+    const user = await User.findByPk(userId);
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
 
-    const oldFileName = user.profilePicture;
-    
-    // 1. Delete the file from the disk (using the safe helper)
-    if (oldFileName) await deleteOldProfilePicture(oldFileName); 
+    const oldFileName = user.profilePicture;
+    
+    // 1. Delete the file from the disk (using the safe helper)
+    if (oldFileName) await deleteOldProfilePicture(oldFileName); 
 
-    // 2. Update the user record to clear the profilePicture field
-    user.profilePicture = null;
-    await user.save();
+    // 2. Update the user record to clear the profilePicture field
+    user.profilePicture = null;
+    await user.save();
 
-    res.status(200).json({ 
-        message: 'Profile picture successfully deleted.',
-        profilePicture: null 
-    });
+    res.status(200).json({ 
+        message: 'Profile picture successfully deleted.',
+        profilePicture: null 
+    });
 };
 
 
 // ==============================
-// Exports (Only profile management functions remain)
+// ✅ FINAL FIX: Single module.exports block to export all functions
 // ==============================
-export {
-    getCoachProfile,
-    updateCoachProfile,
-    addItem,
-    removeItem,
-    uploadProfilePicture,
-    deleteProfilePicture
+module.exports = {
+    getCoachProfile,
+    updateCoachProfile,
+    addItem,
+    removeItem,
+    uploadProfilePicture,
+    deleteProfilePicture
 };

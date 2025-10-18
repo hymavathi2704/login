@@ -5,7 +5,7 @@ const router = express.Router();
 
 const { authenticate } = require('../middleware/authMiddleware'); 
 
-// Import functions from the dedicated Explore/Discovery Controller
+// ✅ Import functions from the dedicated Explore/Discovery Controller
 const { 
     getAllCoachProfiles,
     getPublicCoachProfile,

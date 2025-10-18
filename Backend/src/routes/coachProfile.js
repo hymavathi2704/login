@@ -6,10 +6,10 @@ const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware'); 
 const upload = require('../middleware/upload'); 
 
-// Import profile management functions
+// Import profile management functions (Profile Update, Picture Upload/Delete, Item Management)
 const coachProfileController = require('../controllers/coachProfileController');
 
-// Import discovery/follow functions needed on the coach side (e.g., public view, follower list)
+// ✅ Import discovery/follow functions from the dedicated Explore Controller
 const { 
     getPublicCoachProfile,
     getFollowStatus,    
@@ -28,7 +28,7 @@ const {
 } = require('../controllers/sessionController');
 
 
-// Helper for CORS preflight handling (kept from your template)
+// Helper for CORS preflight handling
 const skipAuthForOptions = (req, res, next) => {
     if (req.method === 'OPTIONS') {
         return res.status(200).end(); 
@@ -42,7 +42,6 @@ const skipAuthForOptions = (req, res, next) => {
 // ==============================
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
 
-// PUT /profile - Update profile details and/or upload a new picture
 router.put(
     '/profile', 
     skipAuthForOptions, 
@@ -81,15 +80,15 @@ router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSe
 // Coach views their session bookings
 router.get('/my-bookings', authenticate, getCoachSessionBookings); 
 
-// Coach views clients who follow them (Sourced from exploreCoachesController)
+// Coach views clients who follow them
 router.get('/clients-who-follow', authenticate, getClientsWhoFollow); 
 
-// POST /public/:sessionId/book - Client books a session (protected route, often grouped here)
+// POST /public/:sessionId/book - Client books a session (protected route)
 router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); 
 
 
 // ==============================
-// Public/Follow Routes (Must be accessible via /api/coach base path)
+// Public/Follow Routes (Accessible via /api/coach base path)
 // ==============================
 
 // GET Public Coach Profile 
