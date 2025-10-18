@@ -61,8 +61,9 @@ router.post(
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
 
 // JSON Array management
-router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addItem);
-router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeItem);
+// ✅ FIX: Renamed controller functions to match the exports in coachProfileController.js
+router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
+router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
 
 
 // ==============================
