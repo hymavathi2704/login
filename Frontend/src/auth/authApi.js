@@ -90,13 +90,10 @@ export const logoutUser = () => {
 };
 
 export const getMyClientSessions = () => {
-  // This corresponds to the backend route /api/events/my-bookings which is now session-only for clients
   return axiosInstance.get("/api/bookings/client-sessions")
 };
 
-// FIX: Coach's Bookings (NEW Export - Fixes the error in BookingManagement.jsx)
 export const getMyCoachBookings = () => {
-    // This corresponds to the backend route /api/coach/my-bookings
     return axiosInstance.get("/api/coach/my-bookings"); 
 };
 
@@ -147,7 +144,6 @@ export const getCoachProfile = () => {
 // --- CLIENT PROFILES API (NEW) ---
 
 export const updateClientProfile = (profileData) => {
-  // Sends JSON data to the PUT /api/client/profile endpoint
   return axiosInstance.put('/api/client/profile', profileData);
 };
 
@@ -155,7 +151,6 @@ export const uploadClientProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file); 
 
-  // Use custom Axios instance for multipart/form-data upload
   return axios.create({
     baseURL: API_BASE_URL, 
     withCredentials: true,
@@ -166,23 +161,26 @@ export const uploadClientProfilePicture = (file) => {
   }).post('/api/client/profile/upload-picture', formData); 
 };
 
+// ✅ FIX: ADDED MISSING FUNCTION
+export const deleteClientProfilePicture = () => {
+    // Calls the DELETE /api/client/profile/picture endpoint
+    return axiosInstance.delete('/api/client/profile/picture');
+};
+
 
 // =========================================================
 // SESSION MANAGEMENT FUNCTIONS (Fixed to use axiosInstance)
 // =========================================================
 
 export const createSession = async (sessionData) => {
-    // FIX: Using axiosInstance and relying on the request interceptor for auth
     return axiosInstance.post(`/api/coach/sessions`, sessionData);
 };
 
 export const updateSession = async (sessionId, sessionData) => {
-    // FIX: Using axiosInstance
     return axiosInstance.put(`/api/coach/sessions/${sessionId}`, sessionData);
 };
 
 export const deleteSession = async (sessionId) => {
-    // FIX: Using axiosInstance
     return axiosInstance.delete(`/api/coach/sessions/${sessionId}`);
 };
 
