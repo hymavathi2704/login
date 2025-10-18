@@ -31,47 +31,51 @@ const getCookieOptions = (isProduction) => ({
 });
 
 // ==============================
-// Register
+// Register (Handles firstName and lastName directly)
 // ==============================
 async function register(req, res) {
-	try {
-		const { firstName, lastName, password } = req.body;
-		const email = req.body.email?.toLowerCase().trim();
+    try {
+        // 🔑 FIELDS MATCH FRONTEND: firstName, lastName, password
+        const { firstName, lastName, password } = req.body; 
+        const email = req.body.email?.toLowerCase().trim();
 
-		if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
-		if (!password || password.length < 8)
-			return res.status(400).json({ error: 'Password must be >= 8 chars' });
+        // Basic server-side validation for required fields
+        if (!firstName || !lastName) {
+             return res.status(400).json({ error: 'First name and last name are required.' });
+        }
+        if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
+        if (!password || password.length < 8)
+            return res.status(400).json({ error: 'Password must be >= 8 chars' });
 
-		const existing = await User.findOne({ where: { email } });
-		if (existing) return res.status(409).json({ error: 'Email already in use' });
+        const existing = await User.findOne({ where: { email } });
+        if (existing) return res.status(409).json({ error: 'Email already in use' });
 
-		const id = uuidv4();
-		const hash = await bcrypt.hash(password, SALT_ROUNDS);
-		const otp = generateOtp();
-		const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
+        const id = uuidv4();
+        const hash = await bcrypt.hash(password, SALT_ROUNDS);
+        const otp = generateOtp();
+        const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
-		await User.create({
-			id,
-			firstName,
-			lastName,
-			email,
-			password_hash: hash,
-			verification_token: otp,
-			verification_token_expires: otp_expires_at,
-			provider: 'email',
-			email_verified: false,
-			roles: [],
-		});
+        await User.create({
+            id,
+            firstName: firstName.trim(), // ✅ Uses the separate fields
+            lastName: lastName.trim(),   // ✅ Uses the separate fields
+            email,
+            password_hash: hash,
+            verification_token: otp,
+            verification_token_expires: otp_expires_at,
+            provider: 'email',
+            email_verified: false,
+            roles: [],
+        });
 
-		await sendVerificationEmail(email, otp).catch(console.error);
+        await sendVerificationEmail(email, otp).catch(console.error);
 
-		res.status(201).json({ message: 'Registered. Please check email to verify.' });
-	} catch (err) {
-		console.error('Register error:', err);
-		res.status(500).json({ error: 'Failed to register user' });
-	}
+        res.status(201).json({ message: 'Registered. Please check email to verify.' });
+    } catch (err) {
+        console.error('Register error:', err);
+        res.status(500).json({ error: 'Failed to register user' });
+    }
 }
-
 // ==============================
 // Login
 // ==============================
