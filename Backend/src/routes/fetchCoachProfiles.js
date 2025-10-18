@@ -1,26 +1,42 @@
 // Backend/src/routes/fetchCoachProfiles.js
+
 const express = require('express');
 const router = express.Router();
-// Assuming authenticate is the correct export from your auth middleware
-const { authenticate } = require('../middleware/authMiddleware'); // <-- Import middleware
 
-// Assuming your controller exports are fixed to include all necessary functions
+const { authenticate } = require('../middleware/authMiddleware'); 
+
+// Import functions from the dedicated Explore/Discovery Controller
 const { 
-    // REMOVED: getPublicCoachProfile, as it's now accessed via /api/coach/public/:id
-    getAllCoachProfiles,
-    getFollowedCoaches // <-- NEW FUNCTION FOR FOLLOWED TAB
-} = require('../controllers/coachProfileController'); 
+    getAllCoachProfiles,
+    getPublicCoachProfile,
+    getFollowedCoaches,
+    getFollowStatus,
+    followCoach,
+    unfollowCoach
+} = require('../controllers/exploreCoachesController'); 
 
-// 1. Route to get all coach profiles (Discovery/Search)
-// GET /api/profiles/coaches
+// ==============================
+// Public Discovery Routes (No Auth Required)
+// ==============================
+
+// GET /api/profiles/coaches - Get all coaches for discovery
 router.get('/coaches', getAllCoachProfiles);
 
-// 2. Route to get the client's followed coaches (Protected Route)
-// GET /api/profiles/followed
-router.get('/followed', authenticate, getFollowedCoaches); // <-- NEW ROUTE ADDED
+// GET /api/profiles/coach/:id - Get a single public coach profile
+router.get('/coach/:id', getPublicCoachProfile);
 
-// 🚨 REMOVED: The problematic /api/profiles/:id route. This prevents conflicts
-// with /api/profiles/coaches and /api/profiles/followed. The coach profile
-// is served under the /api/coach/public/:id route.
+
+// ==============================
+// Client Follow Routes (Protected by Auth)
+// ==============================
+
+// GET /api/profiles/followed - Get the client's list of followed coaches
+router.get('/followed', authenticate, getFollowedCoaches);
+
+// Follow/Unfollow specific coach
+router.get('/coach/:coachId/follow-status', authenticate, getFollowStatus);
+router.post('/coach/:coachId/follow', authenticate, followCoach);
+router.delete('/coach/:coachId/follow', authenticate, unfollowCoach);
+
 
 module.exports = router;

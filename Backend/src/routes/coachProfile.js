@@ -1,35 +1,36 @@
+// Backend/src/routes/coachProfile.js
+
 const express = require('express');
 const router = express.Router();
 
 const { authenticate } = require('../middleware/authMiddleware'); 
 const upload = require('../middleware/upload'); 
 
+// Import profile management functions
 const coachProfileController = require('../controllers/coachProfileController');
-const sessionController = require('../controllers/sessionController'); 
 
+// Import discovery/follow functions needed on the coach side (e.g., public view, follower list)
 const { 
-    getFollowStatus,    
-    followCoach,        
-    unfollowCoach,
-    // 🚨 FIX: Import getClientsWhoFollow to be defined
+    getPublicCoachProfile,
+    getFollowStatus,    
+    followCoach,        
+    unfollowCoach,
     getClientsWhoFollow 
-} = coachProfileController;
+} = require('../controllers/exploreCoachesController'); 
 
-// 🚨 FIX: Import all necessary functions from sessionController
+// Import session management functions
 const {
     createSession,
     updateSession,
     deleteSession,
     bookSession,
-    getCoachSessionBookings // <--- NEW CRITICAL IMPORT // <--- CRITICAL FIX: Ensure this is imported
-} = sessionController;
+    getCoachSessionBookings
+} = require('../controllers/sessionController');
 
 
-// 🚨 FIX: Middleware to skip the 'authenticate' middleware for OPTIONS requests
+// Helper for CORS preflight handling (kept from your template)
 const skipAuthForOptions = (req, res, next) => {
     if (req.method === 'OPTIONS') {
-        // Respond with 200/204 to allow the browser to proceed with the actual request
-        // Since global CORS is handled in server.js, a simple end() is often sufficient.
         return res.status(200).end(); 
     }
     next();
@@ -37,23 +38,20 @@ const skipAuthForOptions = (req, res, next) => {
 
 
 // ==============================
-// Logged-in coach profile routes
+// Logged-in Coach Profile Management Routes (Protected)
 // ==============================
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
 
-// ✅ FIX 1: ADDED 'upload.single' to the main PUT /profile route
+// PUT /profile - Update profile details and/or upload a new picture
 router.put(
     '/profile', 
     skipAuthForOptions, 
     authenticate, 
-    upload.single('profilePicture'), // <--- ADDED: Handle file upload for profile picture
+    upload.single('profilePicture'), 
     coachProfileController.updateCoachProfile
 );
 
-router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addItem);
-router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeItem);
-
-// ✅ FIX 2: Corrected middleware order for dedicated upload route (if used)
+// Dedicated Picture management
 router.post(
     '/profile/upload-picture', 
     skipAuthForOptions, 
@@ -61,50 +59,46 @@ router.post(
     upload.single('profilePicture'), 
     coachProfileController.uploadProfilePicture
 );
+router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
+
+// JSON Array management
+router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addItem);
+router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeItem);
 
 
 // ==============================
-// SESSION MANAGEMENT ROUTES (Protected by 'authenticate')
+// SESSION MANAGEMENT ROUTES (Protected)
 // ==============================
-
-// POST /api/coach/sessions - Create a new session
-router.post('/sessions', skipAuthForOptions, authenticate, createSession); // uses createSession
-
-// PUT /api/coach/sessions/:sessionId - Update an existing session
-router.put('/sessions/:sessionId', skipAuthForOptions, authenticate, updateSession); // uses updateSession
-
-// DELETE /api/coach/sessions/:sessionId - Delete a session
-router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSession); // uses deleteSession
+router.post('/sessions', skipAuthForOptions, authenticate, createSession); 
+router.put('/sessions/:sessionId', skipAuthForOptions, authenticate, updateSession); 
+router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSession); 
 
 
 // ==============================
-// SESSION BOOKING ROUTE (NEW)
+// BOOKING & FOLLOWER ROUTES (Internal/Protected)
 // ==============================
 
-// POST /api/coach/public/:sessionId/book - Client books a session (protected route)
-router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); // <--- NOW DEFINED
+// Coach views their session bookings
+router.get('/my-bookings', authenticate, getCoachSessionBookings); 
+
+// Coach views clients who follow them (Sourced from exploreCoachesController)
+router.get('/clients-who-follow', authenticate, getClientsWhoFollow); 
+
+// POST /public/:sessionId/book - Client books a session (protected route, often grouped here)
+router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); 
+
 
 // ==============================
-// COACH SESSION BOOKING RETRIEVAL (NEW)
+// Public/Follow Routes (Must be accessible via /api/coach base path)
 // ==============================
 
-// GET /api/coach/my-bookings - Coach views their session bookings
-router.get('/my-bookings', authenticate, getCoachSessionBookings); // <--- NEW ROUTE
+// GET Public Coach Profile 
+router.get('/public/:id', getPublicCoachProfile);
 
-// GET /api/coach/clients-who-follow - Get clients who have followed this coach (NEW)
-router.get('/clients-who-follow', authenticate, getClientsWhoFollow); // <--- NOW DEFINED
-
-// ==============================
-// Public coach profile (No authentication required)
-// ==============================
-router.get('/public/:id', coachProfileController.getPublicCoachProfile);
-
-// ==============================
-// NEW: Follow/Unfollow Routes (Requires client authentication)
-// The coachId is the :id parameter.
-// ==============================
+// Follow/Unfollow Routes 
 router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
+
 
 module.exports = router;
