@@ -164,6 +164,18 @@ const AccountSettings = () => {
                 </Button>
             </div>
         </form>
+        {/* Optional: Add a link to the public password reset flow for forgotten passwords */}
+                <div className="mt-6 pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500">
+                        Forgot your current password? If you cannot remember your current password, you must use the public password reset link:
+                        <a 
+                            href="/password-reset" 
+                            className="text-indigo-600 hover:text-indigo-800 font-medium ml-2"
+                        >
+                            Reset Password
+                        </a>
+                    </p>
+                </div>
         
       </section>
 
