@@ -14,7 +14,9 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
   const formatPrice = (price) => {
     const p = parseFloat(price);
     if (p === 0) return 'FREE';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p);
+    // START OF CHANGE: Updated currency to Indian Rupees (INR) and locale to 'en-IN'
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(p);
+    // END OF CHANGE
   };
 
   const formatDuration = (minutes) => {
@@ -25,20 +27,20 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
     return remaining > 0 ? `${hours}h ${remaining}m` : `${hours}h`;
   };
 
-  // 🚨 Must accept isBooked argument
+  // 🚨 Must accept isBooked argument
   const getButtonConfig = (sessionType, isBooked) => {
-    // 1. Logic for already booked session
-    if (isBooked) {
-        return { 
-            label: 'Purchased / Booked', // The required text change
-            icon: 'CheckCircle', 
-            variant: 'success', 
-            disabled: true, // Disable button
-            className: 'opacity-80 cursor-default' // Style for booked state
-        };
-    }
-    
-    // 2. Original logic for unbooked sessions
+    // 1. Logic for already booked session
+    if (isBooked) {
+        return { 
+            label: 'Purchased / Booked', // The required text change
+            icon: 'CheckCircle', 
+            variant: 'success', 
+            disabled: true, // Disable button
+            className: 'opacity-80 cursor-default' // Style for booked state
+        };
+    }
+    
+    // 2. Original logic for unbooked sessions
     if (!sessionType) return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default', disabled: false, className: '' };
     const type = sessionType.toLowerCase();
     if (type.includes('subscription') || type.includes('package')) {
@@ -57,7 +59,7 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
       await bookSession(sessionId);
       toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
       
-      // 🚨 CRITICAL: Call the callback to force the parent component to re-fetch coach data
+      // 🚨 CRITICAL: Call the callback to force the parent component to re-fetch coach data
       if (onSessionBooked) {
         onSessionBooked(); 
       }
@@ -82,15 +84,15 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
       <div className="space-y-4">
         {availableSessions.length > 0 ? (
           availableSessions.map((session) => {
-            // 🚨 CRITICAL: Read the isBooked flag passed from the backend
-            const isBooked = session?.isBooked;
+            // 🚨 CRITICAL: Read the isBooked flag passed from the backend
+            const isBooked = session?.isBooked;
 
-            // 🚨 CRITICAL: Pass isBooked to getButtonConfig
+            // 🚨 CRITICAL: Pass isBooked to getButtonConfig
             const { label, icon, variant, disabled: configDisabled, className: configClassName } = getButtonConfig(session?.type, isBooked);
             
-            const isLoading = bookingSessionId === session?.id;
-            // Combine loading state with configured disabled state
-            const isDisabled = isLoading || configDisabled; 
+            const isLoading = bookingSessionId === session?.id;
+            // Combine loading state with configured disabled state
+            const isDisabled = isLoading || configDisabled; 
 
             return (
               <div
@@ -130,7 +132,7 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
                     iconPosition="right"
                     loading={isLoading} 
                     disabled={isDisabled} 
-                    className={configClassName}
+                    className={configClassName}
                   >
                     {isLoading ? 'Processing...' : label}
                   </Button>

@@ -73,7 +73,7 @@ const EditSessionForm = memo(({ session, todayDate, isSubmitting, onSave, onCanc
                 </div>
 
                 <Input 
-                    label="Price (INR, multiple of 10)" 
+                    label="Price (INR,₹ )" 
                     type="number"
                     name="price"
                     value={formData.price || ''}
@@ -376,8 +376,7 @@ const SessionManagement = () => {
                         <p className="text-sm text-gray-600">{session.description}</p>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
                             <span className="flex items-center space-x-1"><Clock className="w-3 h-3" /><span>{session.duration} min</span></span>
-                            <span className="flex items-center space-x-1 text-green-600"><DollarSign className="w-3 h-3" /><span>{formattedPrice}</span></span>
-                            <span className="flex items-center space-x-1"><Users className="w-3 h-3" /><span>{formatLabel}</span></span>
+<span className="flex items-center space-x-1 text-green-600"><span className="mr-1">₹</span><span>{parseInt(session.price, 10)}</span></span>                            <span className="flex items-center space-x-1"><Users className="w-3 h-3" /><span>{formatLabel}</span></span>
                             {session.defaultDate && formattedDateAndTime && <span className="flex items-center space-x-1"><Calendar className="w-3 h-3" /><span>{formattedDateAndTime}</span></span>}
                             {session.meetingLink && <span className="flex items-center space-x-1"><Globe className="w-3 h-3" /><span>Meeting Link Set</span></span>}
                         </div>
