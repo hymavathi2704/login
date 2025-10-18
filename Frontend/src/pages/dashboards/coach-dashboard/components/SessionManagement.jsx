@@ -1,17 +1,38 @@
-// Frontend/src/pages/dashboards/coach-dashboard/components/SessionManagement.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Clock, Users, DollarSign, Calendar, Globe } from 'lucide-react';
+import { Plus, X, Clock, Users, DollarSign, Calendar, Globe, Edit3, Save } from 'lucide-react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
-// Import necessary API functions for CRUD and fetching
-import { createSession, deleteSession, getCoachProfile } from '@/auth/authApi'; 
+import { cn } from '@/utils/cn'; // Assuming you have a utility for combining class names
+// Import necessary API functions for CRUD and fetching, assuming you have an updateSession endpoint
+import { createSession, deleteSession, getCoachProfile, updateSession } from '@/auth/authApi'; 
 import { toast } from 'sonner';
+
+// Utility function to get today's date in YYYY-MM-DD format for the min attribute
+const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const sessionFormats = [
+    { value: 'individual', label: '1-on-1 Individual' },
+    { value: 'group', label: 'Group Sessions' },
+    { value: 'workshop', label: 'Workshops' },
+    { value: 'online', label: 'Online Only' },
+    { value: 'in-person', label: 'In-Person' }
+];
 
 const SessionManagement = () => {
     const [sessions, setSessions] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingSessionId, setEditingSessionId] = useState(null);
+    const [editFormData, setEditFormData] = useState({}); // Stores data for the session currently being edited
+    
+    // Calculate today's date
+    const todayDate = getTodayDate();
     
     // State to manage the input form for new sessions
     const [newSessionData, setNewSessionData] = useState({
@@ -22,22 +43,13 @@ const SessionManagement = () => {
         type: 'individual', 
         defaultDate: '', 
         defaultTime: '', 
-        meetingLink: '', // Field to update Meeting Link
+        meetingLink: '',
     });
-
-    const sessionFormats = [
-        { value: 'individual', label: '1-on-1 Individual' },
-        { value: 'group', label: 'Group Sessions' },
-        { value: 'workshop', label: 'Workshops' },
-        { value: 'online', label: 'Online Only' },
-        { value: 'in-person', label: 'In-Person' }
-    ];
 
     // Function to fetch the coach's entire session data
     const fetchSessions = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Fetches the entire profile to extract the associated sessions
             const response = await getCoachProfile();
             const fetchedSessions = response.data.user?.CoachProfile?.sessions || [];
             setSessions(fetchedSessions);
@@ -53,23 +65,47 @@ const SessionManagement = () => {
         fetchSessions(); 
     }, [fetchSessions]);
 
-    // --- Handlers ---
-    const handleAddSession = async () => {
-        if (!newSessionData.title.trim() || !newSessionData.duration || !newSessionData.price) {
-            toast.error('Please fill in Session Name, Duration, and Price.');
-            return; 
+    // --- Validation and Helper Functions ---
+    const validateSessionData = (data) => {
+        if (!data.title?.trim() || !data.duration || !data.price) {
+            toast.error('Session Name, Duration, and Price are required.');
+            return false; 
         }
+
+        const priceValue = parseFloat(data.price);
+        const durationValue = parseInt(data.duration, 10);
+        
+        if (!Number.isInteger(priceValue) || priceValue <= 0 || priceValue % 10 !== 0) {
+            toast.error('Price must be a whole number, positive, and a multiple of ₹10 (e.g., ₹100, ₹110, ₹150).');
+            return false;
+        }
+
+        if (!Number.isInteger(durationValue) || durationValue <= 0 || durationValue % 30 !== 0) {
+            toast.error('Duration must be a positive whole number, and a multiple of 30 minutes (e.g., 30, 60, 90).');
+            return false;
+        }
+
+        if (data.defaultDate && data.defaultDate < todayDate) {
+            toast.error('Session date cannot be in the past.');
+            return false;
+        }
+        return true;
+    };
+
+
+    // --- CRUD Handlers ---
+
+    const handleAddSession = async () => {
+        if (!validateSessionData(newSessionData)) return;
 
         setIsSubmitting(true);
         try {
-            // Calls the dedicated API endpoint for creating a session
             await createSession({
                 ...newSessionData,
                 duration: parseInt(newSessionData.duration, 10), 
                 price: parseFloat(newSessionData.price),
             });
 
-            // Clear form and trigger a re-fetch
             setNewSessionData({ 
                 title: '', duration: '', price: '', description: '', 
                 type: 'individual', defaultDate: '', defaultTime: '', meetingLink: '' 
@@ -99,9 +135,229 @@ const SessionManagement = () => {
         }
     };
 
+    const handleEditStart = (session) => {
+        setEditingSessionId(session.id);
+        // Map session data to form state, ensuring price and duration are strings for input fields
+        setEditFormData({
+            ...session,
+            price: session.price.toString(),
+            duration: session.duration.toString(),
+            // Ensure defaultDate is set to match the input format (YYYY-MM-DD)
+            defaultDate: session.defaultDate ? new Date(session.defaultDate).toISOString().split('T')[0] : '', 
+        });
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleEditSave = async () => {
+        if (!validateSessionData(editFormData)) return;
+
+        setIsSubmitting(true);
+        try {
+            await updateSession(editingSessionId, {
+                ...editFormData,
+                duration: parseInt(editFormData.duration, 10), 
+                price: parseFloat(editFormData.price),
+            });
+
+            setEditingSessionId(null); // Exit editing mode
+            await fetchSessions();
+            toast.success('Session updated successfully.');
+        } catch (error) {
+            console.error("Failed to update session:", error);
+            toast.error(error.response?.data?.error || 'Failed to update session.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // --- Render Content ---
+
     if (isLoading) {
         return <p className="text-center py-8">Loading session data...</p>;
     }
+
+    // Component to render a single session card or the edit form
+    const SessionCard = ({ session }) => {
+        const isEditing = editingSessionId === session.id;
+
+        const formattedPrice = `₹${parseInt(session.price, 10)}`;
+        const formatLabel = sessionFormats.find(f => f.value === session.type)?.label;
+        
+        let formattedDateAndTime = '';
+        if (session.defaultDate) {
+            try {
+                 const date = new Date(session.defaultDate);
+                 // Only format if date is valid
+                 if (!isNaN(date)) {
+                    formattedDateAndTime = `${date.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })} @ ${session.defaultTime}`;
+                 }
+            } catch {
+                formattedDateAndTime = session.defaultDate; // Fallback to raw string
+            }
+        }
+        
+        if (isEditing) {
+            // Render Edit Form
+            return (
+                <div className="p-4 border border-blue-400 rounded-lg bg-blue-50/50 space-y-4 shadow-md">
+                    <h4 className="font-medium text-lg">Editing: {session.title}</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="md:col-span-2">
+                            <Input 
+                                label="Session Name"
+                                name="title"
+                                value={editFormData.title || ''}
+                                onChange={handleEditChange}
+                                required
+                            />
+                        </div>
+
+                        <Input 
+                            label="Price (INR, multiple of 10)" 
+                            type="number"
+                            name="price"
+                            value={editFormData.price || ''}
+                            onChange={e => {
+                                const val = e.target.value;
+                                if (val === '' || /^\d+$/.test(val)) {
+                                    setEditFormData(p => ({ ...p, price: val }))
+                                }
+                            }}
+                            min="10" 
+                            step="10"
+                            icon="₹"
+                            required
+                        />
+
+                        <Input
+                            label="Duration (minutes)"
+                            type="number"
+                            name="duration"
+                            value={editFormData.duration || ''}
+                            onChange={handleEditChange}
+                            min="30"
+                            step="30"
+                            required
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <Input
+                            label="Default Date (Optional)"
+                            type="date"
+                            name="defaultDate"
+                            value={editFormData.defaultDate || ''}
+                            onChange={handleEditChange}
+                            min={todayDate}
+                        />
+
+                        <Input
+                            label="Default Time (Optional)"
+                            type="time"
+                            name="defaultTime"
+                            value={editFormData.defaultTime || ''}
+                            onChange={handleEditChange}
+                            step="1800"
+                        />
+
+                        <div className="md:col-span-1">
+                            <label className="block text-sm font-medium mb-2">Session Format</label>
+                            <select
+                                name="type"
+                                value={editFormData.type || 'individual'}
+                                onChange={handleEditChange}
+                                className="w-full rounded-md border py-2 px-3 text-sm h-[42px]"
+                            >
+                                {sessionFormats.map(f => (
+                                    <option key={f.value} value={f.value}>{f.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <Input 
+                        label="Meeting Link (e.g., Zoom/Meet URL)"
+                        name="meetingLink"
+                        value={editFormData.meetingLink || ''}
+                        onChange={handleEditChange}
+                        placeholder="https://zoom.us/j/..."
+                    />
+
+                    <textarea
+                        name="description"
+                        value={editFormData.description || ''}
+                        onChange={handleEditChange}
+                        rows={2}
+                        className="w-full rounded-md border px-3 py-2 text-sm"
+                        placeholder="Brief description of this session type..."
+                    />
+                    
+                    <div className="flex justify-end space-x-2">
+                        <Button 
+                            onClick={() => setEditingSessionId(null)} 
+                            variant="secondary" 
+                            size="sm"
+                            disabled={isSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            onClick={handleEditSave}
+                            size="sm"
+                            disabled={isSubmitting}
+                        >
+                            <Save className="w-4 h-4 mr-2" /> {isSubmitting ? 'Updating...' : 'Save Changes'}
+                        </Button>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render Read-only Card
+        return (
+            <div className="flex items-start justify-between p-4 border rounded-lg bg-white">
+                <div className="flex items-start space-x-3 flex-1">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                        <Users className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                        <h4 className="font-medium">{session.title}</h4>
+                        <p className="text-sm text-gray-600">{session.description}</p>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
+                            <span className="flex items-center space-x-1"><Clock className="w-3 h-3" /><span>{session.duration} min</span></span>
+                            <span className="flex items-center space-x-1 text-green-600"><DollarSign className="w-3 h-3" /><span>{formattedPrice}</span></span>
+                            <span className="flex items-center space-x-1"><Users className="w-3 h-3" /><span>{formatLabel}</span></span>
+                            {session.defaultDate && formattedDateAndTime && <span className="flex items-center space-x-1"><Calendar className="w-3 h-3" /><span>{formattedDateAndTime}</span></span>}
+                            {session.meetingLink && <span className="flex items-center space-x-1"><Globe className="w-3 h-3" /><span>Meeting Link Set</span></span>}
+                        </div>
+                    </div>
+                </div>
+                <div className="flex space-x-2">
+                    {/* ADDED: Edit Button */}
+                    <button 
+                        onClick={() => handleEditStart(session)} 
+                        className="text-gray-500 hover:text-blue-500 p-1"
+                        title="Edit Session"
+                    >
+                        <Edit3 className="w-4 h-4" />
+                    </button>
+                    {/* Existing Delete Button */}
+                    <button 
+                        onClick={() => handleRemoveSession(session.id)} 
+                        className="text-gray-400 hover:text-red-500 p-1"
+                        title="Delete Session"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
 
     return (
         <div className="space-y-8">
@@ -117,32 +373,7 @@ const SessionManagement = () => {
                 
                 <div className="space-y-3">
                     {sessions && sessions.length > 0 ? sessions.map(session => (
-                        <div key={session.id} className="flex items-start justify-between p-4 border rounded-lg">
-                            <div className="flex items-start space-x-3">
-                                <div className="p-2 bg-blue-100 rounded-lg">
-                                    <Users className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-medium">{session.title}</h4>
-                                    <p className="text-sm text-gray-600">{session.description}</p>
-                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs text-gray-500">
-                                        <span className="flex items-center space-x-1"><Clock className="w-3 h-3" /><span>{session.duration} min</span></span>
-                                        <span className="flex items-center space-x-1 text-green-600"><DollarSign className="w-3 h-3" /><span>${parseFloat(session.price)?.toFixed(2)}</span></span>
-                                        <span className="flex items-center space-x-1"><Users className="w-3 h-3" /><span>{sessionFormats.find(f => f.value === session.type)?.label}</span></span>
-                                        
-                                        {session.defaultDate && <span className="flex items-center space-x-1"><Calendar className="w-3 h-3" /><span>{session.defaultDate} @ {session.defaultTime}</span></span>}
-                                        {session.meetingLink && <span className="flex items-center space-x-1"><Globe className="w-3 h-3" /><span>Meeting Link Set</span></span>}
-
-                                    </div>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => handleRemoveSession(session.id)} 
-                                className="text-gray-400 hover:text-red-500 p-1"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
+                        <SessionCard key={session.id} session={session} />
                     )) : (
                         <p className="text-center text-gray-500 py-4 border border-dashed rounded-lg">
                             No sessions defined yet. Use the form below to create your first service offering.
@@ -150,8 +381,8 @@ const SessionManagement = () => {
                     )}
                 </div>
 
-                {/* Add Session Form */}
-                <div className="border border-dashed rounded-lg p-4 space-y-4">
+                {/* Add New Session Form */}
+                <div className={cn("border border-dashed rounded-lg p-4 space-y-4", { 'opacity-50 pointer-events-none': editingSessionId })}>
                     <h4 className="font-medium">Add New Session Type</h4>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="md:col-span-2">
@@ -160,21 +391,26 @@ const SessionManagement = () => {
                                 name="title"
                                 value={newSessionData.title}
                                 onChange={e => setNewSessionData(p => ({ ...p, title: e.target.value }))}
-                                placeholder="e.g., Discovery Call"
+                                placeholder="e.g., Strategy Call"
                                 required
                             />
                         </div>
 
                         <Input 
-                            label="Price" 
+                            label="Price (INR, multiple of 10)" 
                             type="number"
                             name="price"
                             value={newSessionData.price}
-                            onChange={e => setNewSessionData(p => ({ ...p, price: e.target.value }))}
-                            placeholder="100.00"
-                            min="0"
-                            step="0.01"
-                            icon="$"
+                            onChange={e => {
+                                const val = e.target.value;
+                                if (val === '' || /^\d+$/.test(val)) {
+                                    setNewSessionData(p => ({ ...p, price: val }))
+                                }
+                            }}
+                            placeholder="e.g., 500"
+                            min="10" 
+                            step="10"
+                            icon="₹"
                             required
                         />
 
@@ -185,7 +421,8 @@ const SessionManagement = () => {
                             value={newSessionData.duration}
                             onChange={e => setNewSessionData(p => ({ ...p, duration: e.target.value }))}
                             placeholder="60"
-                            min="1"
+                            min="30"
+                            step="30"
                             required
                         />
                     </div>
@@ -197,6 +434,7 @@ const SessionManagement = () => {
                             name="defaultDate"
                             value={newSessionData.defaultDate}
                             onChange={e => setNewSessionData(p => ({ ...p, defaultDate: e.target.value }))}
+                            min={todayDate}
                         />
 
                         <Input
@@ -205,6 +443,7 @@ const SessionManagement = () => {
                             name="defaultTime"
                             value={newSessionData.defaultTime}
                             onChange={e => setNewSessionData(p => ({ ...p, defaultTime: e.target.value }))}
+                            step="1800"
                         />
                         
                         <div className="md:col-span-1">
