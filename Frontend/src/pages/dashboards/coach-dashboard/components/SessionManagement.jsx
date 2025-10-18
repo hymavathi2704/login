@@ -445,7 +445,7 @@ const SessionManagement = () => {
                         </div>
 
                         <Input 
-                            label="Price (INR, multiple of 10)" 
+                            label="Price (INR, ₹ )" 
                             type="number"
                             name="price"
                             value={newSessionData.price}

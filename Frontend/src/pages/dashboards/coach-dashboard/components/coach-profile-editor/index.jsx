@@ -185,42 +185,43 @@ const CoachProfileEditor = () => {
   const handleAddListItem = useCallback(async (type, item) => {
     setIsLoading(true);
     try {
-      const response = await addProfileItem({ type, item });
-      const updatedList = response.data[type]; 
+      // Call API (which successfully updates the backend)
+      await addProfileItem({ type, item });
       
-      const validatedList = ensureUniqueIds(updatedList);
-      
-      handleUpdateFormData({ [type]: validatedList });
-      setInitialData(prev => ({ ...prev, [type]: validatedList }));
-      setUnsavedChanges(true);
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`);
+      
+      // ✅ FIX: Instead of manually manipulating the state (which caused the crash),
+      // fetch the complete, fresh profile from the backend.
+      await fetchProfile(); 
+      
+      setUnsavedChanges(false);
     } catch (error) {
       console.error('Add item failed:', error);
       toast.error(`Failed to add item to ${type}.`);
     } finally {
       setIsLoading(false);
     }
-  }, [handleUpdateFormData]);
+  }, [fetchProfile]); // Added fetchProfile to dependencies
 
   const handleRemoveListItem = useCallback(async (type, id) => {
     setIsLoading(true);
     try {
-      const response = await removeProfileItem({ type, id });
-      const updatedList = response.data[type];
+      // Call API (which successfully updates the backend)
+      await removeProfileItem({ type, id });
       
-      const validatedList = ensureUniqueIds(updatedList);
-      
-      handleUpdateFormData({ [type]: validatedList });
-      setInitialData(prev => ({ ...prev, [type]: validatedList }));
-      setUnsavedChanges(true);
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} removed successfully!`);
+      
+      // ✅ FIX: Re-fetch the profile to guarantee state consistency after deletion.
+      await fetchProfile(); 
+      
+      setUnsavedChanges(false);
     } catch (error) {
       console.error('Remove item failed:', error);
       toast.error(`Failed to remove item from ${type}.`);
     } finally {
       setIsLoading(false);
     }
-  }, [handleUpdateFormData]);
+  }, [fetchProfile]); // Added fetchProfile to dependencies
   // --- END NEW API HANDLERS FOR LISTS ---
 
   const validateForm = () => {
@@ -311,7 +312,7 @@ const CoachProfileEditor = () => {
                   updateData={handleUpdateFormData} 
                   setUnsavedChanges={setUnsavedChanges} 
               />
-                {/* 🔴 REMOVED: DemographicsFormSection is now rendered inside PersonalInfoSection */}
+                {/* 🔴 REMOVED: DemographicsFormSection is now rendered inside PersonalInfoSection */}
             </div>
         );
       case 'contact':
@@ -347,7 +348,7 @@ const CoachProfileEditor = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Edit Your Profile</h1>
         <p className="text-gray-600 mt-2">Keep your profile updated to attract the right clients.</p>
-      </div>
+        </div>
 
       <div className="border-b border-gray-200 mb-8">
         <nav className="flex space-x-4 -mb-px" aria-label="Tabs">
