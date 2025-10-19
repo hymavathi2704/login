@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; // Added useEffect
 import {
   LayoutDashboard,
   Users,
@@ -10,8 +10,8 @@ import {
   User,
   DollarSign, // Imported for the new session management tab
 } from "lucide-react";
-// ✅ FIX: Import useLocation
-import { useLocation } from "react-router-dom";
+// ✅ FIX: Import useLocation and useNavigate
+import { useLocation, useNavigate } from "react-router-dom"; 
 
 import DashboardLayout from "../shared/DashboardLayout";
 import CoachOverview from "./components/CoachOverview";
@@ -25,14 +25,38 @@ import CoachProfileEditor from "./components/coach-profile-editor";
 import SessionManagement from "./components/SessionManagement"; // ADDED: Import the new component
 
 const CoachDashboard = () => {
-    // ✅ FIX: Logic to determine active tab from URL path
+    // ✅ FIX: Use location to read the current URL path
     const location = useLocation();
-    const determineInitialTab = (path) => {
-        if (path.includes('/profile')) return 'profile';
-        if (path.includes('/settings')) return 'settings';
-        return 'overview';
+    const navigate = useNavigate();
+    const currentPath = location.pathname;
+    const coachBasePath = "/dashboard/coach";
+
+    // Helper to extract the active tab ID from the URL path
+    const getActiveTabFromUrl = (path) => {
+        const parts = path.split('/');
+        const lastPart = parts[parts.length - 1];
+        const itemIds = navigationItems.map(item => item.id);
+        return itemIds.includes(lastPart) ? lastPart : 'overview';
     };
-    const [activeTab, setActiveTab] = useState(determineInitialTab(location.pathname));
+
+    // ✅ FIX: activeTab is now derived from the URL and updated via URL change
+    const [activeTab, setActiveTab] = useState(getActiveTabFromUrl(currentPath));
+    
+    // Update activeTab whenever the URL changes
+    useEffect(() => {
+        setActiveTab(getActiveTabFromUrl(currentPath));
+    }, [currentPath]);
+
+    // ✅ FIX: New handler to change tab by updating the URL
+    const handleTabChange = (newTabId) => {
+        // If they click the 'overview' tab, navigate to the base path
+        if (newTabId === 'overview') {
+            navigate(coachBasePath);
+        } else {
+            navigate(`${coachBasePath}/${newTabId}`);
+        }
+    };
+
 
   const navigationItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -75,7 +99,7 @@ const CoachDashboard = () => {
     <DashboardLayout
       navigationItems={navigationItems}
       activeTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabChange={handleTabChange} // ✅ Use the new handler
       userName="Coach Emily"
       userType="coach"
     >

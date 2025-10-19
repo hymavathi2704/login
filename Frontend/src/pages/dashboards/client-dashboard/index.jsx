@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react"; 
 import {
   LayoutDashboard,
   User,
@@ -10,19 +10,12 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-// ✅ FIX: Import useLocation
-import { useLocation } from "react-router-dom";
+// ✅ FIX: Import useLocation and useNavigate
+import { useLocation, useNavigate } from "react-router-dom";
 
 import DashboardLayout from "../shared/DashboardLayout";
 import ClientOverview from "./components/ClientOverview";
 import UpcomingSessions from "./components/UpcomingSessions";
-// The original components (ProgressTracker, MyResources, CoachCommunication) 
-// are now redundant as they are replaced by ComingSoon. We keep them commented 
-// out to prevent import errors but show intent.
-
-// import ProgressTracker from "./components/ProgressTracker";
-// import MyResources from "./components/MyResources";
-// import CoachCommunication from "./components/CoachCommunication";
 
 import AccountSettings from "../shared/AccountSettings";
 import ExploreCoaches from "./components/ExploreCoaches";
@@ -44,15 +37,39 @@ const ComingSoon = ({ sectionName }) => (
 
 
 const ClientDashboard = () => {
-  // ✅ FIX: Logic to determine active tab from URL path
+    // ✅ FIX: Use location to read the current URL path
     const location = useLocation();
-    const determineInitialTab = (path) => {
-        if (path.includes('/profile')) return 'profile';
-        if (path.includes('/settings')) return 'settings';
-        return 'overview';
-    };
-    const [activeTab, setActiveTab] = useState(determineInitialTab(location.pathname));
+    const navigate = useNavigate();
+    const currentPath = location.pathname;
+    const clientBasePath = "/dashboard/client";
 
+    // Helper to extract the active tab ID from the URL path (e.g., '/dashboard/client/profile' -> 'profile')
+    const getActiveTabFromUrl = (path) => {
+        const parts = path.split('/');
+        const lastPart = parts[parts.length - 1];
+        // Ensure the tab exists in the navigation items, defaulting to 'overview'
+        const itemIds = navigationItems.map(item => item.id);
+        return itemIds.includes(lastPart) ? lastPart : 'overview';
+    };
+
+    // ✅ FIX: activeTab is now derived from the URL and updated via URL change
+    const [activeTab, setActiveTab] = useState(getActiveTabFromUrl(currentPath));
+
+    // Update activeTab whenever the URL changes
+    useEffect(() => {
+        setActiveTab(getActiveTabFromUrl(currentPath));
+    }, [currentPath]);
+
+    // ✅ FIX: New handler to change tab by updating the URL
+    const handleTabChange = (newTabId) => {
+        // If they click the 'overview' tab, navigate to the base path
+        if (newTabId === 'overview') {
+            navigate(clientBasePath);
+        } else {
+            navigate(`${clientBasePath}/${newTabId}`);
+        }
+    };
+    
   const navigationItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "profile", label: "My Profile", icon: User },
@@ -61,8 +78,6 @@ const ClientDashboard = () => {
     { id: "progress", label: "Progress", icon: Target },
     { id: "resources", label: "Resources", icon: BookOpen },
     { id: "communication", label: "Messages", icon: MessageSquare },
-    // 🚨 REMOVED: The navigation item for 'Book a Session'
-    // { id: "book-session", label: "Book a Session", icon: Heart },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
@@ -77,14 +92,11 @@ const ClientDashboard = () => {
       case "sessions":
         return <UpcomingSessions />; 
       case "progress":
-        return <ComingSoon sectionName="Progress Tracker" />; // <-- MODIFIED
+        return <ComingSoon sectionName="Progress Tracker" />; 
       case "resources":
-        return <ComingSoon sectionName="My Resources" />; // <-- MODIFIED
+        return <ComingSoon sectionName="My Resources" />; 
       case "communication":
-        return <ComingSoon sectionName="Messages" />; // <-- MODIFIED
-      // 🚨 REMOVED: The content rendering case for 'book-session'
-      // case "book-session":
-      //   return <BookNewSession />; 
+        return <ComingSoon sectionName="Messages" />; 
       case "settings":
         return <AccountSettings />;
       default:
@@ -96,7 +108,7 @@ const ClientDashboard = () => {
     <DashboardLayout
       navigationItems={navigationItems}
       activeTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabChange={handleTabChange} // ✅ Use the new handler
       userName="Client Alex"
       userType="client"
     >
