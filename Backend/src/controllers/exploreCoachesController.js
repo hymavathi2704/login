@@ -195,7 +195,7 @@ export const getAllCoachProfiles = async (req, res) => {
         
         // Fetch Testimonials for aggregation
         const testimonials = await Testimonial.findAll({
-            where: { coachId: plainCoach.id },
+            where: { coachProfileId: profile.id }, // ✅ FIX: Use coachProfileId (links to CoachProfile)
             attributes: ['rating'],
             raw: true,
         });
@@ -203,7 +203,7 @@ export const getAllCoachProfiles = async (req, res) => {
         
         // Fetch Sessions for pricing calculation
         const sessions = await Session.findAll({
-            where: { coachId: plainCoach.id },
+            where: { coachProfileId: profile.id }, // ✅ FIX: Assuming Session links to CoachProfile
             attributes: ['price'],
             raw: true,
         });
@@ -381,7 +381,7 @@ export const getFollowedCoaches = async (req, res) => {
 
             // Fetch Testimonials for aggregation
             const testimonials = await Testimonial.findAll({
-                where: { coachId: plainCoach.id },
+                where: { coachProfileId: profile.id }, // ✅ FIX: Use coachProfileId (links to CoachProfile)
                 attributes: ['rating'],
                 raw: true,
             });
@@ -389,7 +389,7 @@ export const getFollowedCoaches = async (req, res) => {
             
             // Fetch Sessions for pricing calculation
             const sessions = await Session.findAll({
-                where: { coachId: plainCoach.id },
+                where: { coachProfileId: profile.id }, // ✅ FIX: Assuming Session links to CoachProfile
                 attributes: ['price'],
                 raw: true,
             });
