@@ -1,4 +1,4 @@
-// Backend/src/routes/coachProfile.js
+// Backend/src/routes/fetchCoachProfiles.js
 
 const express = require('express');
 const router = express.Router();
@@ -9,27 +9,15 @@ const upload = require('../middleware/upload');
 // Import profile management functions (Profile Update, Picture Upload/Delete, Item Management)
 const coachProfileController = require('../controllers/coachProfileController');
 
-// ✅ Import discovery/follow functions from the dedicated Explore Controller
-// ✅ Import discovery/follow functions from the dedicated Explore Controller
+// ✅ Import discovery/follow functions from the dedicated Explore Controller (Updated)
 const { 
     getPublicCoachProfile,
     getFollowStatus, 
     followCoach, 
     unfollowCoach,
-    getAllCoachProfiles, // <-- ADDED THIS
-    getFollowedCoaches,  // <-- ADDED THIS
-} = require('../controllers/exploreCoachesController');
-
-// ==============================
-// Coach Discovery Routes (Missing from original, adding them now)
-// These routes are what the frontend ExploreCoaches.jsx is trying to hit.
-// ==============================
-
-// 1. GET /api/profiles/coaches (All Coaches) - Public or optionally authenticated
-router.get('/coaches', getAllCoachProfiles); 
-
-// 2. GET /api/profiles/followed (Followed Coaches) - Must be authenticated
-router.get('/followed', authenticate, getFollowedCoaches);
+    getAllCoachProfiles,  // Re-added for ExploreCoaches list
+    getFollowedCoaches,   // Re-added for Followed list
+} = require('../controllers/exploreCoachesController'); 
 
 // Import session management functions
 const {
@@ -74,7 +62,6 @@ router.post(
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
 
 // JSON Array management
-// ✅ FIX: Renamed controller functions to match the exports in coachProfileController.js
 router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
 router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
 
@@ -94,23 +81,24 @@ router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSe
 // Coach views their session bookings
 router.get('/my-bookings', authenticate, getCoachSessionBookings); 
 
-// ❌ REMOVED ROUTE: Coach views clients who follow them (Route moved to fetchCoachProfiles.js)
-// router.get('/clients-who-follow', authenticate, getClientsWhoFollow); 
-
 // POST /public/:sessionId/book - Client books a session (protected route)
 router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); 
 
 
 // ==============================
-// Public/Follow Routes (Accessible via /api/coach base path)
+// Public/Discovery Routes (The FIX is here: changing /public to /coach)
 // ==============================
 
+// Re-added routes for fetching coach lists
+router.get('/coaches', getAllCoachProfiles); 
+router.get('/followed', authenticate, getFollowedCoaches);
+
 // GET Public Coach Profile 
-// FIX: Add 'authenticate' middleware here. This populates req.user.userId, which is 
-// used by getPublicCoachProfile to check if the viewing client has already booked a session.
-router.get('/public/:id', authenticate, getPublicCoachProfile);
+// ✅ FIX: Changed '/public/:id' to '/coach/:id' to match frontend API call
+router.get('/coach/:id', authenticate, getPublicCoachProfile);
 
 // Follow/Unfollow Routes 
+// NOTE: These routes use /public/ which is acceptable as they handle follow status
 router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
