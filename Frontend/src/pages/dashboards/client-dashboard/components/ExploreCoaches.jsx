@@ -7,6 +7,7 @@ import axios from 'axios';
 
 // === Debounce hook ===
 const useDebounce = (value, delay) => {
+// ... (useDebounce logic omitted for brevity)
     const [debouncedValue, setDebouncedValue] = useState(value);
     useEffect(() => {
         const handler = setTimeout(() => setDebouncedValue(value), delay);
@@ -46,7 +47,6 @@ const ExploreCoaches = () => {
         setError(null);
         setIsLoading(true);
         setCoaches([]);
-
         let url = '';
         let headers = {};
 
@@ -57,7 +57,6 @@ const ExploreCoaches = () => {
             url = `${API_BASE_URL}/api/profiles/followed`;
             const token = localStorage.getItem('accessToken');
             headers = token ? { Authorization: `Bearer ${token}` } : {};
-
             if (!token) {
                 setError("Please log in to view your followed coaches.");
                 setIsLoading(false);
@@ -67,12 +66,8 @@ const ExploreCoaches = () => {
 
         try {
             const response = await axios.get(url, { headers, withCredentials: true });
-
-            // ✅ THIS LINE CORRECTLY ASSUMES THE BACKEND RETURNS { coaches: [...] }
             const coachList = response.data.coaches || [];
-
             setCoaches(coachList);
-
         } catch (err) {
             console.error(`Failed to fetch ${activeTab} coaches:`, err);
             setError(`Failed to load coaches: ${err.response?.data?.error || err.message}`);
@@ -85,8 +80,9 @@ const ExploreCoaches = () => {
     useEffect(() => {
         if (!selectedCoach) {
             fetchCoaches();
-            setBreadcrumb([]);
+            setBreadcrumb([]); // Clear breadcrumb when viewing the list
         } else {
+            // Only set the breadcrumb structure when a coach is selected
             setBreadcrumb({
                 parent: 'Explore Coaches',
                 current: `${selectedCoach.firstName} ${selectedCoach.lastName}`,

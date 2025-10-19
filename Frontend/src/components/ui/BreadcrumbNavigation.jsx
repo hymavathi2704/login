@@ -42,14 +42,21 @@ const BreadcrumbNavigation = () => {
   }
 
   return (
-    <nav className="mb-4 text-sm text-gray-500" aria-label="Breadcrumb">
-      <ol className="list-none p-0 inline-flex items-center space-x-2">
+    // FIX: Removed unnecessary wrapper div, moved margin/text size to the nav/ol elements
+    <nav aria-label="Breadcrumb">
+      {/* FIX: Ensure items-center is present on the ol for vertical alignment */}
+      <ol className="list-none p-0 inline-flex items-center space-x-2 text-sm text-gray-500">
         {items.map((item, index) => (
+          // FIX: Ensure each list item is a flex container for the chevron
           <li key={index} className="flex items-center">
-            {index > 0 && <ChevronRight size={16} className="mx-2 text-gray-400" />}
+            {index > 0 && <ChevronRight size={16} className="text-gray-400" />}
             {/* Render a button for onBack action, Link for path, or span for current page */}
             {item.onBack ? (
-              <button onClick={item.onBack} className="hover:text-blue-600 hover:underline flex items-center">
+              <button 
+                onClick={item.onBack} 
+                // Removed the extra flex items-center from here, as the parent <li> handles it
+                className="hover:text-blue-600 hover:underline"
+              >
                 {item.label}
               </button>
             ) : item.path ? (
@@ -57,6 +64,7 @@ const BreadcrumbNavigation = () => {
                 {item.label}
               </Link>
             ) : (
+              // Current item should have the correct font styling
               <span className="font-medium text-gray-700">{item.label}</span>
             )}
           </li>
