@@ -15,21 +15,21 @@ const Session = require('../models/Session');
 const UPLOADS_DIR = path.join(process.cwd(), 'src', 'uploads'); 
 
 // ==============================
-// Helper: Safe JSON parse and array check (Ensured definition is before use)
+// Helper: Safe JSON parse and array check
 // ==============================
 const safeParseArray = (jsonString) => {
   if (!jsonString) return [];
   if (typeof jsonString !== 'string') return Array.isArray(jsonString) ? jsonString : [];
   try { 
-    const parsed = JSON.parse(jsonString);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch { 
-    return []; 
-  }
+    const parsed = JSON.parse(jsonString);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { 
+    return []; 
+  }
 };
 
 // ==============================
-// Helper: Delete Old Profile Picture (Ensured definition is before use)
+// Helper: Delete Old Profile Picture
 // ==============================
 const deleteOldProfilePicture = async (publicPath) => {
     if (!publicPath) return;
@@ -74,13 +74,15 @@ const getCoachProfile = async (req, res) => {
     const plainUser = user.get({ plain: true });
 
     if (plainUser.CoachProfile) {
-        // Use safeParseArray helper for JSON fields
+        // Use safeParseArray helper for JSON fields
         plainUser.CoachProfile.specialties = safeParseArray(plainUser.CoachProfile.specialties);
         plainUser.CoachProfile.education = safeParseArray(plainUser.CoachProfile.education);
         plainUser.CoachProfile.certifications = safeParseArray(plainUser.CoachProfile.certifications);
         plainUser.CoachProfile.pricing = safeParseArray(plainUser.CoachProfile.pricing); 
         plainUser.CoachProfile.availability = safeParseArray(plainUser.CoachProfile.availability); 
     }
+    
+    // Note: The profile picture is available directly on plainUser.profilePicture
 
     res.json({ user: plainUser });
 
@@ -107,7 +109,7 @@ const updateCoachProfile = async (req, res) => {
             yearsOfExperience, 
             dateOfBirth, gender, ethnicity, country,
             linkedinUrl, twitterUrl, instagramUrl, facebookUrl,
-            // These come in as stringified JSON from FormData in index.jsx
+            // These come in as stringified JSON from FormData in index.jsx
             specialties, certifications, education 
         } = req.body; 
 
@@ -138,11 +140,11 @@ const updateCoachProfile = async (req, res) => {
         let coachProfile = user.CoachProfile;
         if (!coachProfile) coachProfile = await CoachProfile.create({ userId });
 
-        // Parse JSON stringified arrays back into arrays for the DB update
-        const specialtiesParsed = specialties ? safeParseArray(specialties) : coachProfile.specialties;
-        const certificationsParsed = certifications ? safeParseArray(certifications) : coachProfile.certifications;
-        const educationParsed = education ? safeParseArray(education) : coachProfile.education;
-        
+        // Parse JSON stringified arrays back into arrays for the DB update
+        const specialtiesParsed = specialties ? safeParseArray(specialties) : coachProfile.specialties;
+        const certificationsParsed = certifications ? safeParseArray(certifications) : coachProfile.certifications;
+        const educationParsed = education ? safeParseArray(education) : coachProfile.education;
+        
         // Update CoachProfile Model 
         await coachProfile.update({
             professionalTitle,
@@ -207,8 +209,8 @@ const addProfileItem = async (req, res) => {
         if (type === 'specialties') {
             // Specialties are simple strings
             if (existingArray.includes(item)) { // Prevent duplicates
-                return res.json({ [type]: existingArray });
-            }
+                return res.json({ [type]: existingArray });
+            }
             updatedArray = [...existingArray, item];
         } else {
             // Certs/Education are objects. Ensure they have a unique ID.
@@ -268,72 +270,72 @@ const removeProfileItem = async (req, res) => {
 
 // Functions below are currently unused by the frontend, but keeping them defined and exporting.
 const uploadProfilePicture = async (req, res) => { 
-    // This logic is mostly handled by updateCoachProfile, but keeping the function definition.
-    const userId = req.user?.userId;
-    if (!userId) {
-        if (req.file) await fs.unlink(path.join(UPLOADS_DIR, req.file.filename)).catch(() => {});
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
+    // This logic is mostly handled by updateCoachProfile, but keeping the function definition.
+    const userId = req.user?.userId;
+    if (!userId) {
+        if (req.file) await fs.unlink(path.join(UPLOADS_DIR, req.file.filename)).catch(() => {});
+        return res.status(401).json({ message: 'Unauthorized' });
+    }
 
-    if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded or file type is invalid (must be an image).' });
-    }
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded or file type is invalid (must be an image).' });
+    }
 
-    try {
-        const user = await User.findByPk(userId);
+    try {
+        const user = await User.findByPk(userId);
 
-        if (!user) {
-            await fs.unlink(path.join(UPLOADS_DIR, req.file.filename));
-            return res.status(404).json({ message: 'User not found' });
-        }
-        
-        const oldProfilePicturePath = user.profilePicture;
-        if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
-        
-        const newFilename = req.file.filename;
-        const publicPath = `/uploads/${newFilename}`;
-        user.profilePicture = publicPath;
-        await user.save(); 
+        if (!user) {
+            await fs.unlink(path.join(UPLOADS_DIR, req.file.filename));
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        const oldProfilePicturePath = user.profilePicture;
+        if (oldProfilePicturePath) await deleteOldProfilePicture(oldProfilePicturePath);
+        
+        const newFilename = req.file.filename;
+        const publicPath = `/uploads/${newFilename}`;
+        user.profilePicture = publicPath;
+        await user.save(); 
 
-        res.json({
-            message: 'Profile picture uploaded successfully',
-            profilePicture: user.profilePicture, 
-        });
+        res.json({
+            message: 'Profile picture uploaded successfully',
+            profilePicture: user.profilePicture, 
+        });
 
-    } catch (error) {
-        console.error('Error in uploadProfilePicture:', error.stack);
-        try {
-            if (req.file) { 
-                await fs.unlink(path.join(UPLOADS_DIR, req.file.filename));
-            }
-        } catch (cleanupErr) {
-            console.error('Cleanup error:', cleanupErr);
-        }
-        res.status(500).json({ message: 'Failed to upload image due to server error.' });
-    }
+    } catch (error) {
+        console.error('Error in uploadProfilePicture:', error.stack);
+        try {
+            if (req.file) { 
+                await fs.unlink(path.join(UPLOADS_DIR, req.file.filename));
+            }
+        } catch (cleanupErr) {
+            console.error('Cleanup error:', cleanupErr);
+        }
+        res.status(500).json({ message: 'Failed to upload image due to server error.' });
+    }
 };
 
 const deleteProfilePicture = async (req, res) => {
-    const userId = req.user.userId;
+    const userId = req.user.userId;
 
-    const user = await User.findByPk(userId);
-    if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
+    const user = await User.findByPk(userId);
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
 
-    const oldFileName = user.profilePicture;
-    
-    // 1. Delete the file from the disk (using the safe helper)
-    if (oldFileName) await deleteOldProfilePicture(oldFileName); 
+    const oldFileName = user.profilePicture;
+    
+    // 1. Delete the file from the disk (using the safe helper)
+    if (oldFileName) await deleteOldProfilePicture(oldFileName); 
 
-    // 2. Update the user record to clear the profilePicture field
-    user.profilePicture = null;
-    await user.save();
+    // 2. Update the user record to clear the profilePicture field
+    user.profilePicture = null;
+    await user.save();
 
-    res.status(200).json({ 
-        message: 'Profile picture successfully deleted.',
-        profilePicture: null 
-    });
+    res.status(200).json({ 
+        message: 'Profile picture successfully deleted.',
+        profilePicture: null 
+    });
 };
 
 
