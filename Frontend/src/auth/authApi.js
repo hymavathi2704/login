@@ -189,7 +189,24 @@ export const bookSession = async (sessionId) => {
     return axiosInstance.post(`/api/coach/public/${sessionId}/book`);
 };
 
-// Get clients who follow the logged-in coach
-export const getClientsWhoFollow = () => {
-    return axiosInstance.get('/api/coach/clients-who-follow');
+// --- COACH DASHBOARD CLIENT MANAGEMENT API (NEW) ---
+
+/**
+ * Fetches clients who have booked at least one session with the logged-in coach.
+ * Includes: profile pic, name, email, sessions booked till now.
+ */
+export const getBookedClients = () => {
+    // Maps to: GET /api/profiles/dashboard/clients/booked
+    return axiosInstance.get('/api/profiles/dashboard/clients/booked'); 
 };
+
+/**
+ * Fetches clients who follow the logged-in coach.
+ * Includes: profile pic, name, age, mail, following since date.
+ */
+export const getFollowedClients = () => {
+    // Maps to: GET /api/profiles/dashboard/clients/followed
+    return axiosInstance.get('/api/profiles/dashboard/clients/followed'); 
+};
+
+// =========================================================

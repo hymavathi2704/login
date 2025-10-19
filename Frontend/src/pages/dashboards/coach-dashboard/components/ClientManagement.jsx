@@ -1,12 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { User, Search, Users, Heart } from 'lucide-react'; // Added Heart for followers
-import { getMyClients } from '@/auth/authApi';
-// NEW IMPORT: for followed clients
-import { getClientsWhoFollow } from '@/auth/authApi'; 
-import { cn } from '@/utils/cn'; // Assuming you have a utility for combining class names
-import { toast } from 'sonner'; // 🚨 FIX: ADDED MISSING IMPORT
+// Frontend/src/pages/dashboards/coach-dashboard/components/ClientManagement.jsx
 
-// Constants to separate client types
+import React, { useState, useEffect, useCallback } from 'react';
+import { User, Search, Users, Heart, Calendar, Clock, Mail } from 'lucide-react'; 
+import { getBookedClients, getFollowedClients } from '@/auth/authApi'; // <-- UPDATED IMPORTS
+import { cn } from '@/utils/cn'; 
+import { toast } from 'sonner'; 
+
+// Load backend URL from .env (fallback to localhost:4028)
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
+// Helper to construct the full image source URL
+const getFullImageSrc = (path) => {
+    if (typeof path === 'string' && path.startsWith('/uploads/')) {
+        return `${API_BASE_URL}${path}`;
+    }
+    return path;
+};
+
+// REMOVED MOCK: getSessionsBookedCount is no longer needed as the backend now provides the real count
+
 const CLIENT_TYPE_BOOKED = 'booked';
 const CLIENT_TYPE_FOLLOWERS = 'followers';
 
@@ -17,61 +28,108 @@ const ClientManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(CLIENT_TYPE_BOOKED); 
 
+  const fetchClients = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // 1. Fetch clients who have booked sessions (using new API function)
+      const bookedResponse = await getBookedClients();
+      
+      // The backend now returns the enriched data, so minimal processing is needed
+      const enrichedBookedClients = (bookedResponse.data.clients || []).map(client => ({
+          ...client,
+          // name and sessionsBookedTillNow are now provided by the backend
+      }));
+      setBookedClients(enrichedBookedClients);
+
+      // 2. Fetch clients who follow this coach (using new API function)
+      const followerResponse = await getFollowedClients(); 
+      setFollowerClients(followerResponse.data.clients || []); 
+
+    } catch (error) {
+      console.error("Failed to fetch clients:", error);
+      toast.error("Failed to fetch client data.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // Empty dependency array means it runs once on mount
+
   useEffect(() => {
-    const fetchClients = async () => {
-      setIsLoading(true);
-      try {
-        // 1. Fetch clients who have booked sessions (existing)
-        const bookedResponse = await getMyClients();
-        setBookedClients(bookedResponse.data);
-
-        // 2. Fetch clients who follow this coach (NEW)
-        const followerResponse = await getClientsWhoFollow(); 
-        setFollowerClients(followerResponse.data.clients); // Backend returns { clients: [...] }
-
-      } catch (error) {
-        console.error("Failed to fetch clients:", error);
-        toast.error("Failed to fetch client data.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchClients();
-  }, []);
+  }, [fetchClients]);
   
   // Select the current list based on the active tab
   const currentClientList = activeTab === CLIENT_TYPE_BOOKED ? bookedClients : followerClients;
   
   // Apply search filtering to the currently active list
   const filteredClients = currentClientList.filter(client => 
-    `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase())
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const renderClientCard = (client, isFollower = false) => {
-    const goals = client.ClientProfile?.coachingGoals || 'Not set';
+    // Generate fallback profile image if path is missing
+    const fallbackAvatar = `https://ui-avatars.com/api/?name=${client.name.replace(' ', '+')}&background=random`;
+    const profileImage = getFullImageSrc(client.profilePicture) || fallbackAvatar;
+
+    if (isFollower) {
+      // Follower Clients Card (with profile image, name, age, mail, following since)
+      return (
+        <div key={client.id} className="bg-white p-6 rounded-xl border relative flex items-start space-x-4">
+            <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden">
+                <img src={profileImage} alt={client.name} className="w-full h-full object-cover" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-lg truncate">{client.name}</h3>
+                <div className="text-sm text-gray-500 space-y-1 mt-1">
+                    {/* Mail */}
+                    <p className="flex items-center">
+                        <Mail size={14} className="mr-2 flex-shrink-0 text-gray-400" /> 
+                        {client.email}
+                    </p>
+                    {/* Age */}
+                    <p className="flex items-center">
+                        <Clock size={14} className="mr-2 flex-shrink-0 text-gray-400" /> 
+                        Age: {client.age}
+                    </p>
+                    {/* Following Since */}
+                    <p className="flex items-center text-purple-600">
+                        <Heart size={14} className="mr-2 flex-shrink-0" fill="currentColor" /> 
+                        Following since: {client.followingSince}
+                    </p>
+                </div>
+                
+                <div className="mt-4 pt-3 border-t">
+                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                        View Public Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+      );
+    }
+
+    // Booked Client Card (with profile image, name, sessions booked, view sessions button)
     return (
-      <div key={client.id} className="bg-white p-6 rounded-xl border relative">
-        <h3 className="font-bold text-lg">{client.firstName} {client.lastName}</h3>
-        <p className="text-sm text-gray-500">{client.email}</p>
-        
-        {isFollower && (
-             <span className="absolute top-4 right-4 text-purple-600 flex items-center space-x-1 text-xs font-medium px-2 py-1 bg-purple-50 rounded-full">
-                 <Heart size={14} fill="currentColor" /> Follower
-             </span>
-        )}
-        
-        {/* FIX: Ensure ClientProfile exists before accessing goals */}
-        {client.ClientProfile && (
-          <p className="text-sm text-gray-700 mt-2 italic line-clamp-2">
-            Goals: {goals}
-          </p>
-        )}
-        
-        <div className="mt-4 pt-3 border-t">
-          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-             View Client Profile
-          </button>
+      <div key={client.id} className="bg-white p-6 rounded-xl border relative flex items-start space-x-4">
+        <div className="flex-shrink-0 w-16 h-16 rounded-full overflow-hidden">
+            <img src={profileImage} alt={client.name} className="w-full h-full object-cover" />
+        </div>
+        <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-lg truncate">{client.name}</h3>
+            <p className="text-sm text-gray-500 mb-2 truncate">{client.email}</p>
+
+            {/* Sessions Booked Till Now */}
+            <p className="text-sm text-purple-600 font-medium flex items-center mb-4">
+                <Calendar size={14} className="mr-2 flex-shrink-0" /> 
+                Sessions Booked Till Now: {client.sessionsBookedTillNow}
+            </p>
+            
+            {/* View Client Sessions Button */}
+            <div className="pt-3 border-t">
+                <button className="bg-purple-600 text-white px-3 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium flex items-center">
+                    <Calendar size={16} className="mr-2" /> View Client Sessions
+                </button>
+            </div>
         </div>
       </div>
     );
