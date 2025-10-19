@@ -1,9 +1,12 @@
+// Backend/src/controllers/clientManagementController.js
+
 import { Op } from 'sequelize'; 
 // --- Model Imports ---
 import User from '../models/user.js'; 
 import Follow from '../models/Follow.js'; 
 import Booking from '../models/Booking.js'; 
 import ClientProfile from '../models/ClientProfile.js'; 
+import Session from '../models/Session.js'; // <- Ensure Session is imported for JOIN
 // ---------------------
 
 // === Helper: Calculate Age ===
@@ -27,30 +30,36 @@ const formatDate = (date) => {
 };
 
 // ==============================
-// GET Booked Clients
-// Includes: profile pic, name, sessions booked till now
+// GET Booked Clients (FIXED SQL QUERY)
 // ==============================
 export const getBookedClients = async (req, res) => {
     try {
         const coachId = req.user.userId; 
 
-        // 1. Find all Booking records for the coach
-        const bookings = await Booking.findAll({
-            where: { coachId: coachId },
+        // 1. Find all Booking records that link to a Session created by the coach
+        // FIX: Use 'include' to join with the Session model and filter by Session.coachId
+        const allBookings = await Booking.findAll({
             attributes: ['clientId'], 
+            include: [{
+                model: Session, // Assumes Session is associated with Booking (e.g., Booking.belongsTo(Session))
+                as: 'Session', 
+                required: true,
+                attributes: [], 
+                where: { coachId: coachId } // Filter by coachId on the Session model
+            }]
         });
 
-        if (bookings.length === 0) {
+        if (allBookings.length === 0) {
             return res.status(200).json({ clients: [] });
         }
         
         // 2. Calculate the count of sessions booked per unique client
-        const sessionsCountMap = bookings.reduce((acc, booking) => {
+        const sessionsCountMap = allBookings.reduce((acc, booking) => {
             acc[booking.clientId] = (acc[booking.clientId] || 0) + 1;
             return acc;
         }, {});
         const bookedClientIds = Object.keys(sessionsCountMap);
-
+        
         // 3. Fetch the full User data for all unique clients
         const clients = await User.findAll({
             where: { 

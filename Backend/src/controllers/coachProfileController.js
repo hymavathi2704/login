@@ -15,7 +15,7 @@ const Session = require('../models/Session');
 const UPLOADS_DIR = path.join(process.cwd(), 'src', 'uploads'); 
 
 // ==============================
-// Helper: Safe JSON parse and array check
+// Helper: Safe JSON parse and array check (Ensured definition is before use)
 // ==============================
 const safeParseArray = (jsonString) => {
   if (!jsonString) return [];
@@ -29,7 +29,7 @@ const safeParseArray = (jsonString) => {
 };
 
 // ==============================
-// Helper: Delete Old Profile Picture
+// Helper: Delete Old Profile Picture (Ensured definition is before use)
 // ==============================
 const deleteOldProfilePicture = async (publicPath) => {
     if (!publicPath) return;

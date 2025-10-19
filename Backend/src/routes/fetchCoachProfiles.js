@@ -1,60 +1,106 @@
-// Backend/src/routes/fetchCoachProfiles.js
+// Backend/src/routes/coachProfile.js
 
 const express = require('express');
 const router = express.Router();
 
 const { authenticate } = require('../middleware/authMiddleware'); 
+const upload = require('../middleware/upload'); 
 
-// ✅ Import functions from the dedicated Explore/Discovery Controller
+// Import profile management functions (Profile Update, Picture Upload/Delete, Item Management)
+const coachProfileController = require('../controllers/coachProfileController');
+
+// ✅ Import discovery/follow functions from the dedicated Explore Controller
 const { 
-    getAllCoachProfiles,
-    getPublicCoachProfile,
-    getFollowedCoaches,
-    getFollowStatus,
-    followCoach,
-    unfollowCoach
+    getPublicCoachProfile,
+    getFollowStatus, 
+    followCoach, 
+    unfollowCoach,
+    // REMOVED: getClientsWhoFollow (Moved to clientManagementController)
 } = require('../controllers/exploreCoachesController'); 
 
-// ✅ Import functions from the new Client Management Controller
+// Import session management functions
 const {
-    getBookedClients,
-    getFollowedClients
-} = require('../controllers/clientManagementController');
+    createSession,
+    updateSession,
+    deleteSession,
+    bookSession,
+    getCoachSessionBookings
+} = require('../controllers/sessionController');
+
+
+// Helper for CORS preflight handling
+const skipAuthForOptions = (req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end(); 
+    }
+    next();
+};
 
 
 // ==============================
-// Public Discovery Routes (No Auth Required)
+// Logged-in Coach Profile Management Routes (Protected)
+// ==============================
+router.get('/profile', authenticate, coachProfileController.getCoachProfile);
+
+router.put(
+    '/profile', 
+    skipAuthForOptions, 
+    authenticate, 
+    upload.single('profilePicture'), 
+    coachProfileController.updateCoachProfile
+);
+
+// Dedicated Picture management
+router.post(
+    '/profile/upload-picture', 
+    skipAuthForOptions, 
+    authenticate, 
+    upload.single('profilePicture'), 
+    coachProfileController.uploadProfilePicture
+);
+router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
+
+// JSON Array management
+// ✅ FIX: Renamed controller functions to match the exports in coachProfileController.js
+router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
+router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
+
+
+// ==============================
+// SESSION MANAGEMENT ROUTES (Protected)
+// ==============================
+router.post('/sessions', skipAuthForOptions, authenticate, createSession); 
+router.put('/sessions/:sessionId', skipAuthForOptions, authenticate, updateSession); 
+router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSession); 
+
+
+// ==============================
+// BOOKING & FOLLOWER ROUTES (Internal/Protected)
 // ==============================
 
-// GET /api/profiles/coaches - Get all coaches for discovery
-router.get('/coaches', getAllCoachProfiles);
+// Coach views their session bookings
+router.get('/my-bookings', authenticate, getCoachSessionBookings); 
 
-// GET /api/profiles/coach/:id - Get a single public coach profile
-router.get('/coach/:id', getPublicCoachProfile);
+// ❌ REMOVED ROUTE: Coach views clients who follow them (Route moved to fetchCoachProfiles.js)
+// router.get('/clients-who-follow', authenticate, getClientsWhoFollow); 
 
-
-// ==============================
-// Client Follow Routes (Protected by Auth)
-// ==============================
-
-// GET /api/profiles/followed - Get the client's list of followed coaches
-router.get('/followed', authenticate, getFollowedCoaches);
-
-// Follow/Unfollow specific coach
-router.get('/coach/:coachId/follow-status', authenticate, getFollowStatus);
-router.post('/coach/:coachId/follow', authenticate, followCoach);
-router.delete('/coach/:coachId/follow', authenticate, unfollowCoach);
+// POST /public/:sessionId/book - Client books a session (protected route)
+router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); 
 
 
 // ==============================
-// Coach Dashboard Client Management Routes (Protected by Auth) // <-- NEW SECTION
+// Public/Follow Routes (Accessible via /api/coach base path)
 // ==============================
 
-// GET /api/profiles/dashboard/clients/booked - Get clients who have booked sessions
-router.get('/dashboard/clients/booked', authenticate, getBookedClients);
+// GET Public Coach Profile 
+// FIX: Add 'authenticate' middleware here. This populates req.user.userId, which is 
+// used by getPublicCoachProfile to check if the viewing client has already booked a session.
+router.get('/public/:id', authenticate, getPublicCoachProfile);
 
-// GET /api/profiles/dashboard/clients/followed - Get clients who follow the coach
-router.get('/dashboard/clients/followed', authenticate, getFollowedClients);
+// Follow/Unfollow Routes 
+router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
+router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
+router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
 
 
 module.exports = router;
