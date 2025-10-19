@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   User,
@@ -10,8 +10,7 @@ import {
   Search,
   Settings,
 } from "lucide-react";
-// ✅ FIX: Import useLocation and useNavigate
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom"; // Added useNavigate and useLocation
 
 import DashboardLayout from "../shared/DashboardLayout";
 import ClientOverview from "./components/ClientOverview";
@@ -37,22 +36,34 @@ const ComingSoon = ({ sectionName }) => (
 
 
 const ClientDashboard = () => {
-    // ✅ FIX: Use location to read the current URL path
+    
+    // ✅ FIX: Define navigationItems first so helpers can access it immediately
+    const navigationItems = [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "profile", label: "My Profile", icon: User },
+        { id: "explore", label: "Explore Coaches", icon: Search },
+        { id: "sessions", label: "My Sessions", icon: Calendar },
+        { id: "progress", label: "Progress", icon: Target },
+        { id: "resources", label: "Resources", icon: BookOpen },
+        { id: "communication", label: "Messages", icon: MessageSquare },
+        { id: "settings", label: "Settings", icon: Settings },
+    ];
+    
     const location = useLocation();
     const navigate = useNavigate();
     const currentPath = location.pathname;
     const clientBasePath = "/dashboard/client";
 
-    // Helper to extract the active tab ID from the URL path (e.g., '/dashboard/client/profile' -> 'profile')
+    // Helper to extract the active tab ID from the URL path
     const getActiveTabFromUrl = (path) => {
         const parts = path.split('/');
         const lastPart = parts[parts.length - 1];
-        // Ensure the tab exists in the navigation items, defaulting to 'overview'
+        // navigationItems is now in scope
         const itemIds = navigationItems.map(item => item.id);
         return itemIds.includes(lastPart) ? lastPart : 'overview';
     };
 
-    // ✅ FIX: activeTab is now derived from the URL and updated via URL change
+    // Initialize state using the helper function
     const [activeTab, setActiveTab] = useState(getActiveTabFromUrl(currentPath));
 
     // Update activeTab whenever the URL changes
@@ -60,9 +71,8 @@ const ClientDashboard = () => {
         setActiveTab(getActiveTabFromUrl(currentPath));
     }, [currentPath]);
 
-    // ✅ FIX: New handler to change tab by updating the URL
+    // Handler to change tab by updating the URL
     const handleTabChange = (newTabId) => {
-        // If they click the 'overview' tab, navigate to the base path
         if (newTabId === 'overview') {
             navigate(clientBasePath);
         } else {
@@ -70,17 +80,6 @@ const ClientDashboard = () => {
         }
     };
     
-  const navigationItems = [
-    { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "profile", label: "My Profile", icon: User },
-    { id: "explore", label: "Explore Coaches", icon: Search },
-    { id: "sessions", label: "My Sessions", icon: Calendar },
-    { id: "progress", label: "Progress", icon: Target },
-    { id: "resources", label: "Resources", icon: BookOpen },
-    { id: "communication", label: "Messages", icon: MessageSquare },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
-
   const renderContent = () => {
     switch (activeTab) {
       case "overview":
@@ -108,7 +107,7 @@ const ClientDashboard = () => {
     <DashboardLayout
       navigationItems={navigationItems}
       activeTab={activeTab}
-      onTabChange={handleTabChange} // ✅ Use the new handler
+      onTabChange={handleTabChange}
       userName="Client Alex"
       userType="client"
     >

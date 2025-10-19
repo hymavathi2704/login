@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; // Added useEffect
+import React, { useState, useEffect } from "react"; 
 import {
   LayoutDashboard,
   Users,
@@ -8,9 +8,8 @@ import {
   PieChart,
   Settings,
   User,
-  DollarSign, // Imported for the new session management tab
+  DollarSign, 
 } from "lucide-react";
-// ✅ FIX: Import useLocation and useNavigate
 import { useLocation, useNavigate } from "react-router-dom"; 
 
 import DashboardLayout from "../shared/DashboardLayout";
@@ -22,10 +21,22 @@ import ResourcesLibrary from "./components/ResourcesLibrary";
 import CoachAnalytics from "./components/CoachAnalytics";
 import AccountSettings from "../shared/AccountSettings";
 import CoachProfileEditor from "./components/coach-profile-editor";
-import SessionManagement from "./components/SessionManagement"; // ADDED: Import the new component
+import SessionManagement from "./components/SessionManagement"; 
 
 const CoachDashboard = () => {
-    // ✅ FIX: Use location to read the current URL path
+    // ✅ FIX: Define navigationItems first so helpers can access it immediately
+    const navigationItems = [
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "clients", label: "Client Management", icon: Users },
+        { id: "bookings", label: "Bookings", icon: Calendar },
+        { id: "communication", label: "Communication", icon: MessageSquare },
+        { id: "resources", label: "Resources", icon: BookOpen },
+        { id: "analytics", label: "Analytics", icon: PieChart },
+        { id: "sessions", label: "Session Management", icon: DollarSign }, 
+        { id: "profile", label: "Edit Profile", icon: User },
+        { id: "settings", label: "Settings", icon: Settings },
+    ];
+    
     const location = useLocation();
     const navigate = useNavigate();
     const currentPath = location.pathname;
@@ -35,11 +46,12 @@ const CoachDashboard = () => {
     const getActiveTabFromUrl = (path) => {
         const parts = path.split('/');
         const lastPart = parts[parts.length - 1];
+        // navigationItems is now in scope
         const itemIds = navigationItems.map(item => item.id);
         return itemIds.includes(lastPart) ? lastPart : 'overview';
     };
 
-    // ✅ FIX: activeTab is now derived from the URL and updated via URL change
+    // Initialize state using the helper function
     const [activeTab, setActiveTab] = useState(getActiveTabFromUrl(currentPath));
     
     // Update activeTab whenever the URL changes
@@ -47,9 +59,8 @@ const CoachDashboard = () => {
         setActiveTab(getActiveTabFromUrl(currentPath));
     }, [currentPath]);
 
-    // ✅ FIX: New handler to change tab by updating the URL
+    // Handler to change tab by updating the URL
     const handleTabChange = (newTabId) => {
-        // If they click the 'overview' tab, navigate to the base path
         if (newTabId === 'overview') {
             navigate(coachBasePath);
         } else {
@@ -57,18 +68,6 @@ const CoachDashboard = () => {
         }
     };
 
-
-  const navigationItems = [
-    { id: "overview", label: "Overview", icon: LayoutDashboard },
-    { id: "clients", label: "Client Management", icon: Users },
-    { id: "bookings", label: "Bookings", icon: Calendar },
-    { id: "communication", label: "Communication", icon: MessageSquare },
-    { id: "resources", label: "Resources", icon: BookOpen },
-    { id: "analytics", label: "Analytics", icon: PieChart },
-    { id: "sessions", label: "Session Management", icon: DollarSign }, // MODIFIED: New Tab for Sessions
-    { id: "profile", label: "Edit Profile", icon: User },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
 
   const renderContent = () => {
     switch (activeTab) {
@@ -84,7 +83,7 @@ const CoachDashboard = () => {
         return <ResourcesLibrary />;
       case "analytics":
         return <CoachAnalytics />;
-      case "sessions": // ADDED: Case to render the new component
+      case "sessions": 
         return <SessionManagement />;
       case "profile":
         return <CoachProfileEditor />;
@@ -99,7 +98,7 @@ const CoachDashboard = () => {
     <DashboardLayout
       navigationItems={navigationItems}
       activeTab={activeTab}
-      onTabChange={handleTabChange} // ✅ Use the new handler
+      onTabChange={handleTabChange} 
       userName="Coach Emily"
       userType="coach"
     >

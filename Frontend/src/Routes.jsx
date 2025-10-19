@@ -63,19 +63,17 @@ const Routes = () => {
             </PrivateRoute>
           }
         >
-            {/* Client Dashboard Routes */}
+            {/* Client Dashboard Routes - FIX: Use wildcard to capture all tabs */}
             <Route path="client" element={<ClientDashboard />} />
-            <Route path="client/profile" element={<ClientDashboard />} />
-            <Route path="client/settings" element={<ClientDashboard />} />
+            <Route path="client/*" element={<ClientDashboard />} /> {/* <-- FIX */}
 
-            {/* Coach Dashboard Routes */}
+            {/* Coach Dashboard Routes - FIX: Use wildcard to capture all tabs */}
             <Route path="coach" element={<CoachDashboard />} />
-            <Route path="coach/profile" element={<CoachDashboard />} />
-            <Route path="coach/settings" element={<CoachDashboard />} />
+            <Route path="coach/*" element={<CoachDashboard />} /> {/* <-- FIX */}
 
-            {/* Admin Dashboard Routes */}
+            {/* Admin Dashboard Routes - FIX: Use wildcard to capture all tabs */}
             <Route path="admin" element={<AdminDashboard />} />
-            <Route path="admin/settings" element={<AdminDashboard />} />
+            <Route path="admin/*" element={<AdminDashboard />} /> {/* <-- FIX */}
         </Route>
 
         {/* Catch-all route */}
