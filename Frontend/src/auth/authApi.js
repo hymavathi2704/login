@@ -13,14 +13,7 @@ const axiosInstance = axios.create({
   },
 });
 
-// Request interceptor to automatically attach the auth token
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+
 
 // Response interceptor for basic error handling
 axiosInstance.interceptors.response.use(
@@ -62,24 +55,21 @@ export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
-// ✅ FIX: Reverted to manual Axios instance for reliable token transmission with FormData
+// ✅ FIX: Consolidated file uploads to rely on cookie + withCredentials: true
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file); 
-  const token = localStorage.getItem("accessToken");
+  // ❌ REMOVED: Local token fetch and manual Authorization header
 
-  return axios.create({ // Use plain axios.create
-    baseURL: API_BASE_URL,
-    withCredentials: true,
-    headers: {
-      'Content-Type': 'multipart/form-data', // Explicitly setting this ensures proper handling
-      'Authorization': token ? `Bearer ${token}` : undefined, // Explicitly force the token
-    },
-  }).post('/api/coach/profile/upload-picture', formData); 
+  return axiosInstance.post('/api/coach/profile/upload-picture', formData, {
+    headers: { 
+        'Content-Type': undefined, // Required for FormData
+    }, 
+  }); 
 };
 
 export const logoutUser = () => {
-  localStorage.removeItem("accessToken");
+  // ❌ REMOVED: localStorage.removeItem("accessToken");
   localStorage.removeItem("user");
   localStorage.removeItem("rememberMe");
 };
@@ -138,20 +128,17 @@ export const updateClientProfile = (profileData) => {
   return axiosInstance.put('/api/client/profile', profileData);
 };
 
-// ✅ FIX: Reverted to manual Axios instance for reliable token transmission with FormData
+// ✅ FIX: Consolidated file uploads to rely on cookie + withCredentials: true
 export const uploadClientProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file); 
-  const token = localStorage.getItem("accessToken"); // Explicitly fetch token
+  // ❌ REMOVED: Local token fetch and manual Authorization header
 
-  return axios.create({ // Use plain axios.create
-    baseURL: API_BASE_URL,
-    withCredentials: true,
-    headers: {
-        'Content-Type': 'multipart/form-data', 
-        'Authorization': token ? `Bearer ${token}` : undefined, // Explicitly set auth token
-    }, 
-  }).post('/api/client/profile/upload-picture', formData); 
+  return axiosInstance.post('/api/client/profile/upload-picture', formData, {
+    headers: { 
+        'Content-Type': undefined, 
+    }, 
+  }); 
 };
 
 export const deleteClientProfilePicture = () => {

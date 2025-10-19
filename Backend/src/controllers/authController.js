@@ -80,58 +80,57 @@ async function register(req, res) {
 // Login
 // ==============================
 async function login(req, res) {
-	try {
-		const { password } = req.body;
-		const email = req.body.email?.toLowerCase().trim();
-		const user = await User.findOne({ where: { email } });
+    try {
+        const { password } = req.body;
+        const email = req.body.email?.toLowerCase().trim();
+        const user = await User.findOne({ where: { email } });
 
-		if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-		if (user.provider !== 'email')
-			return res.status(400).json({ error: `Use ${user.provider} login` });
-		if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
+        if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+        if (user.provider !== 'email')
+            return res.status(400).json({ error: `Use ${user.provider} login` });
+        if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
 
-		const ok = await bcrypt.compare(password, user.password_hash);
-		if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+        const ok = await bcrypt.compare(password, user.password_hash);
+        if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-		const accessToken = signAccessToken({
-			userId: user.id,
-			email: user.email,
-			roles: user.roles,
-		});
-		
-        const isProduction = process.env.NODE_ENV === 'production';
-        const cookieOptions = getCookieOptions(isProduction);
+        const accessToken = signAccessToken({
+            userId: user.id,
+            email: user.email,
+            roles: user.roles,
+        });
+        
+        const isProduction = process.env.NODE_ENV === 'production';
+        const cookieOptions = getCookieOptions(isProduction);
 
-		// Clear the refresh token cookie just in case an old one exists
-		res.clearCookie(REFRESH_COOKIE_NAME, {
-			httpOnly: true,
-			secure: isProduction,
-			sameSite: isProduction ? 'None' : 'Lax',
-		});
+        // Clear the refresh token cookie just in case an old one exists
+        res.clearCookie(REFRESH_COOKIE_NAME, {
+            httpOnly: true,
+            secure: isProduction,
+            sameSite: isProduction ? 'None' : 'Lax',
+        });
 
-        // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
-        res.cookie(ACCESS_COOKIE_NAME, accessToken, {
-            ...cookieOptions,
-            maxAge: 1000 * 60 * 60 * 24 * 7, 
-        });
+        // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
+        res.cookie(ACCESS_COOKIE_NAME, accessToken, {
+            ...cookieOptions,
+            maxAge: 1000 * 60 * 60 * 24 * 7, 
+        });
 
-		res.json({
-			accessToken,
-			user: {
-				id: user.id,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				email: user.email,
-				phone: user.phone || null,
-				roles: user.roles,
-			},
-		});
-	} catch (err) {
-		console.error('Login error:', err);
-		res.status(500).json({ error: 'Login failed' });
-	}
+        res.json({
+            // ❌ REMOVED: accessToken is no longer sent in the JSON body for security (XSS defense).
+            user: {
+                id: user.id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                phone: user.phone || null,
+                roles: user.roles,
+            },
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Login failed' });
+    }
 }
-
 // ==============================
 // Social Login
 // ==============================
