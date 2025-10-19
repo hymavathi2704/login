@@ -163,77 +163,81 @@ export const getAllCoachProfiles = async (req, res) => {
     const { search, audience } = req.query;
     const whereClause = { /* ... omitted search logic ... */ };
 
-    const coaches = await User.findAll({
+    // STEP 1: Fetch all coach profiles with minimal includes to avoid SQL aggregation errors
+    const coachesWithProfiles = await User.findAll({
         // ... (omitted User attributes and where clause)
+        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'], // Include basic user data
+        where: { 
+            // Include search logic here if needed
+            roles: { [Op.like]: '%"coach"%' } // Ensure they are coaches
+        },
         include: [
             { 
                 model: CoachProfile, 
                 as: 'CoachProfile',
-                // ... (omitted where clause)
                 required: true,
-                include: [
-                    { // For rating calculation
-                        model: Testimonial,
-                        as: 'testimonials',
-                        attributes: ['rating'], 
-                        required: false,
-                    },
-                    { // For price calculation
-                        model: Session,
-                        as: 'sessions', 
-                        attributes: ['price'], 
-                        required: false,
-                    }
-                ]
+                // Note: Testimonials and Sessions are REMOVED from the main query
             },
         ],
-        // FIX: Removed the problematic group clause
-        // group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
+        // FIX: Ensure the problematic group clause is gone (as in the last corrected version)
     });
 
-    const processedCoaches = coaches.map(coach => {
+    // STEP 2: Process coaches and fetch aggregated data separately
+    const processedCoaches = await Promise.all(coachesWithProfiles.map(async (coach) => {
         const plainCoach = coach.get({ plain: true });
         const profile = plainCoach.CoachProfile;
         
-        if (profile) {
-            profile.specialties = safeParse(profile.specialties);
-            profile.pricing = safeParse(profile.pricing);
-        }
-
-        const ratings = profile?.testimonials?.map(t => t.rating) || [];
-        const prices = profile?.sessions?.map(s => s.price) || [];
+        if (!profile) return null; // Should not happen with required: true, but for safety
         
+        // Parse JSON fields
+        profile.specialties = safeParse(profile.specialties);
+        profile.pricing = safeParse(profile.pricing);
+        
+        // Fetch Testimonials for aggregation
+        const testimonials = await Testimonial.findAll({
+            where: { coachId: plainCoach.id },
+            attributes: ['rating'],
+            raw: true,
+        });
+        const ratings = testimonials.map(t => t.rating) || [];
+        
+        // Fetch Sessions for pricing calculation
+        const sessions = await Session.findAll({
+            where: { coachId: plainCoach.id },
+            attributes: ['price'],
+            raw: true,
+        });
+        const prices = sessions.map(s => s.price) || [];
+
         const averageRating = ratings.length > 0 
             ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
             : '0.0';
         
-        // Calculate minimum price from available sessions, falling back to pricing JSON
         const startingPrice = prices.length > 0
             ? Math.min(...prices)
-            : profile?.pricing?.individual || 0; 
-
+            : profile.pricing?.individual || 0; 
         
         return {
-        id: plainCoach.id,
-        firstName: plainCoach.firstName, 
-        lastName: plainCoach.lastName,   
-        profilePicture: plainCoach.profilePicture, 
-        title: profile?.professionalTitle,
-        shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
-        specialties: profile?.specialties || [],
-        startingPrice: startingPrice,
-        rating: parseFloat(averageRating),
-        totalReviews: ratings.length,
-    };
-});
+            id: plainCoach.id,
+            firstName: plainCoach.firstName, 
+            lastName: plainCoach.lastName,   
+            profilePicture: plainCoach.profilePicture, 
+            title: profile.professionalTitle,
+            shortBio: profile.bio ? profile.bio.substring(0, 150) + '...' : '',
+            specialties: profile.specialties || [],
+            startingPrice: startingPrice,
+            rating: parseFloat(averageRating),
+            totalReviews: ratings.length,
+        };
+    })).filter(coach => coach !== null); // Filter out any null returns
 
     res.status(200).json({ coaches: processedCoaches });
   } catch (error) {
     console.error('Error fetching all coach profiles:', error);
+    // Ensure a consistent 500 status on failure
     res.status(500).json({ error: 'Failed to fetch coach profiles' });
   }
 };
-
 // ==============================
 // GET Follow Status
 // ==============================
@@ -346,8 +350,8 @@ export const getFollowedCoaches = async (req, res) => {
             return res.status(200).json({ coaches: [] });
         }
         
-        // Reuse the logic from getAllCoachProfiles to fetch the full data for these specific IDs
-        const coaches = await User.findAll({
+        // STEP 1: Fetch all coach profiles with minimal includes to avoid SQL aggregation errors
+        const coachesWithProfiles = await User.findAll({
             where: { 
                 id: { [Op.in]: followedCoachIds },
                 roles: { [Op.like]: '%"coach"%' }
@@ -358,28 +362,38 @@ export const getFollowedCoaches = async (req, res) => {
                     model: CoachProfile, 
                     as: 'CoachProfile',
                     required: true,
-                    include: [
-                        { model: Testimonial, as: 'testimonials', attributes: ['rating'], required: false },
-                        { model: Session, as: 'sessions', attributes: ['price'], required: false }
-                    ]
+                    // Note: Testimonials and Sessions are REMOVED from the main query
                 },
             ],
-            // FIX: Removed the problematic group clause
-            // group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
+            // FIX: Ensure the problematic group clause is gone (as in the last corrected version)
         });
 
-        // Apply the same data processing logic as getAllCoachProfiles
-        const processedCoaches = coaches.map(coach => {
+        // STEP 2: Process coaches and fetch aggregated data separately
+        const processedCoaches = await Promise.all(coachesWithProfiles.map(async (coach) => {
             const plainCoach = coach.get({ plain: true });
             const profile = plainCoach.CoachProfile;
             
-            if (profile) {
-                profile.specialties = safeParse(profile.specialties);
-                profile.pricing = safeParse(profile.pricing);
-            }
+            if (!profile) return null;
+            
+            // Parse JSON fields
+            profile.specialties = safeParse(profile.specialties);
+            profile.pricing = safeParse(profile.pricing);
 
-            const ratings = profile?.testimonials?.map(t => t.rating) || [];
-            const prices = profile?.sessions?.map(s => s.price) || [];
+            // Fetch Testimonials for aggregation
+            const testimonials = await Testimonial.findAll({
+                where: { coachId: plainCoach.id },
+                attributes: ['rating'],
+                raw: true,
+            });
+            const ratings = testimonials.map(t => t.rating) || [];
+            
+            // Fetch Sessions for pricing calculation
+            const sessions = await Session.findAll({
+                where: { coachId: plainCoach.id },
+                attributes: ['price'],
+                raw: true,
+            });
+            const prices = sessions.map(s => s.price) || [];
             
             const averageRating = ratings.length > 0 
                 ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
@@ -387,26 +401,27 @@ export const getFollowedCoaches = async (req, res) => {
             
             const startingPrice = prices.length > 0
                 ? Math.min(...prices)
-                : profile?.pricing?.individual || 0; 
+                : profile.pricing?.individual || 0; 
 
             return {
                 id: plainCoach.id,
                 firstName: plainCoach.firstName, 
                 lastName: plainCoach.lastName,   
                 profilePicture: plainCoach.profilePicture, 
-                title: profile?.professionalTitle, 
-                shortBio: profile?.bio ? profile.bio.substring(0, 150) + '...' : '',
-                specialties: profile?.specialties || [],
+                title: profile.professionalTitle, 
+                shortBio: profile.bio ? profile.bio.substring(0, 150) + '...' : '',
+                specialties: profile.specialties || [],
                 startingPrice: startingPrice,
                 rating: parseFloat(averageRating),
                 totalReviews: ratings.length,
             };
-        });
+        })).filter(coach => coach !== null); // Filter out any null returns
 
         res.status(200).json({ coaches: processedCoaches });
 
     } catch (error) {
         console.error('Error fetching followed coaches:', error);
+        // Ensure a consistent 500 status on failure
         res.status(500).json({ error: 'Failed to fetch followed coaches' });
     }
 };

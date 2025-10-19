@@ -10,13 +10,26 @@ const upload = require('../middleware/upload');
 const coachProfileController = require('../controllers/coachProfileController');
 
 // ✅ Import discovery/follow functions from the dedicated Explore Controller
+// ✅ Import discovery/follow functions from the dedicated Explore Controller
 const { 
     getPublicCoachProfile,
     getFollowStatus, 
     followCoach, 
     unfollowCoach,
-    // REMOVED: getClientsWhoFollow (Moved to clientManagementController)
-} = require('../controllers/exploreCoachesController'); 
+    getAllCoachProfiles, // <-- ADDED THIS
+    getFollowedCoaches,  // <-- ADDED THIS
+} = require('../controllers/exploreCoachesController');
+
+// ==============================
+// Coach Discovery Routes (Missing from original, adding them now)
+// These routes are what the frontend ExploreCoaches.jsx is trying to hit.
+// ==============================
+
+// 1. GET /api/profiles/coaches (All Coaches) - Public or optionally authenticated
+router.get('/coaches', getAllCoachProfiles); 
+
+// 2. GET /api/profiles/followed (Followed Coaches) - Must be authenticated
+router.get('/followed', authenticate, getFollowedCoaches);
 
 // Import session management functions
 const {
