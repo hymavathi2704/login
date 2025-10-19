@@ -10,6 +10,8 @@ import {
   Search,
   Settings,
 } from "lucide-react";
+// ✅ FIX: Import useLocation
+import { useLocation } from "react-router-dom";
 
 import DashboardLayout from "../shared/DashboardLayout";
 import ClientOverview from "./components/ClientOverview";
@@ -28,21 +30,28 @@ import ClientProfileEditor from "./components/ClientProfileEditor";
 
 // New component to display the placeholder message
 const ComingSoon = ({ sectionName }) => (
-    <div className="flex items-center justify-center h-96 bg-white rounded-xl border border-gray-200">
-        <div className="text-center p-8">
-            <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                {sectionName} - Coming Soon!
-            </h2>
-            <p className="text-lg text-gray-500">
-                This feature is currently under development and will be available shortly.
-            </p>
-        </div>
-    </div>
+    <div className="flex items-center justify-center h-96 bg-white rounded-xl border border-gray-200">
+        <div className="text-center p-8">
+            <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                {sectionName} - Coming Soon!
+            </h2>
+            <p className="text-lg text-gray-500">
+                This feature is currently under development and will be available shortly.
+            </p>
+        </div>
+    </div>
 );
 
 
 const ClientDashboard = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+  // ✅ FIX: Logic to determine active tab from URL path
+    const location = useLocation();
+    const determineInitialTab = (path) => {
+        if (path.includes('/profile')) return 'profile';
+        if (path.includes('/settings')) return 'settings';
+        return 'overview';
+    };
+    const [activeTab, setActiveTab] = useState(determineInitialTab(location.pathname));
 
   const navigationItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },

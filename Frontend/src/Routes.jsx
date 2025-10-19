@@ -63,9 +63,19 @@ const Routes = () => {
             </PrivateRoute>
           }
         >
-          <Route path="client" element={<ClientDashboard />} />
-          <Route path="coach" element={<CoachDashboard />} />
-          <Route path="admin" element={<AdminDashboard />} />
+            {/* Client Dashboard Routes */}
+            <Route path="client" element={<ClientDashboard />} />
+            <Route path="client/profile" element={<ClientDashboard />} />
+            <Route path="client/settings" element={<ClientDashboard />} />
+
+            {/* Coach Dashboard Routes */}
+            <Route path="coach" element={<CoachDashboard />} />
+            <Route path="coach/profile" element={<CoachDashboard />} />
+            <Route path="coach/settings" element={<CoachDashboard />} />
+
+            {/* Admin Dashboard Routes */}
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin/settings" element={<AdminDashboard />} />
         </Route>
 
         {/* Catch-all route */}

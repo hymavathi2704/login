@@ -3,6 +3,8 @@ import { LogOut, Menu, Bell, User, Settings, X, ChevronDown, PanelLeft } from 'l
 import { useAuth } from '@/auth/AuthContext';
 import BreadcrumbNavigation, { BreadcrumbProvider } from '@/components/ui/BreadcrumbNavigation';
 import { cn } from '@/utils/cn';
+// ✅ FIX: Import useNavigate for routing
+import { useNavigate } from 'react-router-dom';
 
 // Load backend URL from .env (fallback to localhost:4028)
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
@@ -13,7 +15,6 @@ const getFullImageSrc = (pathOrBase64) => {
   if (typeof pathOrBase64 === 'string' && pathOrBase64.startsWith('/uploads/')) {
       return `${API_BASE_URL}${pathOrBase64}`;
   }
-  // Otherwise, it's a Base64 URI, a full URL, or null, so return it as is
   return pathOrBase64;
 };
 
@@ -49,6 +50,8 @@ const DashboardLayout = ({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // For desktop
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  // ✅ FIX: Initialize useNavigate
+  const navigate = useNavigate(); 
 
   const userDropdownRef = useOutsideAlerter(() => setUserDropdownOpen(false));
   const notificationsRef = useOutsideAlerter(() => setNotificationsOpen(false));
@@ -57,6 +60,21 @@ const DashboardLayout = ({
     if (logout) logout();
   };
 
+// ✅ FIX: Handlers for Profile and Settings Redirection
+// Navigate to the base path + the tab ID ('profile' or 'settings')
+  const handleProfileRedirect = () => {
+    if (currentRole) {
+      navigate(`/dashboard/${currentRole}/profile`); 
+      setUserDropdownOpen(false);
+    }
+  };
+
+  const handleSettingsRedirect = () => {
+    if (currentRole) {
+      navigate(`/dashboard/${currentRole}/settings`); 
+      setUserDropdownOpen(false);
+    }
+  };
   const getUserTypeColor = (type) => {
     switch (type) {
       case 'client': return 'from-blue-600 to-cyan-600';
@@ -69,8 +87,7 @@ const DashboardLayout = ({
   const displayName = (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email) || 'User';
   const displayRole = currentRole || userType;
 
-  // 🔑 FIX: Always prioritize the top-level user.profilePicture, which holds the image path.
-  // The nested CoachProfile/ClientProfile typically don't have this field.
+  // 🔑 FIX: Use the top-level user.profilePicture, which holds the image path.
   const profilePictureSource = user?.profilePicture || null;
 
 
@@ -246,8 +263,24 @@ const DashboardLayout = ({
                         <RoleSwitcher />
                      </div>
                      <ul className="py-1">
-                       <li><a href="#profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><User size={16} className="mr-3" />Profile</a></li>
-                       <li><a href="#settings" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"><Settings size={16} className="mr-3" />Settings</a></li>
+                       {/* ✅ FIX: Profile redirects to /dashboard/{role}/profile-editor */}
+                       <li>
+                            <button 
+                                onClick={handleProfileRedirect} 
+                                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                                <User size={16} className="mr-3" />Profile
+                            </button>
+                        </li>
+                       {/* ✅ FIX: Settings redirects to /dashboard/{role}/settings */}
+                       <li>
+                            <button 
+                                onClick={handleSettingsRedirect} 
+                                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                                <Settings size={16} className="mr-3" />Settings
+                            </button>
+                        </li>
                        <li className="border-t border-gray-100 my-1"></li>
                        <li><button onClick={handleLogout} className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"><LogOut size={16} className="mr-3" />Logout</button></li>
                      </ul>
@@ -256,7 +289,6 @@ const DashboardLayout = ({
                </div>
             </div>
            </header>
-
           {/* Content Area */}
           <main className="flex-1 p-6 overflow-y-auto">
             {children}

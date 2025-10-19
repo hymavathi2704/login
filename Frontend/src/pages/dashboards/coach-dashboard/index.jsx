@@ -10,6 +10,9 @@ import {
   User,
   DollarSign, // Imported for the new session management tab
 } from "lucide-react";
+// ✅ FIX: Import useLocation
+import { useLocation } from "react-router-dom";
+
 import DashboardLayout from "../shared/DashboardLayout";
 import CoachOverview from "./components/CoachOverview";
 import ClientManagement from "./components/ClientManagement";
@@ -22,7 +25,14 @@ import CoachProfileEditor from "./components/coach-profile-editor";
 import SessionManagement from "./components/SessionManagement"; // ADDED: Import the new component
 
 const CoachDashboard = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+    // ✅ FIX: Logic to determine active tab from URL path
+    const location = useLocation();
+    const determineInitialTab = (path) => {
+        if (path.includes('/profile')) return 'profile';
+        if (path.includes('/settings')) return 'settings';
+        return 'overview';
+    };
+    const [activeTab, setActiveTab] = useState(determineInitialTab(location.pathname));
 
   const navigationItems = [
     { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -50,8 +60,8 @@ const CoachDashboard = () => {
         return <ResourcesLibrary />;
       case "analytics":
         return <CoachAnalytics />;
-      case "sessions": // ADDED: Case to render the new component
-        return <SessionManagement />;
+      case "sessions": // ADDED: Case to render the new component
+        return <SessionManagement />;
       case "profile":
         return <CoachProfileEditor />;
       case "settings":
