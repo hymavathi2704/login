@@ -10,7 +10,7 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const { signAccessToken, signEmailToken, verifyToken } = require('../utils/jwt'); 
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
-const asyncHandler = require('express-async-handler'); // <-- ADD THIS LINE
+const asyncHandler = require('express-async-handler'); 
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -20,15 +20,23 @@ const generateOtp = customAlphabet('0123456789', 6);
 // ==============================
 // Helper function for safe cookie settings
 // ==============================
-const getCookieOptions = (isProduction) => ({
-    httpOnly: true,
-    // FIX: Set secure only if in production (where HTTPS is guaranteed)
-    secure: isProduction, 
-    // FIX: Use 'Lax' in development (HTTP localhost) to allow the cookie to be sent.
-    // Use 'None' only when secure: true is active (production HTTPS).
-    sameSite: isProduction ? 'None' : 'Lax', 
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
-});
+const getCookieOptions = (isProduction) => {
+    // 🔥 CRITICAL FIX (Option 2): Check the protocol of the live URL.
+    // We assume if one URL starts with https, the deployment is set up for it.
+    const isHttps = process.env.APP_URL?.startsWith('https') || process.env.FRONTEND_URL?.startsWith('https');
+    
+    // Set secure to TRUE only if it is production AND the URL is HTTPS.
+    // If the URL is HTTP, set secure=false to prevent cookie rejection.
+    const setSecure = isProduction && isHttps;
+
+    return {
+        httpOnly: true,
+        secure: setSecure, 
+        // SameSite: Use 'None' for secure cross-origin, 'Lax' for insecure/same-site.
+        sameSite: setSecure ? 'None' : 'Lax', 
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
+    };
+};
 
 // ==============================
 // Register (Handles firstName and lastName directly)
@@ -100,13 +108,15 @@ async function login(req, res) {
         });
         
         const isProduction = process.env.NODE_ENV === 'production';
+        // Get environment-aware options
         const cookieOptions = getCookieOptions(isProduction);
 
         // Clear the refresh token cookie just in case an old one exists
+        // Use environment-aware settings for clearing, specifically for sameSite/secure
         res.clearCookie(REFRESH_COOKIE_NAME, {
             httpOnly: true,
-            secure: isProduction,
-            sameSite: isProduction ? 'None' : 'Lax',
+            secure: cookieOptions.secure, // Use the same logic as the new cookie
+            sameSite: cookieOptions.sameSite, 
         });
 
         // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
@@ -131,7 +141,6 @@ async function login(req, res) {
         res.status(500).json({ error: 'Login failed' });
     }
 }
-
 // ==============================
 // Social Login
 // ==============================
@@ -273,21 +282,22 @@ async function createProfile(req, res) {
 // ==============================
 async function logout(req, res) {
     const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions = getCookieOptions(isProduction); // Get options once
+
 	// Clear the refresh token cookie
 	res.clearCookie(REFRESH_COOKIE_NAME, {
 		httpOnly: true,
-		secure: isProduction,
-		sameSite: isProduction ? 'None' : 'Lax',
+		secure: cookieOptions.secure,
+		sameSite: cookieOptions.sameSite,
 	});
     // Clear the access token cookie
     res.clearCookie(ACCESS_COOKIE_NAME, {
         httpOnly: true,
-        secure: isProduction, 
-        sameSite: isProduction ? 'None' : 'Lax', 
+        secure: cookieOptions.secure, 
+        sameSite: cookieOptions.sameSite, 
     });
 	res.json({ message: 'Logged out' });
 }
-
 
 // ==============================
 // Update user profile
