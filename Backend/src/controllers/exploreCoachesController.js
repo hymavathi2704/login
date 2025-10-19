@@ -44,6 +44,7 @@ export const getPublicCoachProfile = async (req, res) => {
           model: Testimonial,
           as: 'testimonials',
           required: false,
+          foreignKey: 'coachProfileId', // ✅ FIX: Explicitly set foreign key
           attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
           include: [{ 
             model: User,
@@ -55,6 +56,7 @@ export const getPublicCoachProfile = async (req, res) => {
           model: Session,
           as: 'sessions', 
           required: false,
+          foreignKey: 'coachProfileId', // ✅ FIX: Explicitly set foreign key
         }
       ],
     });
@@ -69,8 +71,6 @@ export const getPublicCoachProfile = async (req, res) => {
     if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
     if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
     if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
-    if (plainCoachProfile.pricing) plainCoachProfile.pricing = safeParse(plainCoachProfile.pricing); 
-    if (plainCoachProfile.availability) plainCoachProfile.availability = safeParse(plainCoachProfile.availability);
 
     const user = plainCoachProfile.user;
 
@@ -115,6 +115,11 @@ export const getPublicCoachProfile = async (req, res) => {
         sessionType: t.sessionType,
     }));
 
+    // Calculate starting price based on available sessions only
+    const sessionPrices = availableSessions.length > 0 ? availableSessions.map(s => s.price) : [0];
+    const calculatedStartingPrice = Math.min(...sessionPrices);
+
+
     // Step 2: Construct final object
     const profile = {
       id: user.id,
@@ -132,9 +137,10 @@ export const getPublicCoachProfile = async (req, res) => {
       shortBio: plainCoachProfile.bio ? plainCoachProfile.bio.substring(0, 150) + '...' : '',
       fullBio: plainCoachProfile.bio || '',
       isAvailable: true,
-      avgResponseTime: plainCoachProfile.responseTime || 'within-4h',
-      timezone: plainCoachProfile.availability?.timezone || 'UTC',
-      startingPrice: plainCoachProfile.pricing?.individual || plainCoachProfile.sessions?.[0]?.price || 0,
+      // ✅ FIX: Replace removed profile fields with defaults
+      avgResponseTime: 'within-4h', 
+      timezone: 'UTC', 
+      startingPrice: calculatedStartingPrice,
       specialties: plainCoachProfile.specialties || [],
       education: plainCoachProfile.education || [],
       certifications: plainCoachProfile.certifications || [],
