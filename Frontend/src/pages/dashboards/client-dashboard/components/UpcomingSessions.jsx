@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Video, MapPin, User, Search, Filter, DollarSign, Tag } from 'lucide-react';
+import { Calendar, Clock, User, Search, Filter, DollarSign, Tag, Video, MapPin, ListFilter } from 'lucide-react';
 // FIX: Using the correct, modern export name for client sessions
 import { getMyClientSessions } from '@/auth/authApi'; 
 import { toast } from 'sonner';
@@ -10,12 +10,14 @@ import Select from '@/components/ui/Select';
 const UpcomingSessions = ({ preview = false }) => {
   const [allBookings, setAllBookings] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  // Status filter kept for functional filtering, but terminology removed from display
+  const [filterStatus, setFilterStatus] = useState('all'); 
   const [filterType, setFilterType] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // --- UI Helpers ---
+  // Retained for filter bar functionality
   const statusOptions = [
     { value: 'all', label: 'All Statuses' },
     { value: 'confirmed', label: 'Confirmed' },
@@ -23,32 +25,32 @@ const UpcomingSessions = ({ preview = false }) => {
     { value: 'cancelled', label: 'Cancelled' },
   ];
 
+  // MODIFIED: Expanded options based on coach session management types
   const typeOptions = [
     { value: 'all', label: 'All Types' },
     { value: 'individual', label: '1:1 Session' },
-    { value: 'group', label: 'Group Workshop' },
+    { value: 'group', label: 'Group Session' },
+    { value: 'workshop', label: 'Workshop' },
+    { value: 'online', label: 'Online Session' },
+    { value: 'in-person', label: 'In-Person Session' },
   ];
     
-  const getStatusHighlight = (status) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-    
+  // UPDATED: Added highlights for new session types
   const getTypeHighlight = (type) => {
     switch (type) {
       case 'individual': return 'bg-purple-100 text-purple-800';
       case 'group': return 'bg-blue-100 text-blue-800';
+      case 'workshop': return 'bg-pink-100 text-pink-800';
+      case 'online': return 'bg-teal-100 text-teal-800';
+      case 'in-person': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // --- Data Fetching ---
+  // --- Data Fetching (Unchanged) ---
   useEffect(() => {
     const fetchBookings = async () => {
+      setIsLoading(true);
       try {
         const response = await getMyClientSessions(); 
         
@@ -110,12 +112,13 @@ const UpcomingSessions = ({ preview = false }) => {
   return (
     <div className="space-y-8">
       
-      {/* 1. Heading */}
-      {!preview && <h1 className="text-3xl font-bold text-gray-800">My Sessions</h1>}
+      {/* 1. Heading (MODIFIED: Changed to Upcoming Sessions) */}
+      {!preview && <h1 className="text-3xl font-bold text-gray-800">Upcoming Sessions</h1>}
 
-      {/* 2. Search and Filter Bar (Only visible outside of preview mode) */}
+      {/* 2. Search and Filter Bar */}
       {!preview && (
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            {/* The grid ensures search and filters align at the end of the bar */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="md:col-span-2">
                     <Input
@@ -126,15 +129,17 @@ const UpcomingSessions = ({ preview = false }) => {
                         icon={<Search size={20} />}
                     />
                 </div>
+                {/* Filter by Status */}
                 <div>
                     <Select
                         label="Filter by Status"
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
                         options={statusOptions}
-                        icon={<Filter size={16} />}
+                        icon={<ListFilter size={16} />}
                     />
                 </div>
+                {/* Filter by Type (Session Types) */}
                 <div>
                     <Select
                         label="Filter by Type"
@@ -151,56 +156,69 @@ const UpcomingSessions = ({ preview = false }) => {
       {/* 3. Session List */}
       {sessionsToDisplay.length > 0 ? (
         sessionsToDisplay.map((session) => {
-          const TypeIcon = session.type === 'individual' ? User : Tag; // Use User for 1:1, Tag for group/workshop
+          const formatLabel = typeOptions.find(opt => opt.value === session.type)?.label || 'Session';
           
           return (
             <div key={session.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
-                    <h4 className="font-medium text-gray-900">{session.title}</h4>
+                    <h4 className="font-semibold text-lg text-gray-900">{session.title}</h4>
                         
-                    {/* Type Highlight Badge */}
+                    {/* Session Type Highlight Badge (MODIFIED TO HIGHLIGHT SESSION TYPE) */}
                     <span className={`px-2 py-1 text-xs rounded-full ${getTypeHighlight(session.type)}`}>
-                      {session.type.charAt(0).toUpperCase() + session.type.slice(1)} Session
+                      <Tag size={12} className="inline mr-1" /> {formatLabel}
                     </span>
                         
                   </div>
                   
-                  <div className="space-y-2 text-sm text-gray-600">
+                  {/* Highlighting Date and Time (MODIFIED) */}
+                  <div className="space-y-2 text-base font-semibold text-blue-600 mb-3">
                     <div className="flex items-center space-x-2">
-                      <User size={16} />
-                      <span>{session.coachName}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Calendar size={16} />
+                      <Calendar size={18} className="text-blue-500" />
                       <span>{new Date(session.date).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Clock size={16} />
+                      <Clock size={18} className="text-blue-500" />
                       <span>{session.time} ({session.duration} min)</span>
+                    </div>
+                  </div>
+
+                  {/* Other Details (MOVED TO BOTTOM) */}
+                  <div className="space-y-2 text-sm text-gray-600 border-t pt-3">
+                    <div className="flex items-center space-x-2">
+                      <User size={16} />
+                      <span>Coach: {session.coachName}</span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <DollarSign size={16} />
-                      <span>${session.price}</span>
+                      <span>Price: ₹{session.price}</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex flex-col space-y-2">
-                    {/* Status Badge - Moved here, using the separate status highlight logic */}
-                    <div className="flex justify-end">
-                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${getStatusHighlight(session.status)}`}>
-                            {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
-                        </span>
-                    </div>
-
-                  {session.status === 'confirmed' && session.meetingLink && (
+                    {/* Status is implied by the action button state (no terminology badge) */}
+                    
+                  {session.status === 'confirmed' && session.meetingLink ? (
                     <a href={session.meetingLink} target="_blank" rel="noopener noreferrer"
-                       className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors text-center">
-                      Join Session
+                       className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors text-center flex items-center justify-center space-x-1"
+                         title="Join via meeting link"
+                     >
+                         <Video size={16} /> <span>Join</span>
                     </a>
-                  )}
+                  ) : session.status === 'confirmed' ? (
+                       <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm opacity-50 cursor-not-allowed">
+                          Meeting Link N/A
+                       </button>
+                    ) : (
+                        <button 
+                            className={`px-3 py-1 rounded text-sm text-center ${session.status === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-600 cursor-not-allowed'}`}
+                            disabled
+                        >
+                            {session.status === 'pending' ? 'Pending Confirmation' : 'Cancelled'}
+                        </button>
+                    )}
                   <button className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50 transition-colors">
                     Details
                   </button>
@@ -217,13 +235,7 @@ const UpcomingSessions = ({ preview = false }) => {
           </div>
       )}
 
-      {!preview && (
-        <div className="text-center pt-4">
-          <button className="text-blue-600 hover:text-blue-700 font-medium">
-            View All Sessions
-          </button>
-        </div>
-      )}
+      {/* View All Sessions button REMOVED as requested */}
     </div>
   );
 };
