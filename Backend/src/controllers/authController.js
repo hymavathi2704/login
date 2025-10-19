@@ -131,6 +131,7 @@ async function login(req, res) {
         res.status(500).json({ error: 'Login failed' });
     }
 }
+
 // ==============================
 // Social Login
 // ==============================
@@ -181,7 +182,7 @@ async function socialLogin(req, res) {
 		res.clearCookie(REFRESH_COOKIE_NAME, {
 			httpOnly: true,
 			secure: isProduction,
-			sameSite: isProduction ? 'None' : 'Lax',
+			// The getCookieOptions helper already provides the correct sameSite option.
 		});
         
         // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
@@ -191,7 +192,7 @@ async function socialLogin(req, res) {
         });
 
 		res.json({
-			accessToken,
+			// ❌ FIX: Removed accessToken from JSON response
 			user: {
 				id: user.id,
 				firstName: user.firstName,
@@ -209,6 +210,7 @@ async function socialLogin(req, res) {
 	// <--- ADDED: Return 503 error instead of attempting login
 	return res.status(503).json({ error: 'Social login functionality is currently disabled.' }); 
 }
+
 // ==============================
 // Get current user (with profiles)
 // ==============================
