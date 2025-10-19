@@ -1,3 +1,5 @@
+// Backend/src/server.js
+
 // 🚀 Load environment variables first
 require('dotenv').config();
 const path = require('path'); 
@@ -28,6 +30,7 @@ const coachProfileRoutes = require('./routes/coachProfile');
 const profileRoutes = require('./routes/fetchCoachProfiles');
 const clientProfileRoutes = require('./routes/clientProfile'); 
 const bookingRoutes = require('./routes/bookings'); // <-- New Route!
+const { authenticate } = require('./middleware/authMiddleware'); // <--- ✅ NEW IMPORT
 
 const app = express();
 
@@ -79,7 +82,31 @@ app.use(cookieParser());
 
 
 // ==========================================
+// JWT Authentication Middleware Application <--- ✅ NEW SECTION
+// Protected all /api routes except the explicit public ones.
+// ==========================================
+app.use(
+    '/api', 
+    authenticate.unless({
+        path: [
+            '/api/auth/register',
+            '/api/auth/login',
+            '/api/auth/verify-email',
+            '/api/auth/send-verification',
+            '/api/auth/forgot-password',
+            '/api/auth/reset-password',
+            '/api/auth/social-login',
+            // Allow fetching public coach profiles/sessions without login
+            /\/api\/profiles\/coaches(\/.*)?/, 
+            /\/api\/coach\/public(\/.*)?/ 
+        ],
+    })
+);
+
+
+// ==========================================
 // Model Associations (Cleaned for Sessions-Only)
+// ... (rest of associations remain here)
 // ==========================================
 // User <-> ClientProfile
 User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
@@ -129,7 +156,7 @@ app.use('/api/bookings', bookingRoutes); // <-- New Base Path!
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
-// Error Handling
+// Error Handling (Remains Correct)
 // ==========================================
 app.use((err, req, res, next) => {
     if (err instanceof UnauthorizedError) {
@@ -143,6 +170,7 @@ app.use((err, req, res, next) => {
 
 // ==========================================
 // Start Server and Sync Database
+// ... (remains unchanged)
 // ==========================================
 const PORT = process.env.PORT || 4028;
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
