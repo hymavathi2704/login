@@ -30,8 +30,11 @@ router.put(
 // POST: DEDICATED PROFILE PICTURE UPLOAD ROUTE
 router.post(
   '/profile/upload-picture', 
-  authenticate, 
+  // ✅ CRITICAL FIX: Swap middleware order. 
+  // Multer (uploadMiddleware) runs first to process the file stream.
   uploadMiddleware.single('profilePicture'), 
+  // Then authenticate runs, validating the token from the headers.
+  authenticate, 
   coachProfileController.uploadProfilePicture // Reuses the logic that saves to 'uploads' and updates User.profilePicture
 );
 

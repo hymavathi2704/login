@@ -37,51 +37,45 @@ axiosInstance.interceptors.response.use(
 
 
 // --- AUTHENTICATION API ---
-
 export const registerUser = (userData) => {
   return axiosInstance.post("/api/auth/register", userData);
 };
-
 export const loginUser = (credentials) => {
   return axiosInstance.post("/api/auth/login", credentials);
 };
-
 export const getMe = () => {
   return axiosInstance.get("/api/auth/me");
 };
-
 export const createProfile = (profileData) => {
   return axiosInstance.post('/api/auth/create-profile', profileData);
 };
-
 export const verifyEmail = (payload) => {
   return axiosInstance.post(`/api/auth/verify-email`, payload);
 };
-
 export const resendVerificationEmail = (email) => {
   return axiosInstance.post("/api/auth/send-verification", { email });
 };
-
 export const forgotPassword = (payload) => {
   return axiosInstance.post('/api/auth/forgot-password', payload);
 };
-
 export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
-// ✅ FIX: Consolidated to use axiosInstance AND explicitly setting Authorization for FormData
+// ✅ FIX: Reverted to manual Axios instance for reliable token transmission with FormData
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file); 
-  const token = localStorage.getItem("accessToken"); // Explicitly fetch token
+  const token = localStorage.getItem("accessToken");
 
-  return axiosInstance.post('/api/coach/profile/upload-picture', formData, {
-    headers: { 
-        'Content-Type': undefined, // Correctly set for FormData
-        'Authorization': token ? `Bearer ${token}` : undefined // Explicitly set auth token
-    }, 
-  }); 
+  return axios.create({ // Use plain axios.create
+    baseURL: API_BASE_URL,
+    withCredentials: true,
+    headers: {
+      'Content-Type': 'multipart/form-data', // Explicitly setting this ensures proper handling
+      'Authorization': token ? `Bearer ${token}` : undefined, // Explicitly force the token
+    },
+  }).post('/api/coach/profile/upload-picture', formData); 
 };
 
 export const logoutUser = () => {
@@ -144,18 +138,20 @@ export const updateClientProfile = (profileData) => {
   return axiosInstance.put('/api/client/profile', profileData);
 };
 
-// ✅ FIX: Consolidated to use axiosInstance AND explicitly setting Authorization for FormData
+// ✅ FIX: Reverted to manual Axios instance for reliable token transmission with FormData
 export const uploadClientProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file); 
   const token = localStorage.getItem("accessToken"); // Explicitly fetch token
 
-  return axiosInstance.post('/api/client/profile/upload-picture', formData, {
-    headers: { 
-        'Content-Type': undefined, // Correctly set for FormData
-        'Authorization': token ? `Bearer ${token}` : undefined // Explicitly set auth token
-    }, 
-  }); 
+  return axios.create({ // Use plain axios.create
+    baseURL: API_BASE_URL,
+    withCredentials: true,
+    headers: {
+        'Content-Type': 'multipart/form-data', 
+        'Authorization': token ? `Bearer ${token}` : undefined, // Explicitly set auth token
+    }, 
+  }).post('/api/client/profile/upload-picture', formData); 
 };
 
 export const deleteClientProfilePicture = () => {
@@ -167,7 +163,6 @@ export const deleteClientProfilePicture = () => {
 // =========================================================
 // SESSION MANAGEMENT FUNCTIONS
 // =========================================================
-
 export const createSession = async (sessionData) => {
     return axiosInstance.post(`/api/coach/sessions`, sessionData);
 };
@@ -187,22 +182,11 @@ export const bookSession = async (sessionId) => {
 
 
 // --- COACH DASHBOARD CLIENT MANAGEMENT API (FIXED ENDPOINTS) ---
-
-/**
- * Fetches clients who have booked at least one session with the logged-in coach.
- * FIXED: Changed endpoint to /api/coach/clients/booked
- */
 export const getBookedClients = () => {
-    // Maps to: GET /api/coach/clients/booked (assuming coachProfile.js is mounted at /api/coach)
     return axiosInstance.get('/api/coach/clients/booked'); 
 };
 
-/**
- * Fetches clients who follow the logged-in coach.
- * FIXED: Changed endpoint to /api/coach/clients/followed
- */
 export const getFollowedClients = () => {
-    // Maps to: GET /api/coach/clients/followed
     return axiosInstance.get('/api/coach/clients/followed'); 
 };
 
