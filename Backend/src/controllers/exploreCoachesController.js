@@ -10,8 +10,8 @@ import CoachProfile from '../models/CoachProfile.js';
 import Testimonial from '../models/Testimonial.js'; 
 import Session from '../models/Session.js'; 
 import Follow from '../models/Follow.js'; 
-import Booking from '../models/Booking.js'; // <-- ADDED IMPORT
-import ClientProfile from '../models/ClientProfile.js'; // For getClientsWhoFollow
+import Booking from '../models/Booking.js'; 
+import ClientProfile from '../models/ClientProfile.js'; 
 // ---------------------
 
 // === Helper: Safe JSON parse (required for database fields) ===
@@ -28,8 +28,8 @@ const safeParse = (value) => {
 export const getPublicCoachProfile = async (req, res) => { 
   try {
     const coachId = req.params.id;
-    // 🚨 NEW: Get viewer ID from authentication middleware if available
-    const viewerId = req.user?.userId || null; 
+    // 🚨 NEW: Get viewer ID from authentication middleware if available
+    const viewerId = req.user?.userId || null; 
 
     // Step 1: Find the coach profile
     const coachProfile = await CoachProfile.findOne({
@@ -74,33 +74,33 @@ export const getPublicCoachProfile = async (req, res) => {
 
     const user = plainCoachProfile.user;
 
-    // 🚨 NEW LOGIC: Post-process sessions to check for existing bookings
-    let availableSessions = plainCoachProfile.sessions || [];
+    // 🚨 NEW LOGIC: Post-process sessions to check for existing bookings
+    let availableSessions = plainCoachProfile.sessions || [];
 
-    if (viewerId && availableSessions.length > 0) {
-        // Find active bookings for this client for any of these sessions
-        const clientBookings = await Booking.findAll({
-            where: { 
-                clientId: viewerId,
-                sessionId: { [Op.in]: availableSessions.map(s => s.id) },
-                // Check for any active status (confirmed, pending, etc.) excluding 'cancelled'
-                status: { [Op.ne]: 'cancelled' } 
-            },
-            attributes: ['sessionId', 'status'],
-        });
+    if (viewerId && availableSessions.length > 0) {
+        // Find active bookings for this client for any of these sessions
+        const clientBookings = await Booking.findAll({
+            where: { 
+                clientId: viewerId,
+                sessionId: { [Op.in]: availableSessions.map(s => s.id) },
+                // Check for any active status (confirmed, pending, etc.) excluding 'cancelled'
+                status: { [Op.ne]: 'cancelled' } 
+            },
+            attributes: ['sessionId', 'status'],
+        });
 
-        const bookedMap = clientBookings.reduce((map, b) => {
-            map.set(b.sessionId, b.status);
-            return map;
-        }, new Map());
-        
-        availableSessions = availableSessions.map(session => ({
-            ...session,
-            isBooked: bookedMap.has(session.id), // <-- NEW FLAG: true if an active booking exists
-            bookingStatus: bookedMap.get(session.id) || null // <-- NEW STATUS
-        }));
-    }
-    // 🚨 END NEW LOGIC
+        const bookedMap = clientBookings.reduce((map, b) => {
+            map.set(b.sessionId, b.status);
+            return map;
+        }, new Map());
+        
+        availableSessions = availableSessions.map(session => ({
+            ...session,
+            isBooked: bookedMap.has(session.id), // <-- NEW FLAG: true if an active booking exists
+            bookingStatus: bookedMap.get(session.id) || null // <-- NEW STATUS
+        }));
+    }
+    // 🚨 END NEW LOGIC
 
     // Format testimonials to include the client's name/avatar from the User model
     const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
@@ -187,7 +187,8 @@ export const getAllCoachProfiles = async (req, res) => {
                 ]
             },
         ],
-        group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
+        // FIX: Removed the problematic group clause
+        // group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
     });
 
     const processedCoaches = coaches.map(coach => {
@@ -363,7 +364,8 @@ export const getFollowedCoaches = async (req, res) => {
                     ]
                 },
             ],
-            group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
+            // FIX: Removed the problematic group clause
+            // group: ['User.id', 'CoachProfile.id', 'CoachProfile.testimonials.id', 'CoachProfile.sessions.id']
         });
 
         // Apply the same data processing logic as getAllCoachProfiles
