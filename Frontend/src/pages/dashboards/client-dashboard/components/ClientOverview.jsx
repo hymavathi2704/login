@@ -12,6 +12,8 @@ import {
   Video
 } from 'lucide-react';
 import { useAuth } from '../../../../auth/AuthContext';
+// ADDED IMPORT: Import the UpcomingSessions component
+import UpcomingSessions from './UpcomingSessions';
 
 
 const ClientOverview = () => {
@@ -78,24 +80,7 @@ const ClientOverview = () => {
     }
   ];
 
-  const upcomingSessions = [
-    {
-      id: 1,
-      coach: "Dr. Emily",
-      time: "10:00 AM",
-      date: "Tomorrow",
-      duration: "60 min",
-      type: "Life Coaching"
-    },
-    {
-      id: 2,
-      coach: "Dr. Emily",
-      time: "2:00 PM",
-      date: "Next Friday",
-      duration: "45 min",
-      type: "Career Development"
-    }
-  ];
+  // REMOVED: hardcoded upcomingSessions array is no longer needed
 
   return (
     <div className="space-y-6">
@@ -135,40 +120,18 @@ const ClientOverview = () => {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Your Upcoming Sessions */}
+        {/* MODIFIED: Your Upcoming Sessions replaced with component */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Your Upcoming Sessions</h3>
-            <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            {/* Direct link to the full sessions page */}
+            <a href="/dashboard/client/sessions" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
               View All
-            </button>
+            </a>
           </div>
           <div className="space-y-3">
-            {upcomingSessions.map((session) => (
-              <div key={session.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <Video size={20} className="text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{session.type}</p>
-                    <p className="text-sm text-gray-500">with {session.coach}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">{session.time}</p>
-                  <p className="text-sm text-gray-500">{session.date}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">
-                    Join
-                  </button>
-                  <button className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50">
-                    Reschedule
-                  </button>
-                </div>
-              </div>
-            ))}
+            {/* RENDER THE UPCOMING SESSIONS COMPONENT IN PREVIEW MODE */}
+            <UpcomingSessions preview={true} />
           </div>
         </div>
 

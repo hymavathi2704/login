@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-// MODIFIED: Replaced DollarSign with IndianRupee for icon import
 import { Calendar, Clock, User, Search, Filter, Tag, Video, MapPin, ListFilter, X, IndianRupee } from 'lucide-react'; 
-// FIX: Using the correct, modern export name for client sessions
 import { getMyClientSessions } from '@/auth/authApi'; 
 import { toast } from 'sonner';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 
 
+// MODIFIED: Re-added 'preview = false' prop to correctly control visibility
 const UpcomingSessions = ({ preview = false }) => {
   const [allBookings, setAllBookings] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,7 +42,7 @@ const UpcomingSessions = ({ preview = false }) => {
     { value: 'online', label: 'Online Session' },
     { value: 'in-person', label: 'In-Person Session' },
   ];
-    
+    
   // UPDATED: Added highlights for new session types
   const getTypeHighlight = (type) => {
     switch (type) {
@@ -56,7 +55,7 @@ const UpcomingSessions = ({ preview = false }) => {
     }
   };
 
-  // --- Data Fetching (Unchanged) ---
+  // --- Data Fetching ---
   useEffect(() => {
     const fetchBookings = async () => {
       setIsLoading(true);
@@ -64,23 +63,20 @@ const UpcomingSessions = ({ preview = false }) => {
         const response = await getMyClientSessions(); 
         
         const sessionsData = response.data
-            // Map to a consistent display format, focusing only on Session data
             .map(b => ({
                 id: b.id,
                 title: b.Session?.title || 'Session Booking',
-                // Coach details come from Session -> CoachProfile -> User
                 coachName: b.Session?.coachProfile?.user ? `${b.Session.coachProfile.user.firstName} ${b.Session.coachProfile.user.lastName}` : 'Unknown Coach',
                 date: b.Session?.defaultDate,
                 time: b.Session?.defaultTime,
                 duration: b.Session?.duration || 'N/A', 
                 type: b.Session?.type || 'individual',
-                price: b.Session?.price || 0, // ADDED price field for display
+                price: b.Session?.price || 0, 
                 status: b.status,
                 meetingLink: b.Session?.meetingLink,
             }))
-            .filter(item => item.date); // Filter out items with no discernible date
+            .filter(item => item.date); 
 
-        // Sort by date/time
         const sortedBookings = sessionsData.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         setAllBookings(sortedBookings); 
@@ -109,7 +105,7 @@ const UpcomingSessions = ({ preview = false }) => {
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  // Apply preview slice if necessary
+  // Logic re-added to slice the list when in preview mode
   const sessionsToDisplay = preview ? filteredSessions.slice(0, 3) : filteredSessions;
 
   // --- Rendering ---
@@ -121,10 +117,10 @@ const UpcomingSessions = ({ preview = false }) => {
   return (
     <div className="space-y-8">
       
-      {/* 1. Heading */}
+      {/* 1. Heading (Conditional on !preview) */}
       {!preview && <h1 className="text-3xl font-bold text-gray-800">Upcoming Sessions</h1>}
 
-      {/* 2. Search and Filter Bar */}
+      {/* 2. Search and Filter Bar (Conditional on !preview - THIS IS THE KEY) */}
       {!preview && (
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -158,6 +154,7 @@ const UpcomingSessions = ({ preview = false }) => {
             </div>
         </div>
       )}
+      
 
       {/* 3. Session List */}
       {sessionsToDisplay.length > 0 ? (
@@ -170,12 +167,12 @@ const UpcomingSessions = ({ preview = false }) => {
                 <div className="flex-1">
                   <div className="flex items-center space-x-3 mb-2">
                     <h4 className="font-semibold text-lg text-gray-900">{session.title}</h4>
-                        
+                        
                     {/* Session Type Highlight Badge */}
                     <span className={`px-2 py-1 text-xs rounded-full ${getTypeHighlight(session.type)}`}>
                       <Tag size={12} className="inline mr-1" /> {formatLabel}
                     </span>
-                        
+                        
                   </div>
                   
                   {/* Highlighted Date and Time */}
@@ -196,7 +193,7 @@ const UpcomingSessions = ({ preview = false }) => {
                       <User size={16} />
                       <span>Coach: {session.coachName}</span>
                     </div>
-                    {/* MODIFIED: Price icon updated to IndianRupee */}
+                    {/* Price icon is IndianRupee */}
                     <div className="flex items-center space-x-2">
                       <IndianRupee size={16} />
                       <span>Price: ₹{session.price}</span>
@@ -205,31 +202,31 @@ const UpcomingSessions = ({ preview = false }) => {
                 </div>
 
                 <div className="flex flex-col space-y-2">
-                    {/* Action Button based on status */}
+                    {/* Action Button based on status */}
                   {session.status === 'confirmed' && session.meetingLink ? (
                     <a href={session.meetingLink} target="_blank" rel="noopener noreferrer"
                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors text-center flex items-center justify-center space-x-1"
-                         title="Join via meeting link"
-                     >
-                         <Video size={16} /> <span>Join</span>
+                         title="Join via meeting link"
+                     >
+                         <Video size={16} /> <span>Join</span>
                     </a>
                   ) : session.status === 'confirmed' ? (
-                       <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm opacity-50 cursor-not-allowed">
-                          Meeting Link N/A
-                       </button>
-                    ) : (
-                        <button 
-                            className={`px-3 py-1 rounded text-sm text-center ${session.status === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-600 cursor-not-allowed'}`}
-                            disabled
-                        >
-                            {session.status === 'pending' ? 'Pending Confirmation' : 'Cancelled'}
-                        </button>
-                    )}
+                       <button className="bg-blue-600 text-white px-3 py-1 rounded text-sm opacity-50 cursor-not-allowed">
+                          Meeting Link N/A
+                       </button>
+                    ) : (
+                        <button 
+                            className={`px-3 py-1 rounded text-sm text-center ${session.status === 'pending' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-600 cursor-not-allowed'}`}
+                            disabled
+                        >
+                            {session.status === 'pending' ? 'Pending Confirmation' : 'Cancelled'}
+                        </button>
+                    )}
                   {/* Details button opens modal */}
                   <button 
-                        className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50 transition-colors"
-                        onClick={() => handleDetailsClick(session)}
-                    >
+                        className="border border-gray-300 text-gray-600 px-3 py-1 rounded text-sm hover:bg-gray-50 transition-colors"
+                        onClick={() => handleDetailsClick(session)}
+                    >
                     Details
                   </button>
                 </div>
@@ -281,10 +278,10 @@ const UpcomingSessions = ({ preview = false }) => {
                   <span>Coach: <span className="font-medium">{selectedSession.coachName}</span></span>
                 </div>
 
-                {/* MODIFIED: Price icon updated to IndianRupee */}
+                {/* Price */}
                 <div className="flex items-center space-x-2">
                   <IndianRupee size={18} />
-                  <span>Price: <span className="font-medium">{selectedSession.price}</span></span>
+                  <span>Price: <span className="font-medium">₹{selectedSession.price}</span></span>
                 </div>
 
                 {/* Status - Displayed clearly in modal as it's a detail */}
