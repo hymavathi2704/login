@@ -15,9 +15,10 @@ import { useAuth } from '@/auth/AuthContext';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028';
 
-const ClientProfileEditor = () => {
-  // ✅ FIX: Destructure setAuthUser from AuthContext
-  const { setAuthUser } = useAuth();
+// ✅ FIX: Changed to anonymous default export to resolve "does not provide an export named 'default'" error
+export default () => {
+  // ✅ FIX: Destructure setUser (correct name from AuthContext) from useAuth
+  const { setUser } = useAuth();
     
   const [isSaving, setIsSaving] = useState(false);
   const [profileData, setProfileData] = useState({});
@@ -118,9 +119,11 @@ const ClientProfileEditor = () => {
     }
     
     try {
+        let response = { data: {} };
+        
         // Only call API if a URL exists (i.e., it's saved in the DB)
         if (profileData.profilePicture) {
-            await deleteClientProfilePicture(); 
+            response = await deleteClientProfilePicture(); 
             toast.success("Profile picture successfully deleted from server.");
         }
 
@@ -129,8 +132,9 @@ const ClientProfileEditor = () => {
         updateData({ profilePicture: null }); // Set DB path to null
         setUnsavedChanges(true); 
         
-        // ✅ FIX: Update global state after deletion
-        setAuthUser({ ...profileData, profilePicture: null }); 
+        // ✅ FIX: Update global state after deletion using setUser
+        // Use response.data.user if available, otherwise construct a partial update
+        setUser(response.data.user || { ...profileData, profilePicture: null }); 
         
     } catch (error) {
         console.error("Failed to delete profile picture:", error);
@@ -159,8 +163,8 @@ const ClientProfileEditor = () => {
             // The image is now saved and we have the final path
             finalProfileData.profilePicture = uploadData.profilePicture;
             
-            // ✅ FIX: Update global state immediately after successful upload
-            setAuthUser(uploadData.user); 
+            // ✅ FIX: Update global state immediately after successful upload using setUser
+            setUser(uploadData.user); 
 
         } catch (uploadError) {
             console.error('Profile picture upload failed:', uploadError);
@@ -191,8 +195,8 @@ const ClientProfileEditor = () => {
       setImageFile(null); 
       setPreviewUrl(savedUserData.profilePicture); 
       
-      // ✅ FIX: Update global state after text/demographic changes
-      setAuthUser(data.user);
+      // ✅ FIX: Update global state after text/demographic changes using setUser
+      setUser(data.user);
 
 
     } catch (error) {
@@ -301,5 +305,3 @@ const ClientProfileEditor = () => {
     </div>
   );
 };
-
-export default ClientProfileEditor;
