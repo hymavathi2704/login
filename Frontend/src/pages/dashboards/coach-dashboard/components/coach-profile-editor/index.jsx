@@ -190,11 +190,11 @@ const CoachProfileEditor = () => {
       
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully!`);
       
-      // ✅ FIX: Instead of manually manipulating the state (which caused the crash),
-      // fetch the complete, fresh profile from the backend.
-      await fetchProfile(); 
-      
-      setUnsavedChanges(false);
+      // ✅ FIX: Instead of manually manipulating the state (which caused the crash),
+      // fetch the complete, fresh profile from the backend.
+      await fetchProfile(); 
+      
+      setUnsavedChanges(false);
     } catch (error) {
       console.error('Add item failed:', error);
       toast.error(`Failed to add item to ${type}.`);
@@ -340,7 +340,7 @@ const CoachProfileEditor = () => {
     <div className="flex items-center justify-center py-12">
       <div className="animate-spin mr-3"><Save className="w-5 h-5 text-blue-600" /></div>
       <p className="text-gray-600">Loading profile data...</p>
-    </div>
+      </div>
   );
 
   return (

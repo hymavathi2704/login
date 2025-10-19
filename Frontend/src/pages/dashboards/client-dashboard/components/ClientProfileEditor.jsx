@@ -1,3 +1,5 @@
+// Frontend/src/pages/dashboards/client-dashboard/components/ClientProfileEditor.jsx
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Save, AlertTriangle, Upload, X, Camera } from 'lucide-react';
 // CORRECTED IMPORTS USING @/ ALIAS
@@ -14,6 +16,28 @@ import { useAuth } from '@/auth/AuthContext';
 
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028';
+
+// 🔑 CRITICAL FIX: Base URL Helper (Duplicated from CoachProfileEditor's helper logic)
+const getFullImageSrc = (pathOrBase64) => {
+    // If path is already a data URL (local preview) or a full URL, return it
+    if (typeof pathOrBase64 !== 'string' || !pathOrBase64.startsWith('/uploads/')) {
+        return pathOrBase64;
+    }
+
+    // Determine the base URL for fetching the image.
+    let baseUrl = API_BASE_URL;
+    const isLocalhost = API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1');
+
+    if (isLocalhost && window.location.hostname !== 'localhost') {
+        // When VITE_BACKEND_URL points to localhost but the app is on a public domain, 
+        // use the current public domain to construct the absolute URL.
+        baseUrl = window.location.origin;
+    }
+    
+    // Return the absolute URL: http://katha.startworks.in/uploads/...
+    return `${baseUrl}${pathOrBase64}`;
+};
+
 
 // ✅ FIX: Changed to anonymous default export to resolve "does not provide an export named 'default'" error
 export default () => {
@@ -57,7 +81,8 @@ export default () => {
 
         setProfileData(userData); 
         setInitialData(userData);
-        setPreviewUrl(userData.profilePicture); 
+        // 🔑 FIX 2: Use the helper function when setting the initial URL for display
+        setPreviewUrl(getFullImageSrc(userData.profilePicture)); 
 
       } catch (error) {
         console.error("Error fetching profile data:", error);
@@ -66,7 +91,7 @@ export default () => {
     };
 
     fetchProfileData();
-  }, []); 
+  }, [setUser]); // Added setUser to dependency array for clarity 
 
   
   // Detects if any changes have been made to the form
@@ -107,7 +132,7 @@ export default () => {
     }
   };
 
-  // 🔑 FIX 2: Implement dedicated API call for photo deletion
+  // 🔑 FIX 3: Implement dedicated API call for photo deletion
   const removeProfilePicture = async () => { 
     if (!window.confirm("Are you sure you want to permanently delete your profile picture? This cannot be undone.")) {
       return;
@@ -115,6 +140,9 @@ export default () => {
     
     // If the image is already null and there's no file pending, just clear local state
     if (!profileData.profilePicture && !imageFile) {
+        setPreviewUrl(null); 
+        setImageFile(null);
+        setUnsavedChanges(true); 
         return;
     }
     
@@ -133,7 +161,6 @@ export default () => {
         setUnsavedChanges(true); 
         
         // ✅ FIX: Update global state after deletion using setUser
-        // Use response.data.user if available, otherwise construct a partial update
         setUser(response.data.user || { ...profileData, profilePicture: null }); 
         
     } catch (error) {
@@ -179,7 +206,11 @@ export default () => {
 
     // --- STEP 2: Save the Profile Data ---
     try {
-      const response = await updateClientProfile(finalProfileData);
+      // Filter out file-specific fields before PUT call, as they are now handled in STEP 1 or deletion is signaled by profilePicture: null
+      const dataToSave = { ...finalProfileData };
+      delete dataToSave.profilePictureFile; // Ensure this temporary field is not sent
+      
+      const response = await updateClientProfile(dataToSave);
       
       const data = response.data; 
 
@@ -193,7 +224,8 @@ export default () => {
       setProfileData(savedUserData);
       setInitialData(savedUserData);
       setImageFile(null); 
-      setPreviewUrl(savedUserData.profilePicture); 
+      // 🔑 FIX 4: Use the helper function when setting the final saved URL for display
+      setPreviewUrl(getFullImageSrc(savedUserData.profilePicture)); 
       
       // ✅ FIX: Update global state after text/demographic changes using setUser
       setUser(data.user);
@@ -213,7 +245,7 @@ export default () => {
   const handleDragLeave = (e) => { e.preventDefault(); setDragActive(false); };
 
 
-  // 🔑 FIX 3: Calculate the maximum allowed date (Today)
+  // 🔑 FIX 5: Calculate the maximum allowed date (Today)
   const today = new Date().toISOString().split('T')[0];
 
   return (
@@ -233,10 +265,10 @@ export default () => {
           <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                {/* 🔑 FIX 4: Image fetching fix for production */}
+                {/* 🔑 CRITICAL FIX: Use the new local helper function to get the correct URL */}
                 {previewUrl 
                     ? <img 
-                        src={previewUrl?.startsWith('/') ? `${API_BASE_URL}${previewUrl}` : previewUrl} 
+                        src={getFullImageSrc(previewUrl)} 
                         alt="Profile preview" 
                         className="w-full h-full object-cover" 
                       /> 

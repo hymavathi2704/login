@@ -1,3 +1,5 @@
+// Frontend/src/pages/dashboards/shared/AccountSettings.jsx
+
 import React, { useState } from 'react';
 import { Shield, Trash2 } from 'lucide-react'; 
 import Input from '@/components/ui/Input';
@@ -51,12 +53,18 @@ const AccountSettings = () => {
 
     try {
         const apiUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028'}/api/auth/change-password`; 
+        // 🔑 FIX: Get token from localStorage
+        const token = localStorage.getItem('accessToken'); 
 
         await axios.put(apiUrl, {
             currentPassword: formData.currentPassword,
             newPassword: formData.newPassword,
         }, {
-            withCredentials: true 
+            withCredentials: true,
+            // 🔑 CRITICAL FIX: Manually add the Authorization header
+            headers: {
+                'Authorization': `Bearer ${token}` 
+            }
         });
 
         toast.success("Password updated successfully. You will now be logged out.");
@@ -89,10 +97,16 @@ const AccountSettings = () => {
 
     try {
       const apiUrl = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028'}/api/auth/me`;
+      // 🔑 FIX: Get token from localStorage
+      const token = localStorage.getItem('accessToken'); 
 
       // 1. Send DELETE request to the protected route
       await axios.delete(apiUrl, {
         withCredentials: true,
+        // 🔑 CRITICAL FIX: Manually add the Authorization header for DELETE
+        headers: {
+            'Authorization': `Bearer ${token}` 
+        }
       });
 
       // 2. Success, Logout, and Redirect

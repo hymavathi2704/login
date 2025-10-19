@@ -10,7 +10,7 @@ import { useAuth } from '@/auth/AuthContext';
 import DemographicsFormSection from '@/pages/dashboards/shared/DemographicsFormSection'; 
 
 // Load backend URL from .env (fallback to localhost)
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
+const VITE_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
 
 // Helper function to calculate max date (18 years ago) for Date of Birth
 const calculateMaxDate = () => {
@@ -35,6 +35,28 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
     // State to track the local file object
     const [selectedFile, setSelectedFile] = useState(null); 
 
+    // 🔑 CRITICAL FIX: Ensure the correct public base URL is used for the image
+    const getFullImageSrc = (pathOrBase64) => {
+        // If path is already a data URL (local preview) or a full URL, return it
+        if (typeof pathOrBase64 !== 'string' || !pathOrBase64.startsWith('/uploads/')) {
+            return pathOrBase64;
+        }
+
+        // Determine the base URL for fetching the image.
+        let baseUrl = VITE_BACKEND_URL;
+        const isLocalhost = VITE_BACKEND_URL.includes('localhost') || VITE_BACKEND_URL.includes('127.0.0.1');
+
+        if (isLocalhost && window.location.hostname !== 'localhost') {
+            // When VITE_BACKEND_URL points to localhost but the app is on a public domain (like katha.startworks.in), 
+            // use the current public domain to construct the absolute URL.
+            baseUrl = window.location.origin;
+        }
+        
+        // Return the absolute URL: http://katha.startworks.in/uploads/...
+        return `${baseUrl}${pathOrBase64}`;
+    };
+
+
     useEffect(() => {
         // If no file is locally selected, update the preview from the data/user context
         if (!selectedFile) {
@@ -48,13 +70,6 @@ const PersonalInfoSection = ({ data, errors, updateData, setUnsavedChanges }) =>
         setUnsavedChanges(true);
     };
     
-    const getFullImageSrc = (pathOrBase64) => {
-        if (typeof pathOrBase64 === 'string' && pathOrBase64.startsWith('/uploads/')) {
-            return `${API_BASE_URL}${pathOrBase64}`; 
-        }
-        return pathOrBase64;
-    };
-
     // ⚠️ CRITICAL FIX: Staging the file object
     const handleFileUpload = (file) => {
         if (!file || !file?.type?.startsWith('image/')) {
