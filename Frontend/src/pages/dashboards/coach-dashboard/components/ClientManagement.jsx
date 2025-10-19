@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, Search, Users, Heart, Calendar, Clock, Mail } from 'lucide-react'; 
-import { getBookedClients, getFollowedClients } from '@/auth/authApi'; // <-- UPDATED IMPORTS
+// 🚨 FIX: Import the new, correct functions from authApi (assuming authApi.js was updated)
+import { getBookedClients, getFollowedClients } from '@/auth/authApi'; 
 import { cn } from '@/utils/cn'; 
 import { toast } from 'sonner'; 
 
 // Load backend URL from .env (fallback to localhost:4028)
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
+
 // Helper to construct the full image source URL
 const getFullImageSrc = (path) => {
     if (typeof path === 'string' && path.startsWith('/uploads/')) {
@@ -15,8 +17,6 @@ const getFullImageSrc = (path) => {
     }
     return path;
 };
-
-// REMOVED MOCK: getSessionsBookedCount is no longer needed as the backend now provides the real count
 
 const CLIENT_TYPE_BOOKED = 'booked';
 const CLIENT_TYPE_FOLLOWERS = 'followers';
@@ -28,34 +28,37 @@ const ClientManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState(CLIENT_TYPE_BOOKED); 
 
+  // 🚨 FIX 1: Update fetchClients to use the correct API names/calls
   const fetchClients = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 1. Fetch clients who have booked sessions (using new API function)
+      // 1. Fetch clients who have booked sessions 
       const bookedResponse = await getBookedClients();
       
-      // The backend now returns the enriched data, so minimal processing is needed
-      const enrichedBookedClients = (bookedResponse.data.clients || []).map(client => ({
-          ...client,
-          // name and sessionsBookedTillNow are now provided by the backend
-      }));
-      setBookedClients(enrichedBookedClients);
+      // The backend returns processed data in { clients: [...] }
+      setBookedClients(bookedResponse.data.clients || []); 
 
-      // 2. Fetch clients who follow this coach (using new API function)
+      // 2. Fetch clients who follow this coach
       const followerResponse = await getFollowedClients(); 
       setFollowerClients(followerResponse.data.clients || []); 
 
     } catch (error) {
+      // 🚨 FIX 2: Log the full error object to help debug the actual network failure!
       console.error("Failed to fetch clients:", error);
-      toast.error("Failed to fetch client data.");
+      console.error("Full Error Details:", error.response || error.message);
+      
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to fetch client data.';
+      toast.error(errorMessage);
+
     } finally {
       setIsLoading(false);
     }
-  }, []); // Empty dependency array means it runs once on mount
+  }, []); 
 
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+  }, [fetchClients, activeTab]); // Re-fetch on tab change is cleaner
+
   
   // Select the current list based on the active tab
   const currentClientList = activeTab === CLIENT_TYPE_BOOKED ? bookedClients : followerClients;
@@ -69,6 +72,7 @@ const ClientManagement = () => {
   const renderClientCard = (client, isFollower = false) => {
     // Generate fallback profile image if path is missing
     const fallbackAvatar = `https://ui-avatars.com/api/?name=${client.name.replace(' ', '+')}&background=random`;
+    // Note: The backend in a previous step was updated to provide the correct image path
     const profileImage = getFullImageSrc(client.profilePicture) || fallbackAvatar;
 
     if (isFollower) {
@@ -89,12 +93,12 @@ const ClientManagement = () => {
                     {/* Age */}
                     <p className="flex items-center">
                         <Clock size={14} className="mr-2 flex-shrink-0 text-gray-400" /> 
-                        Age: {client.age}
+                        Age: {client.age || 'N/A'}
                     </p>
                     {/* Following Since */}
                     <p className="flex items-center text-purple-600">
                         <Heart size={14} className="mr-2 flex-shrink-0" fill="currentColor" /> 
-                        Following since: {client.followingSince}
+                        Following since: {client.followingSince || 'N/A'}
                     </p>
                 </div>
                 
@@ -121,7 +125,7 @@ const ClientManagement = () => {
             {/* Sessions Booked Till Now */}
             <p className="text-sm text-purple-600 font-medium flex items-center mb-4">
                 <Calendar size={14} className="mr-2 flex-shrink-0" /> 
-                Sessions Booked Till Now: {client.sessionsBookedTillNow}
+                Sessions Booked Till Now: {client.sessionsBookedTillNow || 0}
             </p>
             
             {/* View Client Sessions Button */}
@@ -171,16 +175,27 @@ const ClientManagement = () => {
         </button>
       </div>
 
-      <div className="relative pt-6">
-        <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder={`Search ${activeTab === CLIENT_TYPE_BOOKED ? 'booked clients' : 'followers'} by name or email...`}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border rounded-lg"
-        />
+      {/* 🚨 FIX 3: Search Bar Alignment Fix */}
+      <div className="relative">
+        {/* Remove the redundant 'pt-6' and rely on the input padding.
+            The position of the icon's container needs to match the height of the input.
+            By wrapping the input and icon in a div and using flex-1, we get better alignment.
+            Instead of absolute positioning relative to an outer div, we'll keep the relative/absolute position
+            but ensure the container's padding is correct.
+        */}
+        <div className="relative">
+            <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder={`Search ${activeTab === CLIENT_TYPE_BOOKED ? 'booked clients' : 'followers'} by name or email...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+            />
+        </div>
       </div>
+      {/* 🚨 END FIX 3 */}
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClients.length > 0 ? filteredClients.map(client => (

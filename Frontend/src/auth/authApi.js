@@ -1,3 +1,4 @@
+// Frontend/src/auth/authApi.js
 import axios from 'axios';
 
 // 🚀 FIX: Define API_BASE_URL so it's accessible to all functions
@@ -98,7 +99,7 @@ export const getMyCoachBookings = () => {
 };
 
 
-// --- PROFILES API ---
+// --- PROFILES & COACH DISCOVERY API ---
 
 export const getAllCoaches = (searchTerm = '', audience = '') => {
   return axiosInstance.get(`/api/profiles/coaches`, {
@@ -110,12 +111,13 @@ export const getAllCoaches = (searchTerm = '', audience = '') => {
 };
 
 export const getCoachById = (coachId) => {
-  return axiosInstance.get(`/api/coach/public/${coachId}`); 
+  return axiosInstance.get(`/api/profiles/coach/${coachId}`); 
 };
 
-export const getMyClients = () => {
-  return axiosInstance.get('/api/profiles/my-clients');
-};
+// ❌ REMOVED: Replaced by getBookedClients
+// export const getMyClients = () => {
+//   return axiosInstance.get('/api/profiles/my-clients');
+// };
 
 export const addProfileItem = (payload) => {
   return axiosInstance.post('api/coach/profile/add-item', payload); 
@@ -189,11 +191,17 @@ export const bookSession = async (sessionId) => {
     return axiosInstance.post(`/api/coach/public/${sessionId}/book`);
 };
 
-// --- COACH DASHBOARD CLIENT MANAGEMENT API (NEW) ---
+// ❌ REMOVED: Replaced by getFollowedClients
+// export const getClientsWhoFollow = () => {
+//     return axiosInstance.get('/api/coach/clients-who-follow');
+// };
+
+
+// --- COACH DASHBOARD CLIENT MANAGEMENT API (NEW ENDPOINTS) ---
 
 /**
  * Fetches clients who have booked at least one session with the logged-in coach.
- * Includes: profile pic, name, email, sessions booked till now.
+ * This is the new function that replaces getMyClients.
  */
 export const getBookedClients = () => {
     // Maps to: GET /api/profiles/dashboard/clients/booked
@@ -202,7 +210,7 @@ export const getBookedClients = () => {
 
 /**
  * Fetches clients who follow the logged-in coach.
- * Includes: profile pic, name, age, mail, following since date.
+ * This is the new function that replaces getClientsWhoFollow.
  */
 export const getFollowedClients = () => {
     // Maps to: GET /api/profiles/dashboard/clients/followed
