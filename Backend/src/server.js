@@ -60,7 +60,22 @@ app.use(
 
 app.use(express.json({ limit: '5mb' }));
 
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+// ==========================================
+// 🔑 CRITICAL FIX: Custom Middleware for Static Files (MIME Type Fix for JPG)
+// ==========================================
+app.use('/uploads', (req, res, next) => {
+    const ext = path.extname(req.path).toLowerCase();
+    
+    // Explicitly set the Content-Type header for JPG/JPEG if the extension matches.
+    if (ext === '.jpg' || ext === '.jpeg') {
+        res.setHeader('Content-Type', 'image/jpeg');
+    }
+    // Note: Other image formats like .webp often get automatically handled correctly by Express
+    // or the underlying Node/OS MIME detection.
+    
+    // Pass control to the standard Express static middleware to serve the file.
+    express.static(path.join(__dirname, '..', 'uploads'))(req, res, next);
+});
 
 app.use(cookieParser());
 
