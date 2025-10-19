@@ -10,7 +10,7 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile');
 const { signAccessToken, signEmailToken, verifyToken } = require('../utils/jwt'); 
 const { sendVerificationEmail, sendResetPasswordEmail } = require('../utils/mailer');
-const asyncHandler = require('express-async-handler'); 
+const asyncHandler = require('express-async-handler'); // <-- ADD THIS LINE
 
 const SALT_ROUNDS = 12;
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -20,136 +20,114 @@ const generateOtp = customAlphabet('0123456789', 6);
 // ==============================
 // Helper function for safe cookie settings
 // ==============================
-// ==============================
-// Helper function for safe cookie settings
-// ==============================
-const getCookieOptions = (isProduction) => {
-    // Check the protocol of the live URL (using APP_URL as proxy)
-    const isHttps = process.env.APP_URL?.startsWith('https') || process.env.FRONTEND_URL?.startsWith('https');
-    
-    // Set secure to TRUE only if it is production AND the URL is HTTPS.
-    // Since you are still on HTTP, this is FALSE, which is correct for the temporary fix.
-    const setSecure = isProduction && isHttps;
-
-    return {
-        httpOnly: true,
-        secure: setSecure, 
-        // SameSite: 'None' requires Secure: true. Since we are on HTTP, we use 'Lax'.
-        // This is correct as per the last fix.
-        sameSite: setSecure ? 'None' : 'Lax', 
-        
-        // 💡 CRITICAL ADDITION: Domain is NOT set. 
-        // The browser defaults it to the site being accessed (katha.startworks.in)
-        // This avoids cross-domain rejection from Nginx proxying.
-        // domain: isProduction ? '.katha.startworks.in' : undefined, // PREVENT setting domain for now
-        
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
-    };
-};
+const getCookieOptions = (isProduction) => ({
+    httpOnly: true,
+    // FIX: Set secure only if in production (where HTTPS is guaranteed)
+    secure: isProduction, 
+    // FIX: Use 'Lax' in development (HTTP localhost) to allow the cookie to be sent.
+    // Use 'None' only when secure: true is active (production HTTPS).
+    sameSite: isProduction ? 'None' : 'Lax', 
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
+});
 
 // ==============================
-// Register (Handles firstName and lastName directly)
+// Register
 // ==============================
 async function register(req, res) {
-    try {
-        // 🔑 FIELDS MATCH FRONTEND: firstName, lastName, password
-        const { firstName, lastName, password } = req.body; 
-        const email = req.body.email?.toLowerCase().trim();
+	try {
+		const { firstName, lastName, password } = req.body;
+		const email = req.body.email?.toLowerCase().trim();
 
-        // Basic server-side validation for required fields
-        if (!firstName || !lastName) {
-             return res.status(400).json({ error: 'First name and last name are required.' });
-        }
-        if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
-        if (!password || password.length < 8)
-            return res.status(400).json({ error: 'Password must be >= 8 chars' });
+		if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
+		if (!password || password.length < 8)
+			return res.status(400).json({ error: 'Password must be >= 8 chars' });
 
-        const existing = await User.findOne({ where: { email } });
-        if (existing) return res.status(409).json({ error: 'Email already in use' });
+		const existing = await User.findOne({ where: { email } });
+		if (existing) return res.status(409).json({ error: 'Email already in use' });
 
-        const id = uuidv4();
-        const hash = await bcrypt.hash(password, SALT_ROUNDS);
-        const otp = generateOtp();
-        const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
+		const id = uuidv4();
+		const hash = await bcrypt.hash(password, SALT_ROUNDS);
+		const otp = generateOtp();
+		const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
-        await User.create({
-            id,
-            firstName: firstName.trim(), // ✅ Uses the separate fields
-            lastName: lastName.trim(),   // ✅ Uses the separate fields
-            email,
-            password_hash: hash,
-            verification_token: otp,
-            verification_token_expires: otp_expires_at,
-            provider: 'email',
-            email_verified: false,
-            roles: [],
-        });
+		await User.create({
+			id,
+			firstName,
+			lastName,
+			email,
+			password_hash: hash,
+			verification_token: otp,
+			verification_token_expires: otp_expires_at,
+			provider: 'email',
+			email_verified: false,
+			roles: [],
+		});
 
-        await sendVerificationEmail(email, otp).catch(console.error);
+		await sendVerificationEmail(email, otp).catch(console.error);
 
-        res.status(201).json({ message: 'Registered. Please check email to verify.' });
-    } catch (err) {
-        console.error('Register error:', err);
-        res.status(500).json({ error: 'Failed to register user' });
-    }
+		res.status(201).json({ message: 'Registered. Please check email to verify.' });
+	} catch (err) {
+		console.error('Register error:', err);
+		res.status(500).json({ error: 'Failed to register user' });
+	}
 }
+
 // ==============================
 // Login
 // ==============================
 async function login(req, res) {
-    try {
-        const { password } = req.body;
-        const email = req.body.email?.toLowerCase().trim();
-        const user = await User.findOne({ where: { email } });
+	try {
+		const { password } = req.body;
+		const email = req.body.email?.toLowerCase().trim();
+		const user = await User.findOne({ where: { email } });
 
-        if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-        if (user.provider !== 'email')
-            return res.status(400).json({ error: `Use ${user.provider} login` });
-        if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
+		if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+		if (user.provider !== 'email')
+			return res.status(400).json({ error: `Use ${user.provider} login` });
+		if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
 
-        const ok = await bcrypt.compare(password, user.password_hash);
-        if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+		const ok = await bcrypt.compare(password, user.password_hash);
+		if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
 
-        const accessToken = signAccessToken({
-            userId: user.id,
-            email: user.email,
-            roles: user.roles,
-        });
-        
-        const isProduction = process.env.NODE_ENV === 'production';
-        // Get environment-aware options
-        const cookieOptions = getCookieOptions(isProduction);
+		const accessToken = signAccessToken({
+			userId: user.id,
+			email: user.email,
+			roles: user.roles,
+		});
+		
+        const isProduction = process.env.NODE_ENV === 'production';
+        const cookieOptions = getCookieOptions(isProduction);
 
-        // Clear the refresh token cookie just in case an old one exists
-        // Use environment-aware settings for clearing, specifically for sameSite/secure
-        res.clearCookie(REFRESH_COOKIE_NAME, {
-            httpOnly: true,
-            secure: cookieOptions.secure, // Use the same logic as the new cookie
-            sameSite: cookieOptions.sameSite, 
-        });
+		// Clear the refresh token cookie just in case an old one exists
+		res.clearCookie(REFRESH_COOKIE_NAME, {
+			httpOnly: true,
+			secure: isProduction,
+			sameSite: isProduction ? 'None' : 'Lax',
+		});
 
-        // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
-        res.cookie(ACCESS_COOKIE_NAME, accessToken, {
-            ...cookieOptions,
-            maxAge: 1000 * 60 * 60 * 24 * 7, 
-        });
+        // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
+        res.cookie(ACCESS_COOKIE_NAME, accessToken, {
+            ...cookieOptions,
+            maxAge: 1000 * 60 * 60 * 24 * 7, 
+        });
 
-        res.json({
-            // ❌ REMOVED: accessToken is no longer sent in the JSON body for security (XSS defense).
-            user: {
-                id: user.id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                phone: user.phone || null,
-                roles: user.roles,
-            },
-        });
-    } catch (err) {
-        console.error('Login error:', err);
-        res.status(500).json({ error: 'Login failed' });
-    }
+		res.json({
+			accessToken,
+			user: {
+				id: user.id,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				phone: user.phone || null,
+				roles: user.roles,
+			},
+		});
+	} catch (err) {
+		console.error('Login error:', err);
+		res.status(500).json({ error: 'Login failed' });
+	}
 }
+
 // ==============================
 // Social Login
 // ==============================
@@ -200,7 +178,7 @@ async function socialLogin(req, res) {
 		res.clearCookie(REFRESH_COOKIE_NAME, {
 			httpOnly: true,
 			secure: isProduction,
-			// The getCookieOptions helper already provides the correct sameSite option.
+			sameSite: isProduction ? 'None' : 'Lax',
 		});
         
         // 🔥 FIX: Set the Access Token as an HTTP-only cookie using the environment-aware settings
@@ -210,7 +188,7 @@ async function socialLogin(req, res) {
         });
 
 		res.json({
-			// ❌ FIX: Removed accessToken from JSON response
+			accessToken,
 			user: {
 				id: user.id,
 				firstName: user.firstName,
@@ -291,19 +269,17 @@ async function createProfile(req, res) {
 // ==============================
 async function logout(req, res) {
     const isProduction = process.env.NODE_ENV === 'production';
-    const cookieOptions = getCookieOptions(isProduction); // Get options once
-
 	// Clear the refresh token cookie
 	res.clearCookie(REFRESH_COOKIE_NAME, {
 		httpOnly: true,
-		secure: cookieOptions.secure,
-		sameSite: cookieOptions.sameSite,
+		secure: isProduction,
+		sameSite: isProduction ? 'None' : 'Lax',
 	});
     // Clear the access token cookie
     res.clearCookie(ACCESS_COOKIE_NAME, {
         httpOnly: true,
-        secure: cookieOptions.secure, 
-        sameSite: cookieOptions.sameSite, 
+        secure: isProduction, 
+        sameSite: isProduction ? 'None' : 'Lax', 
     });
 	res.json({ message: 'Logged out' });
 }
