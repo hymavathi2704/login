@@ -50,7 +50,7 @@ async function updateClientProfile(req, res) {
 
         // 2. Map fields to the ClientProfile model (coachingGoals, demographics)
         const clientFields = [
-            'coachingGoals', 
+            // Removed 'coachingGoals' as requested by the user
             'dateOfBirth', 
             'gender', 
             'ethnicity', 
@@ -113,30 +113,36 @@ async function updateClientProfile(req, res) {
 // ✅ NEW: DELETE Profile Picture 
 // ==============================
 async function deleteProfilePicture(req, res) {
-    const userId = req.user.userId;
+    const userId = req.user.userId;
 
-    const user = await User.findByPk(userId);
-    if (!user) {
-        return res.status(404).json({ message: 'User not found.' });
-    }
+    const user = await User.findByPk(userId);
+    if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+    }
 
-    const oldFileName = user.profilePicture;
+    const oldFileName = user.profilePicture;
+    
+    // 1. Delete the file from the disk (using the safe helper)
+    if (oldFileName) await deleteOldProfilePicture(oldFileName); 
+
+    // 2. Update the user record to clear the profilePicture field
+    user.profilePicture = null;
+    await user.save();
     
-    // 1. Delete the file from the disk (using the safe helper)
-    if (oldFileName) await deleteOldProfilePicture(oldFileName); 
-
-    // 2. Update the user record to clear the profilePicture field
-    user.profilePicture = null;
-    await user.save();
-
-    res.status(200).json({ 
-        message: 'Profile picture successfully deleted.',
-        profilePicture: null 
+    // 3. Fetch and return the updated user object to sync frontend state
+    const updatedUser = await User.findByPk(userId, {
+        include: [{ model: ClientProfile, as: 'ClientProfile' }],
     });
+
+    res.status(200).json({ 
+        message: 'Profile picture successfully deleted.',
+        profilePicture: null,
+        user: updatedUser.get({ plain: true }), // Send the updated user object
+    });
 }
 
 
 module.exports = {
-	updateClientProfile,
-    deleteProfilePicture, // <-- EXPORT THIS
+    updateClientProfile,
+    deleteProfilePicture, // <-- EXPORT THIS
 };

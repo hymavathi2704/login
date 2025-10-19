@@ -9,10 +9,16 @@ import DemographicsFormSection from '@/pages/dashboards/shared/DemographicsFormS
 // 🌟 NEW: Import API functions and DELETE function
 import { getMe, updateClientProfile, uploadClientProfilePicture, deleteClientProfilePicture } from '@/auth/authApi'; 
 import { toast } from 'sonner'; 
+// ✅ FIX: Import useAuth to access the global state updater
+import { useAuth } from '@/auth/AuthContext';
+
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4028';
 
 const ClientProfileEditor = () => {
+  // ✅ FIX: Destructure setAuthUser from AuthContext
+  const { setAuthUser } = useAuth();
+    
   const [isSaving, setIsSaving] = useState(false);
   const [profileData, setProfileData] = useState({});
   const [initialData, setInitialData] = useState({});
@@ -43,10 +49,10 @@ const ClientProfileEditor = () => {
             ...data.user.ClientProfile 
         };
 
-        // 🔑 FIX 1: Set +91 default if phone is empty or null
-        if (!userData.phone || userData.phone === '') {
-            userData.phone = '+91';
-        }
+        // 🔑 FIX 1: Set +91 default if phone is empty or null
+        if (!userData.phone || userData.phone === '') {
+            userData.phone = '+91';
+        }
 
         setProfileData(userData); 
         setInitialData(userData);
@@ -76,13 +82,13 @@ const ClientProfileEditor = () => {
   // Universal change handler for inputs and selects
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    
-    // Enforce +91 prefix if the user deletes it entirely
-    if (name === 'phone' && value.length > 0 && !value.startsWith('+') && !value.startsWith('(')) {
-        updateData({ [name]: '+' + value.replace(/[^0-9]/g, '') });
-    } else {
-        updateData({ [name]: value });
-    }
+    
+    // Enforce +91 prefix if the user deletes it entirely
+    if (name === 'phone' && value.length > 0 && !value.startsWith('+') && !value.startsWith('(')) {
+        updateData({ [name]: '+' + value.replace(/[^0-9]/g, '') });
+    } else {
+        updateData({ [name]: value });
+    }
   }, [updateData]);
 
 
@@ -105,27 +111,31 @@ const ClientProfileEditor = () => {
     if (!window.confirm("Are you sure you want to permanently delete your profile picture? This cannot be undone.")) {
       return;
     }
-    
-    // If the image is already null and there's no file pending, just clear local state
-    if (!profileData.profilePicture && !imageFile) {
-        return;
-    }
-    
-    try {
-        // Only call API if a URL exists (i.e., it's saved in the DB)
-        if (profileData.profilePicture) {
-            await deleteClientProfilePicture(); 
-            toast.success("Profile picture successfully deleted from server.");
-        }
+    
+    // If the image is already null and there's no file pending, just clear local state
+    if (!profileData.profilePicture && !imageFile) {
+        return;
+    }
+    
+    try {
+        // Only call API if a URL exists (i.e., it's saved in the DB)
+        if (profileData.profilePicture) {
+            await deleteClientProfilePicture(); 
+            toast.success("Profile picture successfully deleted from server.");
+        }
 
-        setPreviewUrl(null); 
-        setImageFile(null); // Clear the temporary file object
-        updateData({ profilePicture: null }); // Set DB path to null
-        setUnsavedChanges(true); 
-    } catch (error) {
-        console.error("Failed to delete profile picture:", error);
-        toast.error(error.response?.data?.message || "Failed to delete profile picture.");
-    }
+        setPreviewUrl(null); 
+        setImageFile(null); // Clear the temporary file object
+        updateData({ profilePicture: null }); // Set DB path to null
+        setUnsavedChanges(true); 
+        
+        // ✅ FIX: Update global state after deletion
+        setAuthUser({ ...profileData, profilePicture: null }); 
+        
+    } catch (error) {
+        console.error("Failed to delete profile picture:", error);
+        toast.error(error.response?.data?.message || "Failed to delete profile picture.");
+    }
   };
 
 
@@ -146,7 +156,12 @@ const ClientProfileEditor = () => {
         try {
             const uploadResponse = await uploadClientProfilePicture(imageFile);
             const uploadData = uploadResponse.data; 
+            // The image is now saved and we have the final path
             finalProfileData.profilePicture = uploadData.profilePicture;
+            
+            // ✅ FIX: Update global state immediately after successful upload
+            setAuthUser(uploadData.user); 
+
         } catch (uploadError) {
             console.error('Profile picture upload failed:', uploadError);
             toast.error(`Error uploading picture: ${uploadError.message}`);
@@ -175,6 +190,10 @@ const ClientProfileEditor = () => {
       setInitialData(savedUserData);
       setImageFile(null); 
       setPreviewUrl(savedUserData.profilePicture); 
+      
+      // ✅ FIX: Update global state after text/demographic changes
+      setAuthUser(data.user);
+
 
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -212,24 +231,24 @@ const ClientProfileEditor = () => {
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                 {/* 🔑 FIX 4: Image fetching fix for production */}
                 {previewUrl 
-                    ? <img 
-                        src={previewUrl?.startsWith('/') ? `${API_BASE_URL}${previewUrl}` : previewUrl} 
-                        alt="Profile preview" 
-                        className="w-full h-full object-cover" 
-                      /> 
-                    : <Camera className="w-8 h-8 text-gray-400" />}
+                    ? <img 
+                        src={previewUrl?.startsWith('/') ? `${API_BASE_URL}${previewUrl}` : previewUrl} 
+                        alt="Profile preview" 
+                        className="w-full h-full object-cover" 
+                      /> 
+                    : <Camera className="w-8 h-8 text-gray-400" />}
               </div>
               {previewUrl && <button onClick={removeProfilePicture} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>}
             </div>
             <div className="flex-1">
               {/* 🔑 CRITICAL FIX 6: The small, single-line upload component */}
               <div 
-                    onClick={() => fileInputRef.current && fileInputRef.current.click()} // Make the whole div clickable
-                    onDrop={handleDrop} 
-                    onDragOver={handleDragOver} 
-                    onDragLeave={handleDragLeave} 
-                    className={cn("border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors hover:border-indigo-400", dragActive ? "border-blue-400 bg-blue-50" : "border-gray-300")}
-                >
+                    onClick={() => fileInputRef.current && fileInputRef.current.click()} // Make the whole div clickable
+                    onDrop={handleDrop} 
+                    onDragOver={handleDragOver} 
+                    onDragLeave={handleDragLeave} 
+                    className={cn("border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors hover:border-indigo-400", dragActive ? "border-blue-400 bg-blue-50" : "border-gray-300")}
+                >
                 <p className="text-sm text-gray-600 flex items-center justify-center space-x-2">
                     <Upload className="h-5 w-5 text-gray-400" />
                     <span><span className="font-medium">Click to upload</span> or drag and drop (PNG, JPG, GIF up to 5MB)</span>
@@ -256,7 +275,7 @@ const ClientProfileEditor = () => {
           <Input
             label="Phone Number (Optional)"
             type="tel"
-            name="phone"
+            name="phone"
             value={profileData.phone || ''}
             onChange={handleChange} // Use the consolidated handleChange
             placeholder="+91 XXXXXXXXXX"
@@ -267,8 +286,8 @@ const ClientProfileEditor = () => {
         <DemographicsFormSection 
             formData={profileData} 
             handleChange={handleChange} 
-            // 🔑 FIX 5: Pass max date to prevent future dates in Date of Birth selector
-            maxDate={today}
+            // 🔑 FIX 5: Pass max date to prevent future dates in Date of Birth selector
+            maxDate={today}
         />
       </main>
 
