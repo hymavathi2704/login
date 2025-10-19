@@ -20,20 +20,29 @@ const generateOtp = customAlphabet('0123456789', 6);
 // ==============================
 // Helper function for safe cookie settings
 // ==============================
+// ==============================
+// Helper function for safe cookie settings
+// ==============================
 const getCookieOptions = (isProduction) => {
-    // 🔥 CRITICAL FIX (Option 2): Check the protocol of the live URL.
-    // We assume if one URL starts with https, the deployment is set up for it.
+    // Check the protocol of the live URL (using APP_URL as proxy)
     const isHttps = process.env.APP_URL?.startsWith('https') || process.env.FRONTEND_URL?.startsWith('https');
     
     // Set secure to TRUE only if it is production AND the URL is HTTPS.
-    // If the URL is HTTP, set secure=false to prevent cookie rejection.
+    // Since you are still on HTTP, this is FALSE, which is correct for the temporary fix.
     const setSecure = isProduction && isHttps;
 
     return {
         httpOnly: true,
         secure: setSecure, 
-        // SameSite: Use 'None' for secure cross-origin, 'Lax' for insecure/same-site.
+        // SameSite: 'None' requires Secure: true. Since we are on HTTP, we use 'Lax'.
+        // This is correct as per the last fix.
         sameSite: setSecure ? 'None' : 'Lax', 
+        
+        // 💡 CRITICAL ADDITION: Domain is NOT set. 
+        // The browser defaults it to the site being accessed (katha.startworks.in)
+        // This avoids cross-domain rejection from Nginx proxying.
+        // domain: isProduction ? '.katha.startworks.in' : undefined, // PREVENT setting domain for now
+        
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days expiration example
     };
 };
