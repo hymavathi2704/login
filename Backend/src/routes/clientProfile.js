@@ -6,7 +6,7 @@ const cors = require('cors');
 
 // VITAL CONTROLLERS
 const clientProfileController = require('../controllers/clientProfileController'); 
-const coachProfileController = require('../controllers/coachProfileController'); // Reuses upload logic
+// Removed coachProfileController import as it's no longer needed for client profile picture upload
 
 // VITAL MIDDLEWARE
 const { authenticate } = require('../middleware/authMiddleware');  
@@ -30,12 +30,10 @@ router.put(
 // POST: DEDICATED PROFILE PICTURE UPLOAD ROUTE
 router.post(
   '/profile/upload-picture', 
-  // ✅ CRITICAL FIX: Swap middleware order. 
-  // Multer (uploadMiddleware) runs first to process the file stream.
+  // Keep the critical swapped order: upload first, then authenticate
   uploadMiddleware.single('profilePicture'), 
-  // Then authenticate runs, validating the token from the headers.
   authenticate, 
-  coachProfileController.uploadProfilePicture // Reuses the logic that saves to 'uploads' and updates User.profilePicture
+  clientProfileController.uploadProfilePicture // ✅ FIX: Use client-specific upload controller
 );
 
 // ✅ NEW: DELETE DEDICATED PROFILE PICTURE ROUTE

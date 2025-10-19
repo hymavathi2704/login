@@ -48,9 +48,8 @@ async function updateClientProfile(req, res) {
         const userFields = ['firstName', 'lastName', 'phone', 'profilePicture']; 
         const userData = {};
 
-        // 2. Map fields to the ClientProfile model (coachingGoals, demographics)
+        // 2. Map fields to the ClientProfile model (demographics)
         const clientFields = [
-            // Removed 'coachingGoals' as requested by the user
             'dateOfBirth', 
             'gender', 
             'ethnicity', 
@@ -108,9 +107,55 @@ async function updateClientProfile(req, res) {
     }
 }
 
+// ==============================
+// ✅ NEW DEDICATED: POST Profile Picture Upload 
+// ==============================
+async function uploadProfilePicture(req, res) {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+        const user = await User.findByPk(userId, {
+            include: [{ model: ClientProfile, as: 'ClientProfile' }],
+        });
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded.' });
+        }
+
+        // 1. Delete old file if it exists
+        if (user.profilePicture) {
+            await deleteOldProfilePicture(user.profilePicture);
+        }
+
+        // 2. Update user record with new file path
+        const newPicturePath = `/uploads/${req.file.filename}`;
+        user.profilePicture = newPicturePath;
+        await user.save();
+
+        // 3. Return updated user object
+        const updatedUser = user.get({ plain: true });
+
+        res.status(200).json({
+            message: 'Profile picture uploaded successfully.',
+            profilePicture: newPicturePath,
+            user: updatedUser,
+        });
+
+    } catch (err) {
+        console.error('Client profile picture upload error:', err);
+        // Clean up uploaded file on failure
+        if (req.file) {
+            await fs.unlink(req.file.path).catch(console.error);
+        }
+        res.status(500).json({ error: 'Failed to upload profile picture. Check server logs.' });
+    }
+}
+
 
 // ==============================
-// ✅ NEW: DELETE Profile Picture 
+// DELETE Profile Picture 
 // ==============================
 async function deleteProfilePicture(req, res) {
     const userId = req.user.userId;
@@ -144,5 +189,6 @@ async function deleteProfilePicture(req, res) {
 
 module.exports = {
     updateClientProfile,
-    deleteProfilePicture, // <-- EXPORT THIS
+    deleteProfilePicture,
+    uploadProfilePicture, // <-- EXPORT NEW FUNCTION
 };
