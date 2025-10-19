@@ -1,163 +1,182 @@
-import React from 'react';
+// Frontend/src/pages/dashboards/client-dashboard/components/ClientOverview.jsx
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Users,
-  Calendar,
-  DollarSign,
-  TrendingUp,
-  Clock,
-  MessageSquare,
-  Star,
-  Target,
-  BookOpen,
-  Video
+  Users,
+  Calendar,
+  Clock,
+  MessageSquare,
+  Star,
+  Target,
+  BookOpen,
+  Video
 } from 'lucide-react';
 import { useAuth } from '../../../../auth/AuthContext';
-// ADDED IMPORT: Import the UpcomingSessions component
-import UpcomingSessions from './UpcomingSessions';
+import { getMyClientSessions, getFollowedCoachesClient } from '@/auth/authApi';
+import { toast } from 'sonner';
+
+// REMOVED IMPORT: Import of UpcomingSessions is no longer needed
 
 
 const ClientOverview = () => {
-  const { user } = useAuth();
-  const stats = [
-    {
-      title: "Completed Sessions",
-      value: "12",
-      change: "+2 this month",
-      changeType: "positive",
-      icon: Calendar,
-      color: "bg-green-500"
-    },
-    {
-        title: "Goals in Progress",
-        value: "3",
-        change: "1 overdue",
-        changeType: "negative",
-        icon: Target,
-        color: "bg-yellow-500"
-    },
-    {
-      title: "Upcoming Sessions",
-      value: "2",
-      change: "1 this week",
-      changeType: "neutral",
-      icon: Clock,
-      color: "bg-blue-500"
-    },
-    {
-      title: "Your Coach's Rating",
-      value: "4.9",
-      change: "Dr. Emily",
-      changeType: "neutral",
-      icon: Star,
-      color: "bg-purple-500"
-    }
-  ];
+  const { user } = useAuth();
+  
+  // ✅ NEW STATE: To hold dynamic counts
+  const [sessionCount, setSessionCount] = useState({
+      allBooked: "...", // Total Sessions I Booked
+      completed: "...",
+      upcoming: "...",
+  });
+  const [followedCoachesCount, setFollowedCoachesCount] = useState("...");
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-  const recentActivities = [
-    {
-      type: "reschedule",
-      message: "Your session was rescheduled to tomorrow",
-      time: "1 hour ago",
-      icon: Calendar
-    },
-    {
-      type: "resource",
-      message: "New resource 'Mindfulness Guide' added",
-      time: "5 hours ago",
-      icon: BookOpen
-    },
-    {
-      type: "message",
-      message: "You received a new message from Dr. Emily",
-      time: "1 day ago",
-      icon: MessageSquare
-    },
-    {
-      type: "goal",
-      message: "You completed the 'Weekly Journaling' goal",
-      time: "2 days ago",
-      icon: Target
-    }
-  ];
+  // Utility function to calculate session counts (kept local to this component for independence)
+  const calculateSessionCounts = (sessionsData) => {
+      const today = new Date();
+      // Set time to 00:00:00 for accurate day-based comparison
+      today.setHours(0, 0, 0, 0);
 
-  // REMOVED: hardcoded upcomingSessions array is no longer needed
+      let upcoming = 0;
+      let completed = 0;
+      let allBooked = 0;
 
-  return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">
-           Welcome back, {user?.firstName || 'Client'}!
-        </h2>
-        <p className="text-blue-100">You have 1 session scheduled for today</p>
-      </div>
+      sessionsData.forEach(booking => {
+          // Only process bookings that are confirmed and have a date
+          if (booking.status === 'confirmed' && booking.Session?.defaultDate) {
+              allBooked++;
+              const sessionDate = new Date(booking.Session.defaultDate);
+              sessionDate.setHours(0, 0, 0, 0);
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="bg-white p-6 rounded-xl border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mb-2">{stat.value}</p>
-                  <p className={`text-sm ${
-                    stat.changeType === 'positive' ? 'text-green-600' :
-                    stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-500'
-                  }`}>
-                    {stat.change}
-                  </p>
-                </div>
-                <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
-                  <Icon size={24} className="text-white" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              if (sessionDate >= today) {
+                  upcoming++;
+              } else {
+                  completed++;
+              }
+          } else if (booking.Session?.defaultDate) {
+              // Count pending/cancelled sessions towards total if they have a scheduled date
+              allBooked++;
+          }
+      });
+      
+      return { allBooked, upcoming, completed };
+  };
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* MODIFIED: Your Upcoming Sessions replaced with component */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Your Upcoming Sessions</h3>
-            {/* Direct link to the full sessions page */}
-            <a href="/dashboard/client/sessions" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-              View All
-            </a>
-          </div>
-          <div className="space-y-3">
-            {/* RENDER THE UPCOMING SESSIONS COMPONENT IN PREVIEW MODE */}
-            <UpcomingSessions preview={true} />
-          </div>
-        </div>
+  // ✅ NEW: Fetch all required stats on mount
+  const fetchClientStats = useCallback(async () => {
+    setIsLoadingStats(true);
+    try {
+        // 1. Fetch all bookings for session counts
+        const bookingsResponse = await getMyClientSessions();
+        const counts = calculateSessionCounts(bookingsResponse.data);
+        setSessionCount({
+            allBooked: counts.allBooked.toString(),
+            completed: counts.completed.toString(),
+            upcoming: counts.upcoming.toString(),
+        });
 
-        {/* Recent Activities */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold mb-4">Your Recent Activities</h3>
-          <div className="space-y-3">
-            {recentActivities.map((activity, index) => {
-              const Icon = activity.icon;
-              return (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Icon size={16} className="text-gray-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-900 mb-1">{activity.message}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+        // 2. Fetch Followed Coaches Count
+        const followedResponse = await getFollowedCoachesClient();
+        // Assuming the response data contains a 'coaches' array
+        setFollowedCoachesCount(followedResponse.data?.coaches?.length?.toString() || '0');
+
+    } catch (error) {
+        console.error("Failed to fetch client dashboard stats:", error);
+        toast.error("Failed to load dashboard statistics.");
+        setSessionCount({ allBooked: "N/A", completed: "N/A", upcoming: "N/A" });
+        setFollowedCoachesCount("N/A");
+    } finally {
+        setIsLoadingStats(false);
+    }
+  }, []);
+
+  useEffect(() => {
+      fetchClientStats();
+  }, [fetchClientStats]);
+
+  // MODIFIED: Use dynamic values in the stats array
+  const stats = [
+    {
+      // ✅ 1. Sessions I booked (Total count of all bookings)
+      title: "Total Booked Sessions", 
+      value: sessionCount.allBooked,
+      change: "All time total",
+      changeType: "neutral",
+      icon: Target, 
+      color: "bg-yellow-500" 
+    },
+    {
+      // ✅ 2. No of coaches I follow
+      title: "Coaches Followed", 
+      value: followedCoachesCount,
+      change: "Explore More", 
+      changeType: "neutral",
+      icon: Users, 
+      color: "bg-purple-500" 
+    },
+    {
+      // ✅ 3. Upcoming sessions
+      title: "Upcoming Sessions",
+      value: sessionCount.upcoming, 
+      change: sessionCount.upcoming > 0 ? "Check schedule" : "Time to book!",
+      changeType: sessionCount.upcoming > 0 ? "positive" : "negative",
+      icon: Clock,
+      color: "bg-blue-500"
+    },
+    {
+      // ✅ 4. Completed sessions
+      title: "Completed Sessions",
+      value: sessionCount.completed,
+      change: "+2 this month", // Kept mock for change delta
+      changeType: "positive",
+      icon: Calendar,
+      color: "bg-green-500"
+    }
+  ];
+
+  // REMOVED: The recentActivities array definition has been removed.
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
+        <h2 className="text-2xl font-bold mb-2">
+           Welcome back, {user?.firstName || 'Client'}!
+        </h2>
+        {/* MODIFIED: Display the dynamic upcoming sessions count */}
+        <p className="text-blue-100">
+            You have {isLoadingStats ? '...' : sessionCount.upcoming} upcoming session(s)
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          return (
+            <div key={index} className="bg-white p-6 rounded-xl border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 mb-2">{stat.value}</p>
+                  <p className={`text-sm ${
+                    stat.changeType === 'positive' ? 'text-green-600' :
+                    stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-500'
+                  }`}>
+                    {stat.change}
+                  </p>
+                </div>
+                <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
+                  <Icon size={24} className="text-white" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Main Content Grid REMOVED */}
+    </div>
+  );
 };
 
 export default ClientOverview;

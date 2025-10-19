@@ -160,7 +160,7 @@ const AccountSettings = () => {
                     isLoading={isLoading} 
                     disabled={isLoading}
                 >
-                    {isLoading ? 'Updating...' : 'Update Password and Log Out'}
+                    {isLoading ? 'Updating...' : 'Update Password'}
                 </Button>
             </div>
         </form>
