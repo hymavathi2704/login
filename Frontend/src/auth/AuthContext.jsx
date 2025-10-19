@@ -233,3 +233,10 @@ export const useAuth = () => {
   return context;
 
 };
+
+
+// ✅ NEW: Client gets list of followed coaches (to determine count)
+export const getFollowedCoachesClient = () => {
+    // This calls the GET /api/profiles/followed endpoint
+    return axiosInstance.get(`/api/profiles/followed`); 
+};
