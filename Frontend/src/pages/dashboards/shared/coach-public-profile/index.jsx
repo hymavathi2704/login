@@ -1,6 +1,6 @@
 // Frontend/src/pages/dashboards/shared/coach-public-profile/index.jsx
 
-import React, { useState, useEffect, useCallback } from 'react'; // 🚨 MODIFIED: Added useCallback
+import React, { useState, useEffect, useCallback } from 'react'; 
 import { useParams, useNavigate } from 'react-router-dom'; 
 import { getCoachById } from '@/auth/authApi'; 
 
@@ -65,11 +65,9 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
     fetchCoachData();
   }, [finalCoachId, fetchCoachData]); 
 
-  // --- Handlers for interactivity ---
-  // Note: ServicesSection child component now handles its own booking logic directly
-  const handleBookSession = () => console.log('Booking functionality would be implemented here'); 
+  // --- Handlers for interactivity (CLEANED UP) ---
+  // ❌ REMOVED: handleBookSession and handleServiceClick as logic moved to child components
   const handleContact = (type, value) => console.log('Contact action:', { type, value });
-  const handleServiceClick = (type, service) => console.log('Service selected:', { type, service });
 
   // ADDED: Handler for new button
   const handleExploreMore = () => {
@@ -95,7 +93,7 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
       {/* Profile Header */}
       <ProfileHeader 
         coach={coach}
-        onBookSession={handleBookSession}
+        // Removed onBookSession prop
         onContact={handleContact}
       />
 
@@ -106,7 +104,7 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
           coach={coach} 
           // 🚨 NEW PROP: Pass the callback to refresh the coach data
           onSessionBooked={handleSessionBooked}
-          onServiceClick={handleServiceClick}
+          // Removed onServiceClick prop
         />
         <TestimonialsSection testimonials={testimonials} />
       </div>

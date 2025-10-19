@@ -61,17 +61,7 @@ const CoachProfile = db.define('coach_profiles', {
   // pricing: { type: DataTypes.JSON, allowNull: true, },
   // availability: { type: DataTypes.JSON, allowNull: true, }
 
-  // Status/Metrics fields (unchanged)
-  rating: {
-      type: DataTypes.DECIMAL(2, 1),
-      allowNull: false,
-      defaultValue: 0.0,
-  },
-  totalReviews: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-  },
+  
   totalClients: {
       type: DataTypes.INTEGER,
       allowNull: false,

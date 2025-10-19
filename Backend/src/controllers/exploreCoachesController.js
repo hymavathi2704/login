@@ -1,8 +1,6 @@
 // Backend/src/controllers/exploreCoachesController.js
 
-import path from 'path'; 
-import { fileURLToPath } from 'url';
-import { Op } from 'sequelize';
+import { Op } from 'sequelize'; // Removed unused imports: path, fileURLToPath
 
 // --- Model Imports ---
 import User from '../models/user.js'; 
@@ -44,7 +42,7 @@ export const getPublicCoachProfile = async (req, res) => {
           model: Testimonial,
           as: 'testimonials',
           required: false,
-          foreignKey: 'coachProfileId', // ✅ FIX: Explicitly set foreign key
+          foreignKey: 'coachProfileId', // Explicitly set foreign key
           attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
           include: [{ 
             model: User,
@@ -56,7 +54,7 @@ export const getPublicCoachProfile = async (req, res) => {
           model: Session,
           as: 'sessions', 
           required: false,
-          foreignKey: 'coachProfileId', // ✅ FIX: Explicitly set foreign key
+          foreignKey: 'coachProfileId', // Explicitly set foreign key
         }
       ],
     });
@@ -71,6 +69,8 @@ export const getPublicCoachProfile = async (req, res) => {
     if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
     if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
     if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
+    // Removed parsing for plainCoachProfile.pricing and plainCoachProfile.availability (as per model changes)
+    
 
     const user = plainCoachProfile.user;
 
@@ -130,14 +130,13 @@ export const getPublicCoachProfile = async (req, res) => {
       testimonials: formattedTestimonials,
       availableSessions: availableSessions, // <-- Use the processed array
       title: plainCoachProfile.professionalTitle,
-      rating: 4.9, 
-      totalReviews: formattedTestimonials.length,
+      rating: 4.9, // This is a hardcoded value, consider calculating or removing if unused
+      totalReviews: formattedTestimonials.length, // This is calculated dynamically from testimonials
       totalClients: 0,
       yearsExperience: plainCoachProfile.yearsOfExperience || 0,
       shortBio: plainCoachProfile.bio ? plainCoachProfile.bio.substring(0, 150) + '...' : '',
       fullBio: plainCoachProfile.bio || '',
       isAvailable: true,
-      // ✅ FIX: Replace removed profile fields with defaults
       avgResponseTime: 'within-4h', 
       timezone: 'UTC', 
       startingPrice: calculatedStartingPrice,

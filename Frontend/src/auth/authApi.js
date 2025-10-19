@@ -70,18 +70,15 @@ export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
+// ✅ FIX: Consolidated to use axiosInstance
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file); 
 
-  return axios.create({
-    baseURL: API_BASE_URL, 
-    withCredentials: true,
-    headers: {
-      'Content-Type': 'multipart/form-data', 
-      'Authorization': `Bearer ${localStorage.getItem("accessToken")}`,
-    },
-  }).post('/api/coach/profile/upload-picture', formData); 
+  return axiosInstance.post('/api/coach/profile/upload-picture', formData, {
+    // Setting Content-Type to undefined allows Axios to correctly manage it for FormData, while keeping auth header from interceptor
+    headers: { 'Content-Type': undefined }, 
+  }); 
 };
 
 export const logoutUser = () => {
@@ -144,18 +141,15 @@ export const updateClientProfile = (profileData) => {
   return axiosInstance.put('/api/client/profile', profileData);
 };
 
+// ✅ FIX: Consolidated to use axiosInstance
 export const uploadClientProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file); 
 
-  return axios.create({
-    baseURL: API_BASE_URL, 
-    withCredentials: true,
-    headers: {
-      'Content-Type': 'multipart/form-data', 
-      'Authorization': `Bearer ${localStorage.getItem("accessToken")}`,
-    },
-  }).post('/api/client/profile/upload-picture', formData); 
+  return axiosInstance.post('/api/client/profile/upload-picture', formData, {
+    // Setting Content-Type to undefined allows Axios to correctly manage it for FormData, while keeping auth header from interceptor
+    headers: { 'Content-Type': undefined }, 
+  }); 
 };
 
 export const deleteClientProfilePicture = () => {
