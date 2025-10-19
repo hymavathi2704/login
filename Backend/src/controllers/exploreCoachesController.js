@@ -179,11 +179,12 @@ export const getAllCoachProfiles = async (req, res) => {
                 // Note: Testimonials and Sessions are REMOVED from the main query
             },
         ],
-        // FIX: Ensure the problematic group clause is gone (as in the last corrected version)
+        // FIX: Ensure the problematic group clause is gone
     });
 
     // STEP 2: Process coaches and fetch aggregated data separately
-    const processedCoaches = await Promise.all(coachesWithProfiles.map(async (coach) => {
+    // FIX: Separate await and filter calls to prevent TypeError in some environments
+    const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
         const plainCoach = coach.get({ plain: true });
         const profile = plainCoach.CoachProfile;
         
@@ -229,7 +230,9 @@ export const getAllCoachProfiles = async (req, res) => {
             rating: parseFloat(averageRating),
             totalReviews: ratings.length,
         };
-    })).filter(coach => coach !== null); // Filter out any null returns
+    }));
+    
+    const processedCoaches = allResults.filter(coach => coach !== null); // ✅ FIX: Separate filter call
 
     res.status(200).json({ coaches: processedCoaches });
   } catch (error) {
@@ -238,6 +241,7 @@ export const getAllCoachProfiles = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch coach profiles' });
   }
 };
+
 // ==============================
 // GET Follow Status
 // ==============================
@@ -369,7 +373,8 @@ export const getFollowedCoaches = async (req, res) => {
         });
 
         // STEP 2: Process coaches and fetch aggregated data separately
-        const processedCoaches = await Promise.all(coachesWithProfiles.map(async (coach) => {
+        // FIX: Separate await and filter calls to prevent TypeError in some environments
+        const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
             const plainCoach = coach.get({ plain: true });
             const profile = plainCoach.CoachProfile;
             
@@ -415,7 +420,9 @@ export const getFollowedCoaches = async (req, res) => {
                 rating: parseFloat(averageRating),
                 totalReviews: ratings.length,
             };
-        })).filter(coach => coach !== null); // Filter out any null returns
+        }));
+
+        const processedCoaches = allResults.filter(coach => coach !== null); // ✅ FIX: Separate filter call
 
         res.status(200).json({ coaches: processedCoaches });
 
