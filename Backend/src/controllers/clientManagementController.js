@@ -7,6 +7,7 @@ import Follow from '../models/Follow.js';
 import Booking from '../models/Booking.js'; 
 import ClientProfile from '../models/ClientProfile.js'; 
 import Session from '../models/Session.js'; // <- Ensure Session is imported for JOIN
+import CoachProfile from '../models/CoachProfile.js';
 // ---------------------
 
 // === Helper: Calculate Age ===
@@ -36,16 +37,27 @@ export const getBookedClients = async (req, res) => {
     try {
         const coachId = req.user.userId; 
 
-        // 1. Find all Booking records that link to a Session created by the coach
-        // FIX: Use 'include' to join with the Session model and filter by Session.coachId
+        // [2] FIX: Get the coachProfileId associated with the User ID
+        const coachProfile = await CoachProfile.findOne({ 
+            where: { userId: coachId },
+            attributes: ['id']
+        });
+
+        if (!coachProfile) {
+            return res.status(404).json({ error: 'Coach profile not found.' });
+        }
+        const coachProfileId = coachProfile.id; // <-- The correct ID to filter on
+
+        // 3. Find all Booking records that link to a Session created by the coach
         const allBookings = await Booking.findAll({
             attributes: ['clientId'], 
             include: [{
-                model: Session, // Assumes Session is associated with Booking (e.g., Booking.belongsTo(Session))
+                model: Session, 
                 as: 'Session', 
                 required: true,
                 attributes: [], 
-                where: { coachId: coachId } // Filter by coachId on the Session model
+                // [3] CRITICAL FIX: Use the correct column name and ID
+                where: { coachProfileId: coachProfileId } 
             }]
         });
 
@@ -53,14 +65,13 @@ export const getBookedClients = async (req, res) => {
             return res.status(200).json({ clients: [] });
         }
         
-        // 2. Calculate the count of sessions booked per unique client
+        // ... (rest of the logic remains unchanged)
         const sessionsCountMap = allBookings.reduce((acc, booking) => {
             acc[booking.clientId] = (acc[booking.clientId] || 0) + 1;
             return acc;
         }, {});
         const bookedClientIds = Object.keys(sessionsCountMap);
         
-        // 3. Fetch the full User data for all unique clients
         const clients = await User.findAll({
             where: { 
                 id: { [Op.in]: bookedClientIds },
@@ -69,7 +80,6 @@ export const getBookedClients = async (req, res) => {
             attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'roles'],
         });
 
-        // 4. Process and map the final client data
         const processedClients = clients.map(client => {
             const plainClient = client.get({ plain: true });
             
@@ -78,7 +88,7 @@ export const getBookedClients = async (req, res) => {
                 name: `${plainClient.firstName} ${plainClient.lastName}`,
                 profilePicture: plainClient.profilePicture || '/default-avatar.png', 
                 email: plainClient.email,
-                sessionsBookedTillNow: sessionsCountMap[plainClient.id] || 0, // Attach the calculated count
+                sessionsBookedTillNow: sessionsCountMap[plainClient.id] || 0,
             };
         });
 
@@ -89,7 +99,6 @@ export const getBookedClients = async (req, res) => {
         return res.status(500).json({ error: 'Failed to fetch booked clients.' });
     }
 };
-
 
 // ==============================
 // GET Followed Clients
