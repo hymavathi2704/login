@@ -9,13 +9,19 @@ const upload = require('../middleware/upload');
 // Import profile management functions (Profile Update, Picture Upload/Delete, Item Management)
 const coachProfileController = require('../controllers/coachProfileController');
 
+// ✅ Import client management functions
+const { 
+    getBookedClients,
+    getFollowedClients
+} = require('../controllers/clientManagementController');
+
 // ✅ Import discovery/follow functions from the dedicated Explore Controller
 const { 
     getPublicCoachProfile,
     getFollowStatus, 
     followCoach, 
     unfollowCoach,
-    getClientsWhoFollow 
+    // getClientsWhoFollow was correctly removed
 } = require('../controllers/exploreCoachesController'); 
 
 // Import session management functions
@@ -61,7 +67,6 @@ router.post(
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
 
 // JSON Array management
-// ✅ FIX: Renamed controller functions to match the exports in coachProfileController.js
 router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
 router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
 
@@ -75,14 +80,22 @@ router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSe
 
 
 // ==============================
+// COACH CLIENT MANAGEMENT ROUTES (NEW/FIXED)
+// ==============================
+
+// Coach views clients who have booked sessions
+router.get('/clients/booked', authenticate, getBookedClients); 
+
+// Coach views clients who follow them
+router.get('/clients/followed', authenticate, getFollowedClients); 
+
+
+// ==============================
 // BOOKING & FOLLOWER ROUTES (Internal/Protected)
 // ==============================
 
 // Coach views their session bookings
 router.get('/my-bookings', authenticate, getCoachSessionBookings); 
-
-// Coach views clients who follow them
-router.get('/clients-who-follow', authenticate, getClientsWhoFollow); 
 
 // POST /public/:sessionId/book - Client books a session (protected route)
 router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); 
@@ -93,8 +106,6 @@ router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSes
 // ==============================
 
 // GET Public Coach Profile 
-// FIX: Add 'authenticate' middleware here. This populates req.user.userId, which is 
-// used by getPublicCoachProfile to check if the viewing client has already booked a session.
 router.get('/public/:id', authenticate, getPublicCoachProfile);
 
 // Follow/Unfollow Routes 

@@ -114,11 +114,6 @@ export const getCoachById = (coachId) => {
   return axiosInstance.get(`/api/profiles/coach/${coachId}`); 
 };
 
-// ❌ REMOVED: Replaced by getBookedClients
-// export const getMyClients = () => {
-//   return axiosInstance.get('/api/profiles/my-clients');
-// };
-
 export const addProfileItem = (payload) => {
   return axiosInstance.post('api/coach/profile/add-item', payload); 
 };
@@ -143,7 +138,7 @@ export const getCoachProfile = () => {
   return axiosInstance.get("/api/coach/profile");
 };
 
-// --- CLIENT PROFILES API (NEW) ---
+// --- CLIENT PROFILES API ---
 
 export const updateClientProfile = (profileData) => {
   return axiosInstance.put('/api/client/profile', profileData);
@@ -163,15 +158,14 @@ export const uploadClientProfilePicture = (file) => {
   }).post('/api/client/profile/upload-picture', formData); 
 };
 
-// ✅ FIX: ADDED MISSING FUNCTION
 export const deleteClientProfilePicture = () => {
-    // Calls the DELETE /api/client/profile/picture endpoint
-    return axiosInstance.delete('/api/client/profile/picture');
+    // Calls the DELETE /api/client/profile/picture endpoint
+    return axiosInstance.delete('/api/client/profile/picture');
 };
 
 
 // =========================================================
-// SESSION MANAGEMENT FUNCTIONS (Fixed to use axiosInstance)
+// SESSION MANAGEMENT FUNCTIONS
 // =========================================================
 
 export const createSession = async (sessionData) => {
@@ -191,30 +185,25 @@ export const bookSession = async (sessionId) => {
     return axiosInstance.post(`/api/coach/public/${sessionId}/book`);
 };
 
-// ❌ REMOVED: Replaced by getFollowedClients
-// export const getClientsWhoFollow = () => {
-//     return axiosInstance.get('/api/coach/clients-who-follow');
-// };
 
-
-// --- COACH DASHBOARD CLIENT MANAGEMENT API (NEW ENDPOINTS) ---
+// --- COACH DASHBOARD CLIENT MANAGEMENT API (FIXED ENDPOINTS) ---
 
 /**
  * Fetches clients who have booked at least one session with the logged-in coach.
- * This is the new function that replaces getMyClients.
+ * FIXED: Changed endpoint to /api/coach/clients/booked
  */
 export const getBookedClients = () => {
-    // Maps to: GET /api/profiles/dashboard/clients/booked
-    return axiosInstance.get('/api/profiles/dashboard/clients/booked'); 
+    // Maps to: GET /api/coach/clients/booked (assuming coachProfile.js is mounted at /api/coach)
+    return axiosInstance.get('/api/coach/clients/booked'); 
 };
 
 /**
  * Fetches clients who follow the logged-in coach.
- * This is the new function that replaces getClientsWhoFollow.
+ * FIXED: Changed endpoint to /api/coach/clients/followed
  */
 export const getFollowedClients = () => {
-    // Maps to: GET /api/profiles/dashboard/clients/followed
-    return axiosInstance.get('/api/profiles/dashboard/clients/followed'); 
+    // Maps to: GET /api/coach/clients/followed
+    return axiosInstance.get('/api/coach/clients/followed'); 
 };
 
 // =========================================================
