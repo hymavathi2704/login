@@ -12,11 +12,11 @@ const sequelize = require('./config/db.js');
 
 // ==========================================
 // Model Imports
+// ... (Model Imports are omitted for brevity, they remain unchanged)
 // ==========================================
 const User = require('./models/user');
 const CoachProfile = require('./models/CoachProfile');
 const ClientProfile = require('./models/ClientProfile');
-// 🚨 REMOVED: const Event = require('./models/Event'); 
 const Booking = require('./models/Booking');
 const Session = require('./models/Session');
 const Testimonial = require('./models/Testimonial');
@@ -29,61 +29,44 @@ const authRoutes = require('./routes/auth');
 const coachProfileRoutes = require('./routes/coachProfile');
 const profileRoutes = require('./routes/fetchCoachProfiles');
 const clientProfileRoutes = require('./routes/clientProfile'); 
-const bookingRoutes = require('./routes/bookings'); // <-- New Route!
-const { authenticate } = require('./middleware/authMiddleware'); // <--- ✅ NEW IMPORT
+const bookingRoutes = require('./routes/bookings');
+const { authenticate } = require('./middleware/authMiddleware');
 
 const app = express();
 
 
-
 // ==========================================
-
 // Middlewares
-
 // ==========================================
 
+// 🔑 FIX 1: Ensure FRONTEND_URL is used for CORS
 const corsOptions = {
-
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-
-    credentials: true,
-
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-
-    allowedHeaders: ['Content-Type', 'Authorization'],
-
+    // This allows the production URL to connect to the backend API.
+    // It is critical that your production environment sets the FRONTEND_URL environment variable.
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
 
 
-
 app.use(
-
     helmet({
-
         crossOriginResourcePolicy: false,
-
     })
-
 );
-
-
 
 app.use(express.json({ limit: '5mb' }));
 
-
-
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-
-
 
 app.use(cookieParser());
 
 
 // ==========================================
-// JWT Authentication Middleware Application <--- ✅ NEW SECTION
-// Protected all /api routes except the explicit public ones.
+// JWT Authentication Middleware Application
 // ==========================================
 app.use(
     '/api', 
@@ -105,8 +88,7 @@ app.use(
 
 
 // ==========================================
-// Model Associations (Cleaned for Sessions-Only)
-// ... (rest of associations remain here)
+// Model Associations (omitted)
 // ==========================================
 // User <-> ClientProfile
 User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
@@ -149,23 +131,36 @@ Follow.belongsTo(User, { foreignKey: 'followingId', as: 'followingCoach' });
 app.use('/api/auth', authRoutes);
 app.use('/api/coach', coachProfileRoutes);
 app.use('/api/profiles', profileRoutes);
-// 🌟 NEW: Mount the client-specific routes here
 app.use('/api/client', clientProfileRoutes); 
-app.use('/api/bookings', bookingRoutes); // <-- New Base Path!
+app.use('/api/bookings', bookingRoutes);
 
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
-// Error Handling (Remains Correct)
+// Error Handling (FIXED for universal JSON response)
 // ==========================================
 app.use((err, req, res, next) => {
-    if (err instanceof UnauthorizedError) {
-        console.error('JWT Unauthorized Error:', err);
-        return res.status(401).json({ error: 'Unauthorized: Invalid or missing token' });
+    // If headers have already been sent, pass to default Express handler
+    if (res.headersSent) {
+        return next(err);
     }
 
-    console.error('Unexpected Error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    let statusCode = err.status || 500;
+    let errorMessage = 'Internal server error';
+
+    if (err instanceof UnauthorizedError) {
+        // 401 for JWT errors
+        statusCode = 401;
+        errorMessage = 'Unauthorized: Invalid or missing token';
+        console.error('JWT Unauthorized Error:', err.message);
+    } else {
+        // For all other errors, use the error status if available, else 500
+        console.error('Unexpected Error:', err);
+        errorMessage = err.message || 'An unexpected server error occurred.';
+    }
+    
+    // Send a structured JSON response regardless of the error type
+    return res.status(statusCode).json({ error: errorMessage });
 });
 
 // ==========================================
@@ -181,11 +176,11 @@ const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
         console.log('✅ Database connected');
 
         // 🚨 CRITICAL ACTION: Dropping old tables to fix the foreign key conflict.
-        // REMOVE { force: true } AFTER THE FIRST SUCCESSFUL RUN!
+        // REMOVE { force: true } AFTER THE FIRST SUCCESSFUL RUN!
         await sequelize.sync(); 
         console.log('✅ Database synchronized (FORCED)');
 
-        app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at ${APP_URL}`));
+        app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at ${APP_URL}`));
 
     } catch (err) {
         console.error('❌ Failed to start server:', err);
