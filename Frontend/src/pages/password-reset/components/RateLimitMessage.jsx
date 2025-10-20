@@ -108,7 +108,7 @@ const RateLimitMessage = ({
           fullWidth
           asChild
         >
-          <Link to="/user-login">
+          <Link to="/login">
             Back to Sign In
           </Link>
         </Button>

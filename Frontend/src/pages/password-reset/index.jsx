@@ -81,8 +81,9 @@ const PasswordResetPage = () => {
     if (!canResend) return;
     setResendLoading(true);
     try {
-      // ✅ 3. CORRECTED FUNCTION CALL
-      await resendVerificationEmail(email);
+      // ✅ FIX: Call forgotPassword API with the user's email
+      await forgotPassword({ email }); // Note: forgotPassword accepts { email: value }
+      
       setCanResend(false);
       setTimeout(() => setCanResend(true), 60000);
     } catch (error) {
@@ -178,8 +179,8 @@ const PasswordResetPage = () => {
   return (
     <>
       <Helmet>
-        <title>Reset Password - CoachFlow</title>
-        <meta name="description" content="Reset your CoachFlow account password securely. Enter your email to receive reset instructions." />
+        <title>Reset Password - The Katha</title>
+        <meta name="description" content="Reset your The Katha account password securely. Enter your email to receive reset instructions." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 

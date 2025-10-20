@@ -57,15 +57,6 @@ const HeroSection = () => {
               Get Started Free
             </Button>
             
-            <Button 
-              variant="outline" 
-              size="lg"
-              iconName="Play"
-              iconPosition="left"
-              className="w-full sm:w-auto px-8 py-4 text-lg"
-            >
-              Watch Demo
-            </Button>
           </div>
           
           {/* Hero Image/Illustration */}

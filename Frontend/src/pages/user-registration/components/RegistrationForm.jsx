@@ -58,6 +58,21 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
     if (name === 'password') setPasswordStrength(validatePassword(value));
   };
 
+
+// ===================================
+  // 🔑 NEW: Handlers for Pop-up messages
+  // ===================================
+  const handleTermsClick = (e) => {
+    e.preventDefault(); // Stop navigation
+    window.alert("Terms of Service:\n\nThese terms are currently under development. By proceeding, you agree to the default terms of use for beta software.");
+  };
+
+  const handlePrivacyClick = (e) => {
+    e.preventDefault(); // Stop navigation
+    window.alert("Privacy Policy:\n\nThis policy is currently under development. Your data will be treated securely and will not be shared with third parties.");
+  };
+  // ===================================
+
   const validateForm = () => {
     const newErrors = {};
     // 🔑 MODIFIED: Validate First Name
@@ -181,9 +196,23 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
           label={
             <span className="text-sm text-gray-600">
               I agree to the{' '}
-              <Link to="/terms" className="text-indigo-600 hover:underline font-medium">Terms of Service</Link>{' '}
+              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
+              <a 
+                  href="#" 
+                  onClick={handleTermsClick} 
+                  className="text-indigo-600 hover:underline font-medium"
+              >
+                  Terms of Service
+              </a>{' '}
               and{' '}
-              <Link to="/privacy" className="text-indigo-600 hover:underline font-medium">Privacy Policy</Link>
+              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
+              <a 
+                  href="#" 
+                  onClick={handlePrivacyClick} 
+                  className="text-indigo-600 hover:underline font-medium"
+              >
+                  Privacy Policy
+              </a>
             </span>
           }
           required

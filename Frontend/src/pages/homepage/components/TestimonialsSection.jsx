@@ -6,22 +6,9 @@ const TestimonialsSection = () => {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
   const testimonials = [
+    
     {
       id: 1,
-      name: "Sarah Mitchell",
-      role: "Life Coach",
-      company: "Mindful Growth Coaching",
-      image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-      quote: `CoachFlow transformed my coaching practice completely. The automated scheduling and client management features saved me 15+ hours per week, allowing me to focus on what I do best - coaching my clients to success.`,
-      metrics: {
-        clients: "150+",
-        revenue: "$85K",
-        time_saved: "15hrs/week"
-      },
-      rating: 5
-    },
-    {
-      id: 2,
       name: "Marcus Rodriguez",
       role: "Business Coach",
       company: "Executive Excellence",
@@ -35,7 +22,7 @@ const TestimonialsSection = () => {
       rating: 5
     },
     {
-      id: 3,
+      id: 2,
       name: "Jennifer Chen",
       role: "Wellness Coach",
       company: "Holistic Health Hub",

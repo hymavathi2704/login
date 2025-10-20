@@ -62,6 +62,12 @@ const UserLogin = () => {
     }
   };
 
+  // ✅ NEW: Handler for Support Team Pop-up
+  const handleSupportClick = (e) => {
+    e.preventDefault(); // Stop navigation
+    window.alert("Contact Support:\n\nFor immediate assistance, please email us at support@thekatha.com. We aim to respond within 24 hours.");
+  };
+
   /* ⚠️ COMMENTED OUT: Social Login Handler
   const handleSocialLogin = (provider) => {
     loginWithRedirect({
@@ -110,7 +116,12 @@ const UserLogin = () => {
           <div className="text-center text-sm text-muted-foreground">
             <p>
               Need help? Contact our{' '}
-              <a href="#" className="text-primary hover:underline">
+              {/* ✅ MODIFIED: Added onClick handler to trigger the alert */}
+              <a 
+                href="#" 
+                onClick={handleSupportClick} // 👈 Added handler here
+                className="text-primary hover:underline font-medium" // 👈 Added font-medium for better visibility
+              >
                 support team
               </a>
             </p>

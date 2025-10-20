@@ -44,32 +44,10 @@ const CallToActionSection = () => {
           {/* Subheadline */}
           <p className="text-xl sm:text-2xl text-white/90 mb-12 max-w-4xl mx-auto leading-relaxed">
             Join thousands of successful coaches who have streamlined their business, 
-            increased their revenue, and reclaimed their time with CoachFlow.
+            increased their revenue, and reclaimed their time with The Katha.
           </p>
 
-          {/* Primary CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Button 
-              variant="secondary"
-              size="xl"
-              iconName="ArrowRight"
-              iconPosition="right"
-              className="w-full sm:w-auto px-10 py-5 text-lg font-semibold bg-white text-primary hover:bg-white/95"
-              asChild
-            >
-              <Link to="/user-registration">Start Your Free Trial</Link>
-            </Button>
-            
-            <Button 
-              variant="ghost"
-              size="xl"
-              iconName="MessageCircle"
-              iconPosition="left"
-              className="w-full sm:w-auto px-10 py-5 text-lg font-semibold text-white border-white/30 hover:bg-white/10"
-            >
-              Talk to Sales
-            </Button>
-          </div>
+          
 
           {/* Trust Signals */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-12">
@@ -136,11 +114,11 @@ const CallToActionSection = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-white/90">
               <div className="flex items-center gap-2">
                 <Icon name="Phone" size={16} />
-                <span className="text-sm">Call us: (555) 123-4567</span>
+                <span className="text-sm">Call us: (+91) 12345-67890</span>
               </div>
               <div className="flex items-center gap-2">
                 <Icon name="Mail" size={16} />
-                <span className="text-sm">Email: hello@coachflow.com</span>
+                <span className="text-sm">Email: hello@thekatha.com</span>
               </div>
             </div>
           </div>

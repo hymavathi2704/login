@@ -48,6 +48,8 @@ const skipAuthForOptions = (req, res, next) => {
 // ==============================
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
 
+router.get('/dashboard/overview', authenticate, coachProfileController.getCoachDashboardOverview);
+
 router.put(
     '/profile', 
     skipAuthForOptions, 

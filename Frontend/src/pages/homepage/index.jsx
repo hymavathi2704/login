@@ -61,7 +61,7 @@ const Homepage = () => {
                     <span>📧 thekatha@flow.com</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-white/80">
-                    <span>📞 (555) 123-4567</span>
+                    <span>📞 +91 XXXXXXXXXX</span>
                   </div>
                 </div>
               </div>

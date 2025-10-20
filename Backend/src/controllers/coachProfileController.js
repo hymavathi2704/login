@@ -10,6 +10,7 @@ const CoachProfile = require('../models/CoachProfile');
 const ClientProfile = require('../models/ClientProfile'); 
 const Testimonial = require('../models/Testimonial'); 
 const Session = require('../models/Session'); 
+const Booking = require('../models/Booking');
 
 // === Environment and Path Setup ===
 const UPLOADS_DIR = path.join(process.cwd(), 'src', 'uploads'); 
@@ -338,15 +339,116 @@ const deleteProfilePicture = async (req, res) => {
     });
 };
 
+// ==============================
+// GET Coach Dashboard Overview (UPDATED REQUIREMENTS)
+// ==============================
+const getCoachDashboardOverview = async (req, res) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: 'User ID missing from token' });
+
+    const coachProfile = await CoachProfile.findOne({ where: { userId } });
+    if (!coachProfile) return res.status(404).json({ error: 'Coach profile not found' });
+
+    const coachProfileId = coachProfile.id;
+
+    // --- 1. Get Active Client Count (Based on confirmed bookings - Stays the Same) ---
+    const activeClientsCount = await Booking.count({
+        distinct: true,
+        col: 'clientId',
+        where: { status: 'confirmed' },
+        include: [{
+            model: Session,
+            as: 'Session',
+            required: true,
+            attributes: [],
+            where: { coachProfileId }
+        }],
+    });
+
+    // --- Define Date Ranges ---
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+
+    // --- 2. Get Upcoming Sessions LIST (All future sessions CREATED by coach) ---
+    //    (Query Session model directly, no booking required)
+    const upcomingSessionsData = await Session.findAll({
+        where: {
+            coachProfileId,
+            defaultDate: { // Use defaultDate (DATEONLY)
+                [Op.gte]: startOfToday // Get sessions from today onwards
+            }
+        },
+        // Order by date first, then time
+        order: [['defaultDate', 'ASC'], ['defaultTime', 'ASC']]
+        // No include for Booking needed here for the list itself
+    });
+
+    // Map sessions data for the frontend (simpler now)
+    const flattenedUpcomingSessions = upcomingSessionsData.map(session => {
+        return {
+            id: session.id,
+            title: session.title,
+            startTime: session.defaultTime, // Use defaultTime for display
+            date: session.defaultDate,      // Keep date separate
+            duration: session.duration,
+            // We don't necessarily know the client for *created* sessions list
+            // Fetch client info if a confirmed booking exists for this specific session instance
+            // (This is an example, adjust based on how you link bookings if needed)
+            client: null // Set default, can enhance later if needed
+        };
+    });
+
+    // --- 3. Get Upcoming Sessions COUNT (CREATED sessions in next 7 days) ---
+    //    (Query Session model directly, no booking required)
+    const endOfUpcomingWeek = new Date(startOfToday);
+    endOfUpcomingWeek.setDate(endOfUpcomingWeek.getDate() + 7); // Today + 7 days
+
+    const sessionsThisWeekCountCorrected = await Session.count({ // Count Sessions directly
+        where: {
+            coachProfileId,
+            defaultDate: { // Use defaultDate (DATEONLY)
+                [Op.gte]: startOfToday, // Greater than or equal to start of today
+                [Op.lt]: endOfUpcomingWeek  // Less than start of day 7 days from now
+            }
+        }
+        // No include needed
+    });
+
+
+    // --- 4. Get Monthly Revenue (TBI) ---
+    const monthlyRevenue = "N/A";
+    // --- 5. Get Average Rating (TBI) ---
+    const averageRating = "N/A";
+
+    res.json({
+      stats: {
+        activeClientsCount, // Stays based on bookings
+        sessionsThisWeekCount: sessionsThisWeekCountCorrected, // Now based on created sessions
+        monthlyRevenue,
+        averageRating,
+      },
+      upcomingSessions: flattenedUpcomingSessions // Now list of created sessions
+    });
+
+  } catch (error) {
+    console.error('Error fetching coach dashboard overview:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 
 // ==============================
 // Final module.exports block
 // ==============================
 module.exports = {
-    getCoachProfile,
-    updateCoachProfile,
-    addProfileItem, 
-    removeProfileItem, 
-    uploadProfilePicture,
-    deleteProfilePicture
+    getCoachProfile,
+    updateCoachProfile,
+    addProfileItem,
+    removeProfileItem,
+    uploadProfilePicture,
+    deleteProfilePicture,
+    getCoachDashboardOverview // 👈 Make sure this is exported
 };
+
