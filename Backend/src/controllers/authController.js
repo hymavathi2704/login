@@ -35,12 +35,21 @@ const getCookieOptions = (isProduction) => ({
 // ==============================
 async function register(req, res) {
 	try {
-		const { firstName, lastName, password } = req.body;
+        // 🔑 MODIFIED: Destructure role and specialty
+		const { firstName, lastName, password, role, specialty } = req.body;
 		const email = req.body.email?.toLowerCase().trim();
 
+		// Basic validation (including new role checks)
 		if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
 		if (!password || password.length < 8)
 			return res.status(400).json({ error: 'Password must be >= 8 chars' });
+        
+        // 🔑 NEW: Validate role
+        if (!['client', 'coach'].includes(role))
+            return res.status(400).json({ error: 'Invalid role selected.' });
+        // 🔑 NEW: Validate specialty for coach
+        if (role === 'coach' && !specialty?.trim())
+            return res.status(400).json({ error: 'Primary coaching specialty is required for coach registration.' });
 
 		const existing = await User.findOne({ where: { email } });
 		if (existing) return res.status(409).json({ error: 'Email already in use' });
@@ -50,7 +59,8 @@ async function register(req, res) {
 		const otp = generateOtp();
 		const otp_expires_at = new Date(Date.now() + 1000 * 60 * 15);
 
-		await User.create({
+        // 1. Create User with initial role
+		const newUser = await User.create({
 			id,
 			firstName,
 			lastName,
@@ -60,9 +70,20 @@ async function register(req, res) {
 			verification_token_expires: otp_expires_at,
 			provider: 'email',
 			email_verified: false,
-			roles: [],
+			roles: [role], // 🔑 MODIFIED: Set the initial role
 		});
-
+        
+        // 2. Create Profile based on role
+        if (role === 'client') {
+            await ClientProfile.create({ userId: id });
+        } else if (role === 'coach') {
+            // 🔑 NEW: Create CoachProfile with initial specialty. Specialties are stored as a JSON array string.
+            await CoachProfile.create({ 
+                userId: id,
+                specialties: specialty ? JSON.stringify([specialty.trim()]) : '[]' 
+            });
+        }
+        
 		await sendVerificationEmail(email, otp).catch(console.error);
 
 		res.status(201).json({ message: 'Registered. Please check email to verify.' });
@@ -71,7 +92,6 @@ async function register(req, res) {
 		res.status(500).json({ error: 'Failed to register user' });
 	}
 }
-
 // ==============================
 // Login
 // ==============================
@@ -235,12 +255,14 @@ async function me(req, res) {
 }
 
 // ==============================
-// Create a new role profile
+// Create a new role profile - MODIFIED
+// This function remains to support adding a secondary role, but initial profile creation is in 'register'
 // ==============================
 async function createProfile(req, res) {
 	try {
 		const userId = req.user?.userId;
-		const { role } = req.body;
+        // 🔑 MODIFIED: Also capture specialty, but it's not strictly required here
+		const { role, specialty } = req.body; 
 
 		if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 		if (!['client', 'coach'].includes(role))
@@ -249,14 +271,26 @@ async function createProfile(req, res) {
 		const user = await User.findByPk(userId);
 		if (!user) return res.status(404).json({ error: 'User not found' });
 
-		if (!user.roles.includes(role)) {
-			user.roles = [...user.roles, role];
-			await user.save();
-		}
+		// 🔑 NEW: Prevent adding the role if the user already has it
+        if (user.roles.includes(role)) {
+            return res.status(400).json({ error: `${role} profile already exists.` });
+        }
 
-		if (role === 'client') await ClientProfile.findOrCreate({ where: { userId } });
-		if (role === 'coach') await CoachProfile.findOrCreate({ where: { userId } });
+		// Update user roles
+		user.roles = [...user.roles, role];
+		await user.save();
 
+		// Create the profile
+		if (role === 'client') {
+            await ClientProfile.create({ userId });
+        } else if (role === 'coach') {
+            // If specialty is provided in this secondary call, use it. Otherwise, use empty array.
+            await CoachProfile.create({ 
+                userId,
+                specialties: specialty ? JSON.stringify([specialty.trim()]) : '[]'
+            });
+        }
+        
 		res.status(201).json({ message: `${role} profile created successfully.` });
 	} catch (err) {
 		console.error('Create profile error:', err);

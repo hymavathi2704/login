@@ -61,17 +61,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('currentRole', defaultRole);
 
 
-
+    // 🔑 MODIFIED: If defaultRole is null, redirect to '/login' or root, 
+    // NOT to '/welcome-setup' since the setup page is being removed.
     if (!defaultRole) {
-
-      navigate('/welcome-setup');
-
+      navigate('/login'); 
     } else {
-
       navigate(`/dashboard/${defaultRole}`);
-
     }
-
   };
 
 
@@ -235,8 +231,3 @@ export const useAuth = () => {
 };
 
 
-// ✅ NEW: Client gets list of followed coaches (to determine count)
-export const getFollowedCoachesClient = () => {
-    // This calls the GET /api/profiles/followed endpoint
-    return axiosInstance.get(`/api/profiles/followed`); 
-};

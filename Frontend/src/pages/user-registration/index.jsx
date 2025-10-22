@@ -15,7 +15,8 @@ import { registerUser } from "../../auth/authApi";
 const UserRegistration = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const role = searchParams.get("role") || "client";
+  // 🔑 REMOVED: role is now passed from the form, not read from search params
+  // const role = searchParams.get("role") || "client";
 
   const [isLoading, setIsLoading] = useState(false);
   const [showCaptcha, setShowCaptcha] = useState(false);
@@ -29,10 +30,11 @@ const UserRegistration = () => {
     // ❌ REMOVED: const [firstName, ...lastNameParts] = formData.fullName.split(' ');
     // ❌ REMOVED: const lastName = lastNameParts.join(' ');
 
-    // ✅ FIXED: Directly use firstName and lastName from the updated form data
-    const { firstName, lastName } = formData;
+    // ✅ FIXED & UPDATED: Directly destructure firstName, lastName, role, AND specialty from the form data
+    const { firstName, lastName, role, specialty } = formData;
 
-    setFormDataForCaptcha({ ...formData, firstName, lastName, role });
+    // 🔑 UPDATED: Store all necessary fields, including role and specialty for the backend call
+    setFormDataForCaptcha({ ...formData, firstName, lastName, role, specialty });
     setShowCaptcha(true);
   };
 
@@ -47,7 +49,8 @@ const UserRegistration = () => {
       return;
     }
 
-    const { firstName, lastName, email, password, role } = formDataForCaptcha;
+    // 🔑 UPDATED: Destructure role and specialty from stored data
+    const { firstName, lastName, email, password, role, specialty } = formDataForCaptcha;
 
     try {
       // --- THIS LINE IS CORRECTED ---
@@ -57,7 +60,8 @@ const UserRegistration = () => {
         lastName, // Use lastName
         email,
         password,
-        role,
+        role, // 🔑 PASS: The selected role
+        specialty, // 🔑 PASS: The specialty string (will be empty for client)
         captcha: captchaResponse,
       });
 
@@ -77,19 +81,7 @@ const UserRegistration = () => {
   
   /* ⚠️ COMMENTED OUT: Social Login Handler
   const handleSocialLogin = async (provider) => {
-    setIsLoading(true);
-
-    try {
-      // Simulating OAuth flow - This would eventually connect to a backend endpoint
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const mockEmail = `user@${provider}.com`;
-      setRegisteredEmail(mockEmail);
-      setRegistrationStep("success");
-    } catch (error) {
-      console.error(`${provider} registration error:`, error);
-    } finally {
-      setIsLoading(false);
-    }
+// ... (omitted code)
   };
   */
 

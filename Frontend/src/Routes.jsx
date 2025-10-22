@@ -13,8 +13,7 @@ import PrivateRoute from "./auth/PrivateRoute";
 import Auth0Callback from "./auth/Auth0Callback";
 import Unauthorized from "./pages/Unauthorized";
 
-// === FIX APPLIED HERE: ADDED MISSING WelcomeSetup IMPORT ===
-import WelcomeSetup from "./pages/welcome-setup";
+// REMOVED: import WelcomeSetup from "./pages/welcome-setup";
 
 // ✅ Dashboard imports
 import ClientDashboard from "./pages/dashboards/client-dashboard";
@@ -44,15 +43,7 @@ const Routes = () => {
         {/* ✅ ADDED PUBLIC ROUTE: Coach Public Profile */}
         <Route path="/profiles/:id" element={<CoachPublicProfile />} />
 
-        {/* ✅ Onboarding route */}
-        <Route
-          path="/welcome-setup"
-          element={
-            <PrivateRoute allowedRoles={[]}>
-              <WelcomeSetup />
-            </PrivateRoute>
-          }
-        />
+        {/* 🔑 REMOVED: Onboarding route for WelcomeSetup page */}
 
         {/* ✅ Protected Dashboard Routes */}
         <Route

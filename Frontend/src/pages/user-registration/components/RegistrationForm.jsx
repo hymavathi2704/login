@@ -14,7 +14,11 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
     email: '',
     password: '',
     confirmPassword: '',
-    agreeToTerms: false
+    agreeToTerms: false,
+    // 🔑 NEW: Add role with default 'client'
+    role: 'client', 
+    // 🔑 NEW: Add specialty
+    specialty: '', 
   });
 
   const [errors, setErrors] = useState({});
@@ -54,34 +58,46 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
     const { name, value, type, checked } = e.target;
     const inputValue = type === 'checkbox' ? checked : value;
     setFormData(prev => ({ ...prev, [name]: inputValue }));
+    
+    // 🔑 NEW: Clear specialty if switching back to client
+    if (name === 'role' && value === 'client') {
+        setFormData(prev => ({ ...prev, specialty: '' }));
+    }
+    
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     if (name === 'password') setPasswordStrength(validatePassword(value));
   };
 
 
 // ===================================
-  // 🔑 NEW: Handlers for Pop-up messages
-  // ===================================
-  const handleTermsClick = (e) => {
-    e.preventDefault(); // Stop navigation
-    window.alert("Terms of Service:\n\nThese terms are currently under development. By proceeding, you agree to the default terms of use for beta software.");
-  };
+  // 🔑 NEW: Handlers for Pop-up messages
+  // ===================================
+  const handleTermsClick = (e) => {
+    e.preventDefault(); // Stop navigation
+    window.alert("Terms of Service:\n\nThese terms are currently under development. By proceeding, you agree to the default terms of use for beta software.");
+  };
 
-  const handlePrivacyClick = (e) => {
-    e.preventDefault(); // Stop navigation
-    window.alert("Privacy Policy:\n\nThis policy is currently under development. Your data will be treated securely and will not be shared with third parties.");
-  };
-  // ===================================
+  const handlePrivacyClick = (e) => {
+    e.preventDefault(); // Stop navigation
+    window.alert("Privacy Policy:\n\nThis policy is currently under development. Your data will be treated securely and will not be shared with third parties.");
+  };
+  // ===================================
 
   const validateForm = () => {
     const newErrors = {};
+    
+    // 🔑 NEW: Validate specialty if role is coach
+    if (formData.role === 'coach' && !formData.specialty.trim()) {
+      newErrors.specialty = 'Primary coaching specialty is required for coach registration.';
+    }
+    
     // 🔑 MODIFIED: Validate First Name
     if (!formData.firstName.trim() || formData.firstName.trim().length < 2) 
-        newErrors.firstName = 'First name must be at least 2 characters';
+        newErrors.firstName = 'First name must be at least 2 characters';
     // 🔑 MODIFIED: Validate Last Name
     if (!formData.lastName.trim() || formData.lastName.trim().length < 2) 
-        newErrors.lastName = 'Last name must be at least 2 characters';
-        
+        newErrors.lastName = 'Last name must be at least 2 characters';
+        
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email) newErrors.email = 'Email is required';
     else if (!emailRegex.test(formData.email)) newErrors.email = 'Please enter a valid email address';
@@ -106,9 +122,63 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* 🔑 MODIFIED: Replaced Full Name with two side-by-side inputs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
+      
+      {/* 🔑 NEW BLOCK: Role Selection & Conditional Specialty Input */}
+      <div className="space-y-4">
+        <label className="block text-sm font-medium text-foreground">
+          I am registering as: <span className="text-destructive ml-1">*</span>
+        </label>
+        <div className="flex space-x-6">
+          {/* Client Radio (Default) */}
+          <div className="flex items-center">
+            <input
+              type="radio"
+              id="role-client"
+              name="role"
+              value="client"
+              checked={formData.role === 'client'}
+              onChange={handleInputChange}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+            />
+            <label htmlFor="role-client" className="ml-2 text-sm font-medium text-gray-700">Client (Default)</label>
+          </div>
+          {/* Coach Radio */}
+          <div className="flex items-center">
+            <input
+              type="radio"
+              id="role-coach"
+              name="role"
+              value="coach"
+              checked={formData.role === 'coach'}
+              onChange={handleInputChange}
+              className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+            />
+            <label htmlFor="role-coach" className="ml-2 text-sm font-medium text-gray-700">Coach</label>
+          </div>
+        </div>
+
+        {/* Conditional Specialty Input for Coach */}
+        {formData.role === 'coach' && (
+          <div className="space-y-2">
+            <Input
+              label="Primary Coaching Specialty"
+              type="text"
+              name="specialty"
+              placeholder="e.g., Life Coaching, Career Development"
+              value={formData.specialty}
+              onChange={handleInputChange}
+              error={errors.specialty}
+              required
+              description="This will be set as your initial specialty."
+            />
+          </div>
+        )}
+      </div>
+      {/* 🔑 END NEW BLOCK */}
+      
+      {/* 🔑 MODIFIED: Replaced Full Name with two side-by-side inputs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Input
           label="First Name"
           type="text"
           name="firstName"
@@ -118,7 +188,7 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
           error={errors.firstName}
           required
         />
-        <Input
+        <Input
           label="Last Name"
           type="text"
           name="lastName"
@@ -128,8 +198,8 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
           error={errors.lastName}
           required
         />
-      </div>
-      
+      </div>
+      
       <Input
         label="Email Address"
         type="email"
@@ -155,23 +225,23 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-9 text-gray-500">
             <Icon name={showPassword ? "EyeOff" : "Eye"} size={20} />
           </button>
-        </div>
-        {formData.password && (
-          <div className="space-y-2">
-            <div className="flex space-x-1">
-              {[1, 2, 3, 4, 5].map((level) => (
-                <div
-                  key={level}
-                  className={`h-2 flex-1 rounded-full ${level <= passwordStrength ? getPasswordStrengthColor(passwordStrength) : 'bg-gray-200'}`}
-                />
-              ))}
-            </div>
-            <p className="text-sm text-gray-600">
-              Password strength: <span className="font-medium">{getPasswordStrengthText(passwordStrength)}</span>
-            </p>
           </div>
-        )}
-      </div>
+          {formData.password && (
+            <div className="space-y-2">
+              <div className="flex space-x-1">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <div
+                    key={level}
+                    className={`h-2 flex-1 rounded-full ${level <= passwordStrength ? getPasswordStrengthColor(passwordStrength) : 'bg-gray-200'}`}
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-gray-600">
+                Password strength: <span className="font-medium">{getPasswordStrengthText(passwordStrength)}</span>
+              </p>
+            </div>
+          )}
+        </div>
       <div className="relative">
         <Input
           label="Confirm Password"
@@ -196,23 +266,23 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
           label={
             <span className="text-sm text-gray-600">
               I agree to the{' '}
-              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
+              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
               <a 
-                  href="#" 
-                  onClick={handleTermsClick} 
-                  className="text-indigo-600 hover:underline font-medium"
-              >
-                  Terms of Service
-              </a>{' '}
+                  href="#" 
+                  onClick={handleTermsClick} 
+                  className="text-indigo-600 hover:underline font-medium"
+              >
+                  Terms of Service
+              </a>{' '}
               and{' '}
-              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
+              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
               <a 
-                  href="#" 
-                  onClick={handlePrivacyClick} 
-                  className="text-indigo-600 hover:underline font-medium"
-              >
-                  Privacy Policy
-              </a>
+                  href="#" 
+                  onClick={handlePrivacyClick} 
+                  className="text-indigo-600 hover:underline font-medium"
+              >
+                  Privacy Policy
+              </a>
             </span>
           }
           required
