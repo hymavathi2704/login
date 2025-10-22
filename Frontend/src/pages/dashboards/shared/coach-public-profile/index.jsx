@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react'; 
 import { useParams, useNavigate } from 'react-router-dom'; 
-import { getCoachById } from '@/auth/authApi'; 
+// 🔑 UPDATED IMPORTS: Added checkClientReviewEligibility and useAuth
+import { getCoachById, checkClientReviewEligibility } from '@/auth/authApi'; 
+import { useAuth } from '@/auth/AuthContext'; 
 
 import NavigationLoadingStates from '@/components/ui/NavigationLoadingStates';
 import Button from '@/components/ui/Button'; 
@@ -16,14 +18,24 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
   const { id: urlCoachId } = useParams(); 
   // ADDED: Initialize navigation hook
   const navigate = useNavigate();
+    
+  // 🔑 NEW: Use AuthContext to get user status and roles
+  const { user, isAuthenticated, roles } = useAuth();
     
   // FIX: Determine the final coachId: prefer prop over URL param
   const finalCoachId = propCoachId || urlCoachId;
+    
+  // 🔑 NEW: Derived state for clarity
+  const isClient = isAuthenticated && roles?.includes('client');
+  const isCoachSelf = isAuthenticated && user?.id === finalCoachId;
     
   const [coach, setCoach] = useState(null);
   const [testimonials, setTestimonials] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // 🔑 NEW STATE: Review eligibility
+  const [isReviewEligible, setIsReviewEligible] = useState(false);
+
 
   // 🚨 MODIFIED: Wrapped fetchCoachData in useCallback to prevent infinite useEffect loop
   const fetchCoachData = useCallback(async () => {
@@ -35,12 +47,20 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
         throw new Error('Coach ID is missing from the URL.');
       }
       
-      // Use the final ID to fetch data
+      // 1. Fetch Coach Profile Data
       const response = await getCoachById(finalCoachId);
       const fetchedCoach = response.data.coach;
 
       setCoach(fetchedCoach);
       setTestimonials(fetchedCoach.testimonials || []); 
+      
+      // 2. 🔑 NEW LOGIC: Fetch Review Eligibility (Only for logged-in clients viewing another coach)
+      if (isAuthenticated && isClient && !isCoachSelf) {
+          const eligibilityResponse = await checkClientReviewEligibility(finalCoachId);
+          setIsReviewEligible(eligibilityResponse.data.isEligible);
+      } else {
+          setIsReviewEligible(false);
+      }
       
     } catch (err) {
       console.error("Failed to fetch coach data:", err);
@@ -52,12 +72,13 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
     } finally {
       setLoading(false);
     }
-  }, [finalCoachId]); // Dependency on finalCoachId
+    // 🔑 UPDATED DEPENDENCIES
+  }, [finalCoachId, isAuthenticated, isClient, isCoachSelf]); 
 
-  // 🚨 NEW: Function to re-fetch data after a session is successfully booked
+  // 🚨 NEW: Function to re-fetch data after a session is successfully booked OR a testimonial is submitted
   const handleSessionBooked = () => {
-      // Re-run the fetch logic to update the coach data, including the session booking status
-      fetchCoachData();
+      // Re-run the fetch logic to update the coach data and eligibility status
+      fetchCoachData();
   };
 
   useEffect(() => {
@@ -102,11 +123,17 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
         <AboutSection coach={coach} />
         <ServicesSection 
           coach={coach} 
-          // 🚨 NEW PROP: Pass the callback to refresh the coach data
-          onSessionBooked={handleSessionBooked}
+          // 🚨 NEW PROP: Pass the callback to refresh the coach data
+          onSessionBooked={handleSessionBooked}
           // Removed onServiceClick prop
         />
-        <TestimonialsSection testimonials={testimonials} />
+        {/* 🔑 MODIFIED: Pass eligibility status, coach ID, and callback */}
+        <TestimonialsSection 
+            testimonials={testimonials} 
+            coachId={finalCoachId}
+            isReviewEligible={isReviewEligible}
+            onTestimonialSubmitted={fetchCoachData} 
+        />
       </div>
 
       {/* ADDED: Explore More Coaches Button */}

@@ -1,8 +1,41 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Icon from '@/components/AppIcon';
 import Image from '@/components/AppImage';
+import Button from '@/components/ui/Button'; // 🔑 Added Button
+import Input from '@/components/ui/Input'; // 🔑 Added Input
+import { Textarea } from '@/components/ui/Textarea'; // 🔑 Added Textarea
+import { Check, X, Star as StarIcon, MessageCircle } from 'lucide-react'; // 🔑 Added icons
+import { toast } from 'sonner';
 
-const TestimonialsSection = ({ testimonials }) => {
+// Mock API Call (Replace with your actual API integration for submitting testimonials)
+const submitTestimonial = async (coachId, rating, content, title, sessionType) => {
+    // In a real app, this would be an axiosInstance.post('/api/testimonials', ...) call
+    console.log("Submitting Testimonial:", { coachId, rating, content, title, sessionType });
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
+    // Assuming success
+    return { success: true };
+};
+
+
+const TestimonialsSection = ({ 
+    testimonials, 
+    coachId, 
+    isReviewEligible, 
+    onTestimonialSubmitted 
+}) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form State
+  const [form, setForm] = useState({
+      rating: 5,
+      clientTitle: '',
+      content: '',
+      sessionType: '', // Mock field for now
+  });
+  const [validationError, setValidationError] = useState('');
+
+
   const formatDate = (dateString) => {
     return new Date(dateString)?.toLocaleDateString('en-US', {
       year: 'numeric',
@@ -11,25 +44,106 @@ const TestimonialsSection = ({ testimonials }) => {
     });
   };
 
+  const handleFormChange = (e) => {
+      const { name, value } = e.target;
+      setForm(prev => ({ ...prev, [name]: value }));
+      setValidationError('');
+  };
+  
+  const handleRatingChange = (newRating) => {
+      setForm(prev => ({ ...prev, rating: newRating }));
+      setValidationError('');
+  };
+
+  const handleSubmit = async (e) => {
+      e.preventDefault();
+      if (form.rating < 1 || form.rating > 5 || !form.content.trim()) {
+          setValidationError('Please provide a rating and write your testimonial.');
+          return;
+      }
+      
+      setIsSubmitting(true);
+      
+      try {
+          // Replace with real API call
+          await submitTestimonial(coachId, form.rating, form.content, form.clientTitle, form.sessionType);
+          
+          toast.success('Thank you! Your testimonial has been submitted successfully.');
+          setIsModalOpen(false);
+          
+          // 🔑 Call the parent to re-fetch the profile data and update the list
+          if (onTestimonialSubmitted) {
+              onTestimonialSubmitted();
+          }
+          
+          // Reset form
+          setForm({ rating: 5, clientTitle: '', content: '', sessionType: '' });
+          
+      } catch (error) {
+          console.error("Testimonial submission failed:", error);
+          toast.error("Failed to submit testimonial. Please try again.");
+      } finally {
+          setIsSubmitting(false);
+      }
+  };
+
+
   if (!testimonials || testimonials?.length === 0) {
     return (
       <div className="bg-card rounded-card p-6 shadow-soft">
         <h2 className="text-2xl font-heading font-semibold text-foreground mb-6">
           Client Testimonials
         </h2>
+        
+        {isReviewEligible && (
+            <div className="border border-dashed border-primary/50 bg-primary/5 p-4 rounded-lg text-center mb-6">
+                <p className="text-primary text-sm font-medium mb-3">
+                    You are eligible to leave a review for this coach!
+                </p>
+                <Button 
+                    variant="primary" 
+                    onClick={() => setIsModalOpen(true)}
+                    iconName="Edit"
+                    iconPosition="left"
+                    size="sm"
+                >
+                    Write a Testimonial
+                </Button>
+            </div>
+        )}
+
         <div className="text-center py-12">
           <Icon name="MessageSquare" size={48} className="text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">No testimonials available yet.</p>
         </div>
+        
+        {/* Render Modal */}
+        {renderTestimonialModal(isModalOpen, setIsModalOpen, form, handleFormChange, handleRatingChange, handleSubmit, validationError, isSubmitting)}
       </div>
     );
   }
 
   return (
     <div className="bg-card rounded-card p-6 shadow-soft">
-      <h2 className="text-2xl font-heading font-semibold text-foreground mb-6">
-        Client Testimonials
-      </h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-heading font-semibold text-foreground">
+          Client Testimonials
+        </h2>
+        
+        {/* Button conditionally displayed */}
+        {isReviewEligible && (
+            <Button 
+                variant="primary" 
+                onClick={() => setIsModalOpen(true)}
+                iconName="Edit"
+                iconPosition="left"
+                size="sm"
+            >
+                Write a Testimonial
+            </Button>
+        )}
+      </div>
+      
       <div className="space-y-6">
         {testimonials?.map((testimonial) => (
           <div
@@ -108,8 +222,124 @@ const TestimonialsSection = ({ testimonials }) => {
           </button>
         </div>
       )}
+      
+      {/* Render Modal */}
+      {renderTestimonialModal(isModalOpen, setIsModalOpen, form, handleFormChange, handleRatingChange, handleSubmit, validationError, isSubmitting)}
     </div>
   );
+};
+
+// ===================================
+// 🔑 NEW: Testimonial Modal Component
+// ===================================
+const renderTestimonialModal = (isOpen, setIsOpen, form, handleFormChange, handleRatingChange, handleSubmit, validationError, isSubmitting) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setIsOpen(false)}>
+            <div 
+                className="bg-card rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 relative"
+                onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+            >
+                <button
+                    onClick={() => setIsOpen(false)}
+                    className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label="Close"
+                >
+                    <X size={24} />
+                </button>
+                <h3 className="text-2xl font-bold text-foreground pr-10 border-b pb-3">
+                    Write a Testimonial
+                </h3>
+                
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    
+                    {/* Rating Input */}
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            Overall Rating <span className="text-red-500">*</span>
+                        </label>
+                        <div className="flex space-x-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <StarIcon 
+                                    key={star} 
+                                    size={30} 
+                                    className={`cursor-pointer transition-colors ${
+                                        star <= form.rating 
+                                            ? 'text-warning fill-current' 
+                                            : 'text-gray-300 hover:text-warning/70'
+                                    }`}
+                                    onClick={() => handleRatingChange(star)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    
+                    {/* Testimonial Content */}
+                    <div>
+                        <Textarea
+                            label="Your Feedback"
+                            name="content"
+                            rows={4}
+                            value={form.content}
+                            onChange={handleFormChange}
+                            placeholder="Share your experience working with this coach..."
+                            required
+                        />
+                    </div>
+                    
+                    {/* Optional Fields */}
+                    <div>
+                        <Input
+                            label="Your Title/Role (Optional)"
+                            name="clientTitle"
+                            value={form.clientTitle}
+                            onChange={handleFormChange}
+                            placeholder="e.g., Marketing Executive, Small Business Owner"
+                        />
+                    </div>
+                    
+                    <div>
+                        <Input
+                            label="Session Type/Focus (Optional)"
+                            name="sessionType"
+                            value={form.sessionType}
+                            onChange={handleFormChange}
+                            placeholder="e.g., Career Strategy Session, 3-Month Package"
+                        />
+                    </div>
+                    
+                    {/* Error Message */}
+                    {validationError && (
+                        <div className="text-red-500 text-sm flex items-center space-x-1">
+                            <XCircle size={16} /> <span>{validationError}</span>
+                        </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <div className="pt-4 flex justify-end space-x-3">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setIsOpen(false)}
+                            type="button"
+                            disabled={isSubmitting}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            type="submit"
+                            disabled={isSubmitting || form.rating === 0 || !form.content.trim()}
+                            loading={isSubmitting}
+                            iconName="MessageCircle"
+                            iconPosition="left"
+                        >
+                            {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
 };
 
 export default TestimonialsSection;

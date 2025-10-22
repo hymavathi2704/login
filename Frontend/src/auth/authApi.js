@@ -208,3 +208,9 @@ export const getFollowedCoachesClient = () => {
 export const getCoachDashboardOverview = () => {
     return axiosInstance.get('/api/coach/dashboard/overview');
 };
+
+// 🔑 NEW: Check if the logged-in client has booked a session with this coach
+export const checkClientReviewEligibility = (coachId) => {
+    // This endpoint will return true if the client has a completed or confirmed booking history with this coach.
+    return axiosInstance.get(`/api/coach/public/${coachId}/review-eligibility`);
+};

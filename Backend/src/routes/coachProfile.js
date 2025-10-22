@@ -21,6 +21,7 @@ const {
     getFollowStatus, 
     followCoach, 
     unfollowCoach,
+    checkReviewEligibility
     // getClientsWhoFollow was correctly removed
 } = require('../controllers/exploreCoachesController'); 
 
@@ -115,5 +116,7 @@ router.get('/public/:coachId/follow-status', authenticate, getFollowStatus);
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
 
+// 🔑 NEW: Check if the logged-in client is eligible to write a review for this coach
+router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility);
 
 module.exports = router;
