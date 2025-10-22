@@ -20,7 +20,7 @@ const {
     getPublicCoachProfile,
     getFollowStatus, 
     followCoach, 
-    unfollowCoach,
+    unfollowCoach
 } = require('../controllers/exploreCoachesController'); 
 
 // 🔑 NEW: Import the testimonial controller functions
@@ -124,6 +124,18 @@ router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfol
 router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility);
 
 // 🔑 NEW: Submit a testimonial (Protected by authentication)
+router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticate, addTestimonial);
+
+// 🔑 NEW: Check if the logged-in client is eligible to write a review for this coach
+router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility);
+
+// 🔑 NEW: Submit a testimonial (Protected by authentication)
+router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticate, addTestimonial);
+
+// 🔑 FIX: Check if the logged-in client is eligible to write a review for this coach
+router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility);
+
+// 🔑 FIX: Submit a testimonial 
 router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticate, addTestimonial);
 
 module.exports = router;

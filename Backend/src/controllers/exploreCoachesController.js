@@ -479,3 +479,60 @@ export const getClientsWhoFollow = async (req, res) => {
     }
 };
 
+// ==============================
+// 🔑 UPDATED: Check Client Review Eligibility
+// ==============================
+export const checkReviewEligibility = async (req, res) => {
+    const { coachId } = req.params;
+    const clientId = req.user?.userId;
+
+    if (!clientId || req.user?.roles.includes('coach')) {
+        return res.json({ eligibleSessions: [] });
+    }
+
+    try {
+        const coachProfile = await CoachProfile.findOne({ where: { userId: coachId }, attributes: ['id'] });
+
+        if (!coachProfile) {
+            return res.status(404).json({ error: 'Coach profile not found.' });
+        }
+        const coachProfileId = coachProfile.id;
+
+        // 🚨 CRITICAL FIX: Find all 'completed' bookings that have NOT been reviewed.
+        const eligibleBookings = await Booking.findAll({
+            where: { 
+                clientId: clientId,
+                // Assuming you have a 'status: completed' or equivalent in your Booking model
+                status: 'completed', 
+                // 🔑 CRITICAL: Assuming a boolean field 'isReviewed' exists in the Booking model
+                isReviewed: { [Op.not]: true } 
+            },
+            include: [{
+                model: Session,
+                as: 'Session', 
+                required: true,
+                attributes: ['id', 'title', 'type', 'defaultDate', 'defaultTime'], // Fetch session details
+                where: { coachProfileId: coachProfileId }
+            }]
+        });
+
+        // Map the bookings to a list of eligible sessions for the frontend
+        const eligibleSessions = eligibleBookings
+            .map(booking => {
+                const session = booking.Session;
+                // We return the Booking ID (booking.id) but label it as a "session" on the frontend for context
+                return {
+                    id: booking.id, // 🔑 IMPORTANT: This is the Booking ID to be used in the testimonial POST
+                    title: `${session.title} (on ${new Date(session.defaultDate).toLocaleDateString('en-US')})`,
+                    type: session.type
+                };
+            });
+        
+        // This is the correct response payload for the frontend
+        return res.json({ eligibleSessions });
+
+    } catch (error) {
+        console.error('Error checking review eligibility:', error);
+        return res.status(500).json({ error: 'Server error checking eligibility.' });
+    }
+};
