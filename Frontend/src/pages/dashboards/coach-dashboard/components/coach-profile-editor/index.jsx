@@ -379,12 +379,11 @@ const CoachProfileEditor = () => {
           </div>
         )}
         
-        {/* START: ADDED View Public Profile Button */}
+        {/* START: View Public Profile Button (Removed target="_blank") */}
         {user?.id && (
             <Link 
                 to={`/profiles/${user.id}`} 
-                target="_blank" 
-                className={cn(
+                className={cn( // Removed target="_blank"
                     "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
                     "bg-transparent text-blue-600 border border-blue-600 hover:bg-blue-50/50 h-10 px-4 py-2 text-sm"
                 )}
@@ -393,7 +392,7 @@ const CoachProfileEditor = () => {
                 View Public Profile
             </Link>
         )}
-        {/* END: ADDED View Public Profile Button */}
+        {/* END: View Public Profile Button */}
 
         <Button onClick={handleSave} disabled={isLoading || !unsavedChanges} size="lg">
           <Save className="w-5 h-5 mr-2" />

@@ -68,13 +68,13 @@ app.use(express.json({ limit: '5mb' }));
 // This replaces the complex and unreliable custom middleware from the previous attempt.
 // ==========================================
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
-    // Use the built-in setHeaders option to explicitly force the MIME type for JPG/JPEG
-    setHeaders: (res, path) => {
-        const ext = path.split('.').pop().toLowerCase();
-        if (ext === 'jpg' || ext === 'jpeg') {
-            res.set('Content-Type', 'image/jpeg');
-        }
-    }
+    // Use the built-in setHeaders option to explicitly force the MIME type for JPG/JPEG
+    setHeaders: (res, path) => {
+        const ext = path.split('.').pop().toLowerCase();
+        if (ext === 'jpg' || ext === 'jpeg') {
+            res.set('Content-Type', 'image/jpeg');
+        }
+    }
 }));
 // =
 
@@ -95,8 +95,11 @@ app.use(
             '/api/auth/forgot-password',
             '/api/auth/reset-password',
             '/api/auth/social-login',
-            // Allow fetching public coach profiles/sessions without login
+            // Allow fetching public coach list (for non-logged in users)
             /\/api\/profiles\/coaches(\/.*)?/, 
+            // 💡 FIX: Allow fetching a single public coach profile by ID without authentication
+            /\/api\/profiles\/coach\/[a-zA-Z0-9-]{36}/,
+            // Allow fetching public coach profiles/sessions with internal routes (existing config)
             /\/api\/coach\/public(\/.*)?/ 
         ],
     })
@@ -174,8 +177,8 @@ app.use((err, req, res, next) => {
         console.error('Unexpected Error:', err);
         errorMessage = err.message || 'An unexpected server error occurred.';
     }
-    
-    // Send a structured JSON response regardless of the error type
+    
+    // Send a structured JSON response regardless of the error type
     return res.status(statusCode).json({ error: errorMessage });
 });
 
