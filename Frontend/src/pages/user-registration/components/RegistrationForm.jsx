@@ -4,20 +4,29 @@ import Input from '../../../components/ui/Input';
 import Button from '../../../components/ui/Button';
 import { Checkbox } from '../../../components/ui/Checkbox';
 import Icon from '../../../components/AppIcon';
+// 🔑 NEW IMPORTS for Select components
+import Select, { SelectTrigger, SelectValue, SelectContent, SelectItem } from '../../../components/ui/Select'; 
+import { Tag } from 'lucide-react'; 
 
-// ✅ The form now takes 'onSubmit' and 'isLoading' props from its parent
+// List of popular specialties adapted from ProfessionalSection
+const popularSpecialties = [
+  'Life Coaching', 'Business Coaching', 'Career Coaching', 'Executive Coaching',
+  'Health & Wellness', 'Relationship Coaching', 'Leadership Development',
+  'Performance Coaching', 'Financial Coaching', 'Mindfulness & Meditation'
+];
+
 const RegistrationForm = ({ onSubmit, isLoading }) => {
   const [formData, setFormData] = useState({
-    // 🔑 MODIFIED: Split 'fullName' into 'firstName' and 'lastName'
+    // Core fields
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
     agreeToTerms: false,
-    // 🔑 NEW: Add role with default 'client'
+    // 🔑 NEW: Role with default 'client'
     role: 'client', 
-    // 🔑 NEW: Add specialty
+    // 🔑 NEW: Specialty (holds the final selected/custom value sent to backend)
     specialty: '', 
   });
 
@@ -25,6 +34,9 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // 🔑 NEW STATES for specialty dropdown control
+  const [selectedSpecialty, setSelectedSpecialty] = useState('');
+  const [customSpecialty, setCustomSpecialty] = useState('');
 
   const validatePassword = (password) => {
     let strength = 0;
@@ -59,14 +71,46 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
     const inputValue = type === 'checkbox' ? checked : value;
     setFormData(prev => ({ ...prev, [name]: inputValue }));
     
-    // 🔑 NEW: Clear specialty if switching back to client
-    if (name === 'role' && value === 'client') {
-        setFormData(prev => ({ ...prev, specialty: '' }));
+    // 🔑 MODIFIED: Handle role change
+    if (name === 'role') {
+        if (value === 'client') {
+            // Clear specialty-related states if role is client
+            setFormData(prev => ({ ...prev, specialty: '' }));
+            setSelectedSpecialty('');
+            setCustomSpecialty('');
+        } else if (value === 'coach') {
+            // If switching to coach, ensure formData.specialty is reset to force selection/input validation
+            setFormData(prev => ({ ...prev, specialty: '' }));
+        }
     }
     
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
     if (name === 'password') setPasswordStrength(validatePassword(value));
   };
+
+  // 🔑 NEW: Handler for Select component
+  const handleSpecialtySelect = (value) => {
+      setSelectedSpecialty(value);
+      setCustomSpecialty(''); // Clear custom input when a selection is made
+      setErrors(prev => ({ ...prev, specialty: '' })); 
+      
+      // If a popular specialty is selected, set it in the final form data
+      if (value !== 'other' && value !== 'disabled-placeholder') { 
+          setFormData(prev => ({ ...prev, specialty: value }));
+      } else {
+          // If 'other' or placeholder is selected, clear the final specialty value (will be set by custom input or remain empty)
+          setFormData(prev => ({ ...prev, specialty: '' }));
+      }
+  };
+  
+  // 🔑 NEW: Handler for custom specialty input
+  const handleCustomSpecialtyChange = (e) => {
+      const value = e.target.value;
+      setCustomSpecialty(value);
+      // Update the final form data with the custom value as user types
+      setFormData(prev => ({ ...prev, specialty: value })); 
+      if (errors.specialty) setErrors(prev => ({ ...prev, specialty: '' }));
+  };
 
 
 // ===================================
@@ -86,7 +130,7 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
   const validateForm = () => {
     const newErrors = {};
     
-    // 🔑 NEW: Validate specialty if role is coach
+    // 🔑 UPDATED: Validate specialty if role is coach AND the final formData.specialty is empty
     if (formData.role === 'coach' && !formData.specialty.trim()) {
       newErrors.specialty = 'Primary coaching specialty is required for coach registration.';
     }
@@ -157,20 +201,54 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
           </div>
         </div>
 
-        {/* Conditional Specialty Input for Coach */}
+        {/* Conditional Specialty Input/Select for Coach */}
         {formData.role === 'coach' && (
           <div className="space-y-2">
-            <Input
-              label="Primary Coaching Specialty"
-              type="text"
-              name="specialty"
-              placeholder="e.g., Life Coaching, Career Development"
-              value={formData.specialty}
-              onChange={handleInputChange}
-              error={errors.specialty}
-              required
-              description="This will be set as your initial specialty."
-            />
+            <label htmlFor="specialty-select-trigger" className="block text-sm font-medium text-foreground">
+              Primary Coaching Specialty <span className="text-destructive ml-1">*</span>
+            </label>
+            
+            {/* Specialty Dropdown */}
+            <Select 
+              value={selectedSpecialty} 
+              onValueChange={handleSpecialtySelect}
+            >
+              <SelectTrigger id="specialty-select-trigger" className="w-full">
+                <SelectValue placeholder="Select your primary specialty..." />
+              </SelectTrigger>
+              <SelectContent>
+                {/* 🔑 FIX: Changed value from "" to a non-empty string to avoid Radix error */}
+                <SelectItem value="disabled-placeholder" disabled>Select your primary specialty...</SelectItem> 
+                {popularSpecialties.map((s) => (
+                    <SelectItem key={s} value={s}>
+                        {s}
+                    </SelectItem>
+                ))}
+                <SelectItem value="other">Other (type below)</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Display error if selectedSpecialty is NOT 'other' AND there is a validation error */}
+            {errors.specialty && selectedSpecialty !== 'other' && !formData.specialty.trim() && (
+                <p className="text-sm text-red-600 mt-1">{errors.specialty}</p>
+            )}
+            
+            {/* Custom Input for 'Other' option */}
+            {selectedSpecialty === 'other' && (
+                <div className="pt-2">
+                    <Input
+                        type="text"
+                        name="customSpecialtyInput" // Unique name for the input field
+                        placeholder="Type your custom specialty here"
+                        value={customSpecialty}
+                        onChange={handleCustomSpecialtyChange}
+                        // Show specialty error here if validation fails
+                        error={errors.specialty} 
+                        required
+                        description="This will be set as your initial specialty."
+                    />
+                </div>
+            )}
           </div>
         )}
       </div>
@@ -266,7 +344,6 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
           label={
             <span className="text-sm text-gray-600">
               I agree to the{' '}
-              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
               <a 
                   href="#" 
                   onClick={handleTermsClick} 
@@ -275,7 +352,6 @@ const RegistrationForm = ({ onSubmit, isLoading }) => {
                   Terms of Service
               </a>{' '}
               and{' '}
-              {/* 🔑 MODIFIED: Replaced <Link> with <a> and onClick handler */}
               <a 
                   href="#" 
                   onClick={handlePrivacyClick} 

@@ -15,7 +15,7 @@ import { registerUser } from "../../auth/authApi";
 const UserRegistration = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // 🔑 REMOVED: role is now passed from the form, not read from search params
+  // 🔑 MODIFIED: Remove role from search params, it is now in the form data
   // const role = searchParams.get("role") || "client";
 
   const [isLoading, setIsLoading] = useState(false);
@@ -30,11 +30,11 @@ const UserRegistration = () => {
     // ❌ REMOVED: const [firstName, ...lastNameParts] = formData.fullName.split(' ');
     // ❌ REMOVED: const lastName = lastNameParts.join(' ');
 
-    // ✅ FIXED & UPDATED: Directly destructure firstName, lastName, role, AND specialty from the form data
-    const { firstName, lastName, role, specialty } = formData;
+    // 🔑 UPDATED: Destructure role and specialty from the new form data
+    const { firstName, lastName, role, specialty } = formData;
 
-    // 🔑 UPDATED: Store all necessary fields, including role and specialty for the backend call
-    setFormDataForCaptcha({ ...formData, firstName, lastName, role, specialty });
+    // 🔑 UPDATED: Pass all relevant fields to the Captcha step
+    setFormDataForCaptcha({ ...formData, firstName, lastName, role, specialty });
     setShowCaptcha(true);
   };
 
@@ -61,7 +61,7 @@ const UserRegistration = () => {
         email,
         password,
         role, // 🔑 PASS: The selected role
-        specialty, // 🔑 PASS: The specialty string (will be empty for client)
+        specialty, // 🔑 PASS: The specialty string
         captcha: captchaResponse,
       });
 
@@ -81,7 +81,19 @@ const UserRegistration = () => {
   
   /* ⚠️ COMMENTED OUT: Social Login Handler
   const handleSocialLogin = async (provider) => {
-// ... (omitted code)
+    setIsLoading(true);
+
+    try {
+      // Simulating OAuth flow - This would eventually connect to a backend endpoint
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const mockEmail = `user@${provider}.com`;
+      setRegisteredEmail(mockEmail);
+      setRegistrationStep("success");
+    } catch (error) {
+      console.error(`${provider} registration error:`, error);
+    } finally {
+      setIsLoading(false);
+    }
   };
   */
 

@@ -36,7 +36,7 @@ const getCookieOptions = (isProduction) => ({
 async function register(req, res) {
 	try {
         // 🔑 MODIFIED: Destructure role and specialty
-		const { firstName, lastName, password, role, specialty } = req.body;
+		const { firstName, lastName, password, role, specialty } = req.body; 
 		const email = req.body.email?.toLowerCase().trim();
 
 		// Basic validation (including new role checks)
@@ -50,6 +50,7 @@ async function register(req, res) {
         // 🔑 NEW: Validate specialty for coach
         if (role === 'coach' && !specialty?.trim())
             return res.status(400).json({ error: 'Primary coaching specialty is required for coach registration.' });
+
 
 		const existing = await User.findOne({ where: { email } });
 		if (existing) return res.status(409).json({ error: 'Email already in use' });
@@ -77,10 +78,12 @@ async function register(req, res) {
         if (role === 'client') {
             await ClientProfile.create({ userId: id });
         } else if (role === 'coach') {
-            // 🔑 NEW: Create CoachProfile with initial specialty. Specialties are stored as a JSON array string.
+            // 🔑 NEW: Create CoachProfile with initial specialty. 
+            // Specialties are stored as a JSON array string: ["specialty value"]
+            const specialtiesArray = specialty ? JSON.stringify([specialty.trim()]) : '[]';
             await CoachProfile.create({ 
                 userId: id,
-                specialties: specialty ? JSON.stringify([specialty.trim()]) : '[]' 
+                specialties: specialtiesArray
             });
         }
         
