@@ -21,9 +21,13 @@ const {
     getFollowStatus, 
     followCoach, 
     unfollowCoach,
-    checkReviewEligibility
-    // getClientsWhoFollow was correctly removed
 } = require('../controllers/exploreCoachesController'); 
+
+// 🔑 NEW: Import the testimonial controller functions
+const {
+    checkReviewEligibility,
+    addTestimonial
+} = require('../controllers/testimonialController');
 
 // Import session management functions
 const {
@@ -118,5 +122,8 @@ router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfol
 
 // 🔑 NEW: Check if the logged-in client is eligible to write a review for this coach
 router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility);
+
+// 🔑 NEW: Submit a testimonial (Protected by authentication)
+router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticate, addTestimonial);
 
 module.exports = router;
