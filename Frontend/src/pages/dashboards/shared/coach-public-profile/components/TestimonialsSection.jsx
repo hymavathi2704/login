@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import Icon from '@/components/AppIcon';
 import Image from '@/components/AppImage';
-import Button from '@/components/ui/Button'; // 🔑 Added Button
-import Input from '@/components/ui/Input'; // 🔑 Added Input
-import { Textarea } from '@/components/ui/Textarea'; // 🔑 Added Textarea
-import { Check, X, Star as StarIcon, MessageCircle } from 'lucide-react'; // 🔑 Added icons
+// 🔑 ADDED IMPORTS
+import Button from '@/components/ui/Button'; 
+import Input from '@/components/ui/Input'; 
+import { Textarea } from '@/components/ui/Textarea'; 
+import { Check, X, Star as StarIcon, MessageCircle, XCircle } from 'lucide-react'; // XCircle for error messages
 import { toast } from 'sonner';
 
 // Mock API Call (Replace with your actual API integration for submitting testimonials)
@@ -20,8 +21,8 @@ const submitTestimonial = async (coachId, rating, content, title, sessionType) =
 const TestimonialsSection = ({ 
     testimonials, 
     coachId, 
-    isReviewEligible, 
-    onTestimonialSubmitted 
+    isReviewEligible, // 🔑 NEW PROP: Status from parent
+    onTestimonialSubmitted // 🔑 NEW PROP: Callback to refresh data
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,6 +96,7 @@ const TestimonialsSection = ({
           Client Testimonials
         </h2>
         
+        {/* 🔑 CONDITIONAL BUTTON FOR NO TESTIMONIALS */}
         {isReviewEligible && (
             <div className="border border-dashed border-primary/50 bg-primary/5 p-4 rounded-lg text-center mb-6">
                 <p className="text-primary text-sm font-medium mb-3">
@@ -130,7 +132,7 @@ const TestimonialsSection = ({
           Client Testimonials
         </h2>
         
-        {/* Button conditionally displayed */}
+        {/* 🔑 CONDITIONAL BUTTON FOR EXISTING TESTIMONIALS */}
         {isReviewEligible && (
             <Button 
                 variant="primary" 
