@@ -31,23 +31,22 @@ const getCookieOptions = (isProduction) => ({
 });
 
 // ==============================
-// Register
+// Register (FIXED)
 // ==============================
 async function register(req, res) {
 	try {
-        // 🔑 MODIFIED: Destructure role and specialty
+		// 🔑 UPDATED: Destructure role and specialty from the request body
 		const { firstName, lastName, password, role, specialty } = req.body; 
 		const email = req.body.email?.toLowerCase().trim();
 
-		// Basic validation (including new role checks)
+		// Basic validation
 		if (!validator.isEmail(email)) return res.status(400).json({ error: 'Invalid email' });
 		if (!password || password.length < 8)
 			return res.status(400).json({ error: 'Password must be >= 8 chars' });
         
-        // 🔑 NEW: Validate role
+        // Validate role and specialty
         if (!['client', 'coach'].includes(role))
             return res.status(400).json({ error: 'Invalid role selected.' });
-        // 🔑 NEW: Validate specialty for coach
         if (role === 'coach' && !specialty?.trim())
             return res.status(400).json({ error: 'Primary coaching specialty is required for coach registration.' });
 
@@ -71,19 +70,22 @@ async function register(req, res) {
 			verification_token_expires: otp_expires_at,
 			provider: 'email',
 			email_verified: false,
-			roles: [role], // 🔑 MODIFIED: Set the initial role
+			roles: [role], // Set the initial role
 		});
         
         // 2. Create Profile based on role
         if (role === 'client') {
             await ClientProfile.create({ userId: id });
         } else if (role === 'coach') {
-            // 🔑 NEW: Create CoachProfile with initial specialty. 
-            // Specialties are stored as a JSON array string: ["specialty value"]
-            const specialtiesArray = specialty ? JSON.stringify([specialty.trim()]) : '[]';
+            
+            // 🛑 CRITICAL FIX: Convert the single specialty string into a JS ARRAY.
+            // DO NOT JSON.stringify it manually here, as Sequelize's DataTypes.JSON
+            // field will handle the single necessary stringification automatically.
+            const specialtiesArray = specialty ? [specialty.trim()] : [];
+            
             await CoachProfile.create({ 
                 userId: id,
-                specialties: specialtiesArray
+                specialties: specialtiesArray // Pass the JS Array directly
             });
         }
         
