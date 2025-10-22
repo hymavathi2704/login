@@ -21,11 +21,13 @@ const submitTestimonial = async (coachId, rating, content, title, sessionType) =
 const TestimonialsSection = ({ 
     testimonials, 
     coachId, 
-    isReviewEligible, // 🔑 NEW PROP: Status from parent
+    isReviewEligible : isEligibleProp, // 🔑 NEW PROP: Status from parent
     onTestimonialSubmitted // 🔑 NEW PROP: Callback to refresh data
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const isReviewEligible = true;
   
   // Form State
   const [form, setForm] = useState({
