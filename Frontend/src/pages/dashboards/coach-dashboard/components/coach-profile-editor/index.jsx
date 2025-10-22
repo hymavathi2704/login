@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Briefcase, DollarSign, Phone, Save, AlertTriangle, Eye } from 'lucide-react';
+import { User, Briefcase, DollarSign, Phone, Save, AlertTriangle, Eye, Copy } from 'lucide-react'; // 💡 IMPORTED COPY ICON
 import PersonalInfoSection from './components/PersonalInfoSection';
 import ProfessionalSection from './components/ProfessionalSection';
 import ContactSection from './components/ContactSection';
@@ -298,6 +298,29 @@ const CoachProfileEditor = () => {
     } finally { setIsLoading(false); }
   };
 
+  // 💡 NEW FUNCTION: Handle Copy to Clipboard
+  const handleCopyLink = () => {
+    if (!user?.id) {
+      toast.error('Coach ID not found.');
+      return;
+    }
+    // Use the base URL from the environment variables (e.g., .env)
+    const baseUrl = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+    const publicLink = `${baseUrl}/profiles/${user.id}`;
+    
+    navigator.clipboard.writeText(publicLink)
+      .then(() => {
+        toast.success('Public profile link copied to clipboard! 🔗', {
+          description: publicLink,
+          duration: 3000,
+        });
+      })
+      .catch((err) => {
+        console.error('Failed to copy link:', err);
+        toast.error('Failed to copy link. Please try again or copy manually.');
+      });
+  };
+  
   const renderTabContent = () => {
     // coachProfileId is no longer strictly needed here but kept for clarity/potential future use
     // const coachProfileId = initialData.id; 
@@ -345,10 +368,40 @@ const CoachProfileEditor = () => {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Edit Your Profile</h1>
-        <p className="text-gray-600 mt-2">Keep your profile updated to attract the right clients.</p>
+      <div className="mb-8 flex justify-between items-start"> 
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Edit Your Profile</h1>
+          <p className="text-gray-600 mt-2">Keep your profile updated to attract the right clients.</p>
         </div>
+        {/* 💡 NEW: Public Profile Buttons in the Header */}
+        {user?.id && (
+          <div className="flex space-x-3 mt-1">
+            {/* 1. View Public Profile Button (as previously fixed to open in same tab) */}
+            <Link 
+                to={`/profiles/${user.id}`} 
+                className={cn(
+                    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
+                    "bg-transparent text-blue-600 border border-blue-600 hover:bg-blue-50/50 h-10 px-4 py-2 text-sm"
+                )}
+            >
+                <Eye className="w-5 h-5 mr-2" />
+                View Public Profile
+            </Link>
+            
+            {/* 2. Copy Public Profile Link Button */}
+            <Button 
+                onClick={handleCopyLink} 
+                variant="outline" 
+                className="bg-white border-gray-300 text-gray-700 hover:bg-gray-100 h-10 px-4 py-2 text-sm"
+                title="Copy Public Profile Link"
+            >
+                <Copy className="w-5 h-5 mr-2" />
+                Public Link
+            </Button>
+          </div>
+        )}
+        {/* 💡 END: Public Profile Buttons */}
+      </div>
 
       <div className="border-b border-gray-200 mb-8">
         <nav className="flex space-x-4 -mb-px" aria-label="Tabs">
@@ -379,21 +432,8 @@ const CoachProfileEditor = () => {
           </div>
         )}
         
-        {/* START: View Public Profile Button (Removed target="_blank") */}
-        {user?.id && (
-            <Link 
-                to={`/profiles/${user.id}`} 
-                className={cn( // Removed target="_blank"
-                    "inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none",
-                    "bg-transparent text-blue-600 border border-blue-600 hover:bg-blue-50/50 h-10 px-4 py-2 text-sm"
-                )}
-            >
-                <Eye className="w-5 h-5 mr-2" />
-                View Public Profile
-            </Link>
-        )}
-        {/* END: View Public Profile Button */}
-
+        {/* The 'View Public Profile' button logic was moved to the header for better visibility/UX */}
+        
         <Button onClick={handleSave} disabled={isLoading || !unsavedChanges} size="lg">
           <Save className="w-5 h-5 mr-2" />
           {isLoading ? 'Saving...' : 'Save Changes'}
