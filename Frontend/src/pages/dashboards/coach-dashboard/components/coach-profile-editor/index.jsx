@@ -298,14 +298,25 @@ const CoachProfileEditor = () => {
     } finally { setIsLoading(false); }
   };
 
-  // 💡 NEW FUNCTION: Handle Copy to Clipboard
+  // 💡 UPDATED FUNCTION: Handle Copy to Clipboard (Fixes public link defaulting to localhost)
   const handleCopyLink = () => {
     if (!user?.id) {
       toast.error('Coach ID not found.');
       return;
     }
-    // Use the base URL from the environment variables (e.g., .env)
-    const baseUrl = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+    
+    // 1. Get the base URL from environment variables, defaulting to localhost:5173
+    let baseUrl = import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173';
+    
+    // 2. SMART FALLBACK: If the default (localhost) is used AND the app is currently running on a public domain,
+    // use the current window's origin (e.g., https://katha.startworks.in) as the base URL.
+    const isLocalhostDefault = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+    const isRunningPublicly = window.location.hostname !== 'localhost' && window.location.protocol.startsWith('http');
+    
+    if (isLocalhostDefault && isRunningPublicly) {
+        baseUrl = window.location.origin;
+    }
+
     const publicLink = `${baseUrl}/profiles/${user.id}`;
     
     navigator.clipboard.writeText(publicLink)
