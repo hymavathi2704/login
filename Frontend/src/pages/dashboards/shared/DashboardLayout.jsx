@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Menu, Bell, User, Settings, X, ChevronDown, PanelLeft } from 'lucide-react';
+import { LogOut, Menu, User, Settings, X, ChevronDown, PanelLeft } from 'lucide-react';
 import { useAuth } from '@/auth/AuthContext';
 import BreadcrumbNavigation, { BreadcrumbProvider } from '@/components/ui/BreadcrumbNavigation';
 import { cn } from '@/utils/cn';
@@ -49,12 +49,12 @@ const DashboardLayout = ({
   const [sidebarOpen, setSidebarOpen] = useState(false); // For mobile
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // For desktop
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  // ✅ FIX: Initialize useNavigate
-  const navigate = useNavigate(); 
+  // Removed: const [notificationsOpen, setNotificationsOpen] = useState(false);
+  // ✅ FIX: Initialize useNavigate
+  const navigate = useNavigate(); 
 
   const userDropdownRef = useOutsideAlerter(() => setUserDropdownOpen(false));
-  const notificationsRef = useOutsideAlerter(() => setNotificationsOpen(false));
+  // Removed: const notificationsRef = useOutsideAlerter(() => setNotificationsOpen(false));
 
   const handleLogout = () => {
     if (logout) logout();
@@ -91,12 +91,7 @@ const DashboardLayout = ({
   const profilePictureSource = user?.profilePicture || null;
 
 
-  // Dummy notifications data
-  const notifications = [
-    { id: 1, message: 'New session booked with Sarah Johnson.', time: '2 hours ago' },
-    { id: 2, message: 'Your profile update was approved.', time: '1 day ago' },
-    { id: 3, message: 'You have 3 new messages waiting.', time: '2 days ago' },
-  ];
+  // Removed: Dummy notifications data
 
   const RoleSwitcher = () => {
     if (!roles || roles.length <= 1) {
@@ -208,45 +203,13 @@ const DashboardLayout = ({
              </div>
 
             <div className="flex items-center space-x-5">
-               {/* Notifications */}
-               <div ref={notificationsRef} className="relative">
-                 <button
-                  onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-full relative"
-                 >
-                   <Bell size={20} />
-                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-                 </button>
-                {notificationsOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl z-20 border border-gray-100">
-                     <div className="p-4 border-b">
-                       <h3 className="font-semibold text-gray-800">Notifications</h3>
-                     </div>
-                     <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-                      {notifications.map(notification => (
-                        <li key={notification.id}>
-                          <a href="#" className="block px-4 py-3 hover:bg-gray-50">
-                             <p className="text-sm text-gray-700">{notification.message}</p>
-                             <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
-                           </a>
-                         </li>
-                      ))}
-                     </ul>
-                     <div className="p-2 text-center border-t">
-                       <a href="#notifications" className="text-sm text-blue-600 hover:underline font-medium">
-                         View All Notifications
-                       </a>
-                     </div>
-                   </div>
-                )}
-               </div>
+               {/* Notifications section removed */}
 
                {/* User Profile Dropdown */}
                <div ref={userDropdownRef} className="relative">
                  <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setUserDropdownOpen(!userDropdownOpen)}>
                    <img
                      className="w-9 h-9 rounded-full"
-                     // 🔑 FIXED: Use the helper and the correctly resolved profile picture source
                      src={getFullImageSrc(profilePictureSource) || `https://ui-avatars.com/api/?name=${displayName.replace(' ', '+')}&background=random`}
                      alt="User Avatar"
                    />
