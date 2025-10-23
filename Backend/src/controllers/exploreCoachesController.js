@@ -1,6 +1,6 @@
 // Backend/src/controllers/exploreCoachesController.js
 
-import { Op } from 'sequelize'; // Removed unused imports: path, fileURLToPath
+import { Op } from 'sequelize'; 
 
 // --- Model Imports ---
 import User from '../models/user.js'; 
@@ -168,76 +168,113 @@ export const getAllCoachProfiles = async (req, res) => {
         // 'search' is the search term, 'audience' is the selected specialty filter
         const { search, audience } = req.query;
 
-        // --- Dynamic Where Clause Construction (FIXED for Recursion) ---
+        // --- Setup ---
+        const searchLower = search ? search.toLowerCase() : null;
+        const audienceLower = audience ? audience.toLowerCase() : null;
         
-        const searchLower = search ? `%${search.toLowerCase()}%` : null;
-        const audienceLower = audience ? `%${audience.toLowerCase()}%` : null;
+        let combinedIds = [];
+        const isSearchOrFilterActive = search || audience;
 
-        // 1. User Where Clause (Filter by role + Name Search)
-        let userWhere = { 
-            roles: { [Op.like]: '%"coach"%' } // Must be a coach
-        };
+        // ----------------------------------------------------
+        // Step 1: Find CoachProfile IDs matching the Profile/Specialty Filter and Search
+        // (This query handles Title, Bio, Specialty search, and mandatory Audience filter)
+        // ----------------------------------------------------
+        let profileWhere = {};
+        let profileSearchOrs = [];
 
-        if (search) {
-            // Only search by Name in the User table (prevents cross-table recursion)
-            userWhere = { 
-                [Op.and]: [
-                    userWhere, // Keep the roles filter
-                    {
-                        [Op.or]: [
-                            { firstName: { [Op.like]: searchLower } },
-                            { lastName: { [Op.like]: searchLower } },
-                        ]
-                    }
-                ]
-            };
-        }
+        if (search) {
+            // Build Profile search conditions (Title, Bio, Specialty)
+            profileSearchOrs.push(
+                { professionalTitle: { [Op.like]: `%${searchLower}%` } },
+                { bio: { [Op.like]: `%${searchLower}%` } },
+                { specialties: { [Op.like]: `%${searchLower}%` } }
+            );
+        }
 
-        // 2. CoachProfile Where Clause (Profile/Specialty Search AND/OR Audience Filter)
-        const profileConditions = [];
-        
-        if (audience) {
-            // Mandatory AND condition for the specialty filter
-            profileConditions.push({ specialties: { [Op.like]: audienceLower } });
-        }
-        
-        if (search) {
-            // If search is present, include the OR condition for profile fields
-            profileConditions.push({
-                [Op.or]: [
-                    { professionalTitle: { [Op.like]: searchLower } }, // Match Title
-                    { bio: { [Op.like]: searchLower } },                 // Match Bio
-                    { specialties: { [Op.like]: searchLower } }          // Match Specialty keyword
-                ]
-            });
-        }
-        
-        let profileWhere = {};
-        if (profileConditions.length > 0) {
-            profileWhere = { [Op.and]: profileConditions };
-        }
-        
-        // --- End Where Clause Construction ---
+        if (audience) {
+            // Mandatory AND condition for the specialty filter
+            profileWhere.specialties = { [Op.like]: `%${audienceLower}%` };
+        }
         
-        // STEP 1: Fetch all coach profiles with the constructed WHERE clauses
-        const coachesWithProfiles = await User.findAll({
+        if (profileSearchOrs.length > 0) {
+            // Combine profile search ORs with the mandatory Audience filter (AND)
+            if (audience) {
+                profileWhere[Op.and] = [profileWhere, { [Op.or]: profileSearchOrs }];
+            } else {
+                profileWhere[Op.or] = profileSearchOrs;
+            }
+        }
+        
+        if (Object.keys(profileWhere).length > 0) {
+             const profileMatches = await CoachProfile.findAll({
+                attributes: ['userId'],
+                where: profileWhere,
+                raw: true,
+            });
+            const profileMatchUserIds = profileMatches.map(p => p.userId);
+            combinedIds.push(...profileMatchUserIds);
+        }
+
+        // ----------------------------------------------------
+        // Step 2: Find User IDs matching the Name Search (Name only)
+        // ----------------------------------------------------
+        let nameMatchUserIds = [];
+        if (search) {
+            const userNameOrs = [
+                { firstName: { [Op.like]: `%${searchLower}%` } },
+                { lastName: { [Op.like]: `%${searchLower}%` } }
+            ];
+            
+            const nameMatchUsers = await User.findAll({
+                attributes: ['id'],
+                where: { 
+                    roles: { [Op.like]: '%"coach"%' },
+                    [Op.or]: userNameOrs
+                },
+                raw: true,
+            });
+            nameMatchUserIds = nameMatchUsers.map(u => u.id);
+            combinedIds.push(...nameMatchUserIds);
+        }
+        
+        // ----------------------------------------------------
+        // Step 3: Consolidate IDs and Perform Final Fetch
+        // ----------------------------------------------------
+        const uniqueCombinedIds = [...new Set(combinedIds)].filter(id => id !== null);
+
+        if (uniqueCombinedIds.length === 0 && !isSearchOrFilterActive) {
+            // If nothing was searched/filtered, fetch ALL coaches
+             const allCoachUsers = await User.findAll({
+                attributes: ['id'],
+                where: { roles: { [Op.like]: '%"coach"%' } },
+                raw: true,
+            });
+            uniqueCombinedIds.push(...allCoachUsers.map(u => u.id));
+        } else if (uniqueCombinedIds.length === 0 && isSearchOrFilterActive) {
+            // Search/filter was active but yielded no results
+            return res.status(200).json({ coaches: [] });
+        }
+        
+        if (uniqueCombinedIds.length === 0) {
+             return res.status(200).json({ coaches: [] });
+        }
+        
+        const coachesWithProfiles = await User.findAll({
             attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'], 
-            where: userWhere, 
+            where: { id: { [Op.in]: uniqueCombinedIds } }, 
             include: [
                 { 
                     model: CoachProfile, 
                     as: 'CoachProfile',
                     required: true,
-                    // CRITICAL: Only include necessary attributes to prevent deep cloning issues
+                    // Explicitly list attributes to prevent deep cloning issues
                     attributes: ['id', 'professionalTitle', 'bio', 'specialties', 'yearsOfExperience'], 
-                    where: profileWhere, 
                 },
             ],
-            // Ensure the problematic group clause is absent
         });
 
-        // STEP 2: Process coaches and fetch aggregated data separately
-        // CRITICAL FIX: The use of .get({ plain: true }) isolates the model data and breaks the recursion loop.
+
+        // STEP 4: Process coaches and fetch aggregated data separately (Remaining logic)
         const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
             const plainCoach = coach.get({ plain: true });
             const profile = plainCoach.CoachProfile;
@@ -246,7 +283,6 @@ export const getAllCoachProfiles = async (req, res) => {
             
             // Parse JSON fields
             profile.specialties = safeParse(profile.specialties);
-            // Removed profile.pricing = safeParse(profile.pricing) as it was noted as removed from model
             
             // Fetch Testimonials for aggregation
             const testimonials = await Testimonial.findAll({
