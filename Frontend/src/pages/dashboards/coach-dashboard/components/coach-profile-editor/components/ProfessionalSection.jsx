@@ -157,17 +157,21 @@ const ProfessionalSection = ({ data, errors, updateData, setUnsavedChanges, onAd
         </div>
       </div>
 
-      {/* Experience */}
+      {/* Experience - MODIFIED TO INPUT FIELD */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Experience</h3>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Years of Coaching Experience: {data.yearsOfExperience || 0} years
-        </label>
-        <input
-          type="range" min="0" max="30" step="1"
-          value={data.yearsOfExperience || 0}
-          onChange={(e) => handleChange('yearsOfExperience', parseInt(e.target.value))}
-          className="w-full h-2 bg-gray-200 rounded-lg cursor-pointer"
+        <Input
+          label="Years of Coaching Experience"
+          type="number"
+          name="yearsOfExperience"
+          min="0"
+          max="50"
+          step="1"
+          value={data.yearsOfExperience || ''}
+          // The onChange handler converts the input string to an integer, matching the old logic.
+          onChange={(e) => handleChange('yearsOfExperience', parseInt(e.target.value, 10) || 0)}
+          placeholder="Enter number of years"
+          description="Enter the total number of years you have been professionally coaching."
         />
       </div>
 
