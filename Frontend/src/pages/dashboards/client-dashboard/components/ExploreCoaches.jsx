@@ -175,6 +175,7 @@ const ExploreCoaches = () => {
                                 </button>
                             )}
                         </div>
+                        
                     </div>
                     <div>
                         <label className="text-sm font-medium text-gray-700">Filter by Specialty</label>
@@ -212,8 +213,9 @@ const ExploreCoaches = () => {
                         <thead>
                             <tr className="w-full bg-gray-50 border-b">
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile Picture</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name & Title</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialties</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -229,10 +231,21 @@ const ExploreCoaches = () => {
                                         <div className="text-sm font-medium text-gray-900">{coach.firstName} {coach.lastName}</div>
                                         <div className="text-sm text-purple-600">{coach.title}</div>
                                     </td>
+                                    {/* 🔑 NEW CELL: Specialties List */}
+                                    <td className="px-6 py-4 text-sm text-gray-700">
+                                        {(coach.specialties || []).slice(0, 2).map((s, i) => (
+                                            <span key={i} className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 text-xs rounded-full mr-1 mb-1">{s}</span>
+                                        ))}
+                                        {(coach.specialties?.length || 0) > 2 && (
+                                            <span className="inline-block text-xs text-gray-500 mt-1">
+                                                +{coach.specialties.length - 2} more
+                                            </span>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <button
                                             onClick={() => setSelectedCoach(coach)}
-                                            className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium hover:bg-gray-50"
+                                            className="w-full flex items-center justify-center py-2 px-4 border rounded-md text-sm font-medium bg-purple-600 text-white hover:bg-purple-700"
                                         >
                                             <Eye size={16} className="mr-2" /> View Profile
                                         </button>
@@ -240,7 +253,7 @@ const ExploreCoaches = () => {
                                 </tr>
                             )) : (
                                 <tr>
-                                    <td colSpan="3" className="px-6 py-4 whitespace-nowrap text-center text-gray-500">
+                                    <td colSpan="4" className="px-6 py-4 whitespace-nowrap text-center text-gray-500">
                                         {activeTab === 'all'
                                             ? 'No coaches found matching your criteria.'
                                             : 'You are not currently following any coaches.'}
