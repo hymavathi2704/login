@@ -24,267 +24,280 @@ const safeParse = (value) => {
 // GET Public Coach Profile (by ID) 
 // ==============================
 export const getPublicCoachProfile = async (req, res) => { 
-  try {
-    const coachId = req.params.id;
-    // 🚨 NEW: Get viewer ID from authentication middleware if available
-    const viewerId = req.user?.userId || null; 
+    try {
+        const coachId = req.params.id;
+        // 🚨 NEW: Get viewer ID from authentication middleware if available
+        const viewerId = req.user?.userId || null; 
 
-    // Step 1: Find the coach profile
-    const coachProfile = await CoachProfile.findOne({
-      where: { userId: coachId }, // coachId = User ID
-      include: [
-        {
-          model: User,
-          as: 'user', 
-          attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], 
-        },
-        { // Testimonials received by this coach
-          model: Testimonial,
-          as: 'testimonials',
-          required: false,
-          foreignKey: 'coachProfileId', // Explicitly set foreign key
-          attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
-          include: [{ 
-            model: User,
-            as: 'clientUser', 
-            attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
-          }]
-        },
-        { // Include the coach's available services
-          model: Session,
-          as: 'sessions', 
-          required: false,
-          foreignKey: 'coachProfileId', // Explicitly set foreign key
-        }
-      ],
-    });
-
-    if (!coachProfile || !coachProfile.user) {
-      return res.status(404).json({ error: 'Coach profile not found' });
-    }
-
-    // CRITICAL: Parse JSON strings before sending to the frontend
-    let plainCoachProfile = coachProfile.get({ plain: true });
-    
-    if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
-    if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
-    if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
-    // Removed parsing for plainCoachProfile.pricing and plainCoachProfile.availability (as per model changes)
-    
-
-    const user = plainCoachProfile.user;
-
-    // 🚨 NEW LOGIC: Post-process sessions to check for existing bookings
-    let availableSessions = plainCoachProfile.sessions || [];
-
-    if (viewerId && availableSessions.length > 0) {
-        // Find active bookings for this client for any of these sessions
-        const clientBookings = await Booking.findAll({
-            where: { 
-                clientId: viewerId,
-                sessionId: { [Op.in]: availableSessions.map(s => s.id) },
-                // Check for any active status (confirmed, pending, etc.) excluding 'cancelled'
-                status: { [Op.ne]: 'cancelled' } 
-            },
-            attributes: ['sessionId', 'status'],
+        // Step 1: Find the coach profile
+        const coachProfile = await CoachProfile.findOne({
+            where: { userId: coachId }, // coachId = User ID
+            include: [
+                {
+                    model: User,
+                    as: 'user', 
+                    attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], 
+                },
+                { // Testimonials received by this coach
+                    model: Testimonial,
+                    as: 'testimonials',
+                    required: false,
+                    foreignKey: 'coachProfileId', // Explicitly set foreign key
+                    attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
+                    include: [{ 
+                        model: User,
+                        as: 'clientUser', 
+                        attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
+                    }]
+                },
+                { // Include the coach's available services
+                    model: Session,
+                    as: 'sessions', 
+                    required: false,
+                    foreignKey: 'coachProfileId', // Explicitly set foreign key
+                }
+            ],
         });
 
-        const bookedMap = clientBookings.reduce((map, b) => {
-            map.set(b.sessionId, b.status);
-            return map;
-        }, new Map());
+        if (!coachProfile || !coachProfile.user) {
+            return res.status(404).json({ error: 'Coach profile not found' });
+        }
+
+        // CRITICAL: Parse JSON strings before sending to the frontend
+        let plainCoachProfile = coachProfile.get({ plain: true });
         
-        availableSessions = availableSessions.map(session => ({
-            ...session,
-            isBooked: bookedMap.has(session.id), // <-- NEW FLAG: true if an active booking exists
-            bookingStatus: bookedMap.get(session.id) || null // <-- NEW STATUS
+        if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
+        if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
+        if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
+        // Removed parsing for plainCoachProfile.pricing and plainCoachProfile.availability (as per model changes)
+        
+
+        const user = plainCoachProfile.user;
+
+        // 🚨 NEW LOGIC: Post-process sessions to check for existing bookings
+        let availableSessions = plainCoachProfile.sessions || [];
+
+        if (viewerId && availableSessions.length > 0) {
+            // Find active bookings for this client for any of these sessions
+            const clientBookings = await Booking.findAll({
+                where: { 
+                    clientId: viewerId,
+                    sessionId: { [Op.in]: availableSessions.map(s => s.id) },
+                    // Check for any active status (confirmed, pending, etc.) excluding 'cancelled'
+                    status: { [Op.ne]: 'cancelled' } 
+                },
+                attributes: ['sessionId', 'status'],
+            });
+
+            const bookedMap = clientBookings.reduce((map, b) => {
+                map.set(b.sessionId, b.status);
+                return map;
+            }, new Map());
+            
+            availableSessions = availableSessions.map(session => ({
+                ...session,
+                isBooked: bookedMap.has(session.id), // <-- NEW FLAG: true if an active booking exists
+                bookingStatus: bookedMap.get(session.id) || null // <-- NEW STATUS
+            }));
+        }
+        // 🚨 END NEW LOGIC
+
+        // Format testimonials to include the client's name/avatar from the User model
+        const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
+            id: t.id,
+            clientId: t.clientId,
+            clientName: t.clientUser ? `${t.clientUser.firstName} ${t.clientUser.lastName}` : 'Anonymous Client',
+            clientAvatar: t.clientUser?.profilePicture || '/default-avatar.png', 
+            clientTitle: t.clientTitle,
+            rating: t.rating,
+            content: t.content,
+            date: t.date,
+            sessionType: t.sessionType,
         }));
+
+        // Calculate starting price based on available sessions only
+        const sessionPrices = availableSessions.length > 0 ? availableSessions.map(s => s.price) : [0];
+        const calculatedStartingPrice = Math.min(...sessionPrices);
+
+
+        // Step 2: Construct final object
+        const profile = {
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            phone: user.phone,
+            profileImage: plainCoachProfile.profilePicture || user.profilePicture, 
+            testimonials: formattedTestimonials,
+            availableSessions: availableSessions, // <-- Use the processed array
+            title: plainCoachProfile.professionalTitle,
+            rating: 4.9, // This is a hardcoded value, consider calculating or removing if unused
+            totalReviews: formattedTestimonials.length, // This is calculated dynamically from testimonials
+            totalClients: 0,
+            yearsExperience: plainCoachProfile.yearsOfExperience || 0,
+            shortBio: plainCoachProfile.bio ? plainCoachProfile.bio.substring(0, 150) + '...' : '',
+            fullBio: plainCoachProfile.bio || '',
+            isAvailable: true,
+            avgResponseTime: 'within-4h', 
+            timezone: 'UTC', 
+            startingPrice: calculatedStartingPrice,
+            specialties: plainCoachProfile.specialties || [],
+            education: plainCoachProfile.education || [],
+            certifications: plainCoachProfile.certifications || [],
+            linkedinUrl: plainCoachProfile.linkedinUrl,
+            twitterUrl: plainCoachProfile.twitterUrl,
+            instagramUrl: plainCoachProfile.instagramUrl,
+            facebookUrl: plainCoachProfile.facebookUrl,
+            dateOfBirth: plainCoachProfile.dateOfBirth,
+            gender: plainCoachProfile.gender,
+            ethnicity: plainCoachProfile.ethnicity,
+            country: plainCoachProfile.country,
+        };
+
+        res.status(200).json({ coach: profile });
+    } catch (error) {
+        console.error('Error fetching public coach profile:', error);
+        res.status(500).json({ error: 'Failed to fetch public profile' });
     }
-    // 🚨 END NEW LOGIC
-
-    // Format testimonials to include the client's name/avatar from the User model
-    const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
-        id: t.id,
-        clientId: t.clientId,
-        clientName: t.clientUser ? `${t.clientUser.firstName} ${t.clientUser.lastName}` : 'Anonymous Client',
-        clientAvatar: t.clientUser?.profilePicture || '/default-avatar.png', 
-        clientTitle: t.clientTitle,
-        rating: t.rating,
-        content: t.content,
-        date: t.date,
-        sessionType: t.sessionType,
-    }));
-
-    // Calculate starting price based on available sessions only
-    const sessionPrices = availableSessions.length > 0 ? availableSessions.map(s => s.price) : [0];
-    const calculatedStartingPrice = Math.min(...sessionPrices);
-
-
-    // Step 2: Construct final object
-    const profile = {
-      id: user.id,
-      name: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      phone: user.phone,
-      profileImage: plainCoachProfile.profilePicture || user.profilePicture, 
-      testimonials: formattedTestimonials,
-      availableSessions: availableSessions, // <-- Use the processed array
-      title: plainCoachProfile.professionalTitle,
-      rating: 4.9, // This is a hardcoded value, consider calculating or removing if unused
-      totalReviews: formattedTestimonials.length, // This is calculated dynamically from testimonials
-      totalClients: 0,
-      yearsExperience: plainCoachProfile.yearsOfExperience || 0,
-      shortBio: plainCoachProfile.bio ? plainCoachProfile.bio.substring(0, 150) + '...' : '',
-      fullBio: plainCoachProfile.bio || '',
-      isAvailable: true,
-      avgResponseTime: 'within-4h', 
-      timezone: 'UTC', 
-      startingPrice: calculatedStartingPrice,
-      specialties: plainCoachProfile.specialties || [],
-      education: plainCoachProfile.education || [],
-      certifications: plainCoachProfile.certifications || [],
-      linkedinUrl: plainCoachProfile.linkedinUrl,
-      twitterUrl: plainCoachProfile.twitterUrl,
-      instagramUrl: plainCoachProfile.instagramUrl,
-      facebookUrl: plainCoachProfile.facebookUrl,
-      dateOfBirth: plainCoachProfile.dateOfBirth,
-      gender: plainCoachProfile.gender,
-      ethnicity: plainCoachProfile.ethnicity,
-      country: plainCoachProfile.country,
-    };
-
-    res.status(200).json({ coach: profile });
-  } catch (error) {
-    console.error('Error fetching public coach profile:', error);
-    res.status(500).json({ error: 'Failed to fetch public profile' });
-  }
 };
 
 // ==============================
 // GET All Coach Profiles (for client discovery)
 // ===================================
 export const getAllCoachProfiles = async (req, res) => { 
-    try {
-        const { search, audience } = req.query;
+    try {
+        // 'search' is the search term, 'audience' is the selected specialty filter
+        const { search, audience } = req.query;
 
-        // --- Dynamic Where Clause Construction (Unchanged from previous successful update) ---
+        // --- Dynamic Where Clause Construction (FIXED for Recursion) ---
         
-        const searchLower = search ? `%${search.toLowerCase()}%` : null;
-        const audienceLower = audience ? `%${audience.toLowerCase()}%` : null;
+        const searchLower = search ? `%${search.toLowerCase()}%` : null;
+        const audienceLower = audience ? `%${audience.toLowerCase()}%` : null;
 
-        let whereClause = { 
-            roles: { [Op.like]: '%"coach"%' } // Base: Must be a coach
-        };
+        // 1. User Where Clause (Filter by role + Name Search)
+        let userWhere = { 
+            roles: { [Op.like]: '%"coach"%' } // Must be a coach
+        };
 
-        let profileWhere = {};
+        if (search) {
+            // Only search by Name in the User table (prevents cross-table recursion)
+            userWhere = { 
+                [Op.and]: [
+                    userWhere, // Keep the roles filter
+                    {
+                        [Op.or]: [
+                            { firstName: { [Op.like]: searchLower } },
+                            { lastName: { [Op.like]: searchLower } },
+                        ]
+                    }
+                ]
+            };
+        }
+
+        // 2. CoachProfile Where Clause (Profile/Specialty Search AND/OR Audience Filter)
+        const profileConditions = [];
+        
+        if (audience) {
+            // Mandatory AND condition for the specialty filter
+            profileConditions.push({ specialties: { [Op.like]: audienceLower } });
+        }
+        
+        if (search) {
+            // If search is present, include the OR condition for profile fields
+            profileConditions.push({
+                [Op.or]: [
+                    { professionalTitle: { [Op.like]: searchLower } }, // Match Title
+                    { bio: { [Op.like]: searchLower } },                 // Match Bio
+                    { specialties: { [Op.like]: searchLower } }          // Match Specialty keyword
+                ]
+            });
+        }
+        
+        let profileWhere = {};
+        if (profileConditions.length > 0) {
+            profileWhere = { [Op.and]: profileConditions };
+        }
+        
+        // --- End Where Clause Construction ---
         
-        const profileSearchConditions = [];
-        if (search) {
-            profileSearchConditions.push(
-                { '$CoachProfile.professionalTitle$': { [Op.like]: searchLower } }, 
-                { '$CoachProfile.bio$': { [Op.like]: searchLower } },
-                { '$CoachProfile.specialties$': { [Op.like]: searchLower } }
-            );
-        }
-        
-        if (audience) {
-            profileWhere.specialties = { [Op.like]: audienceLower };
-        }
+        // STEP 1: Fetch all coach profiles with the constructed WHERE clauses
+        const coachesWithProfiles = await User.findAll({
+            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'], 
+            where: userWhere, 
+            include: [
+                { 
+                    model: CoachProfile, 
+                    as: 'CoachProfile',
+                    required: true,
+                    // CRITICAL: Only include necessary attributes to prevent deep cloning issues
+                    attributes: ['id', 'professionalTitle', 'bio', 'specialties', 'yearsOfExperience'], 
+                    where: profileWhere, 
+                },
+            ],
+            // Ensure the problematic group clause is absent
+        });
 
-        if (search) {
-            whereClause[Op.and] = [
-                whereClause,
-                { [Op.or]: [
-                    { firstName: { [Op.like]: searchLower } },
-                    { lastName: { [Op.like]: searchLower } },
-                    ...profileSearchConditions
-                ] }
-            ];
-        }
+        // STEP 2: Process coaches and fetch aggregated data separately
+        // CRITICAL FIX: The use of .get({ plain: true }) isolates the model data and breaks the recursion loop.
+        const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
+            const plainCoach = coach.get({ plain: true });
+            const profile = plainCoach.CoachProfile;
+            
+            if (!profile) return null; 
+            
+            // Parse JSON fields
+            profile.specialties = safeParse(profile.specialties);
+            // Removed profile.pricing = safeParse(profile.pricing) as it was noted as removed from model
+            
+            // Fetch Testimonials for aggregation
+            const testimonials = await Testimonial.findAll({
+                where: { coachProfileId: profile.id }, 
+                attributes: ['rating'],
+                raw: true,
+            });
+            const ratings = testimonials.map(t => t.rating) || [];
+            
+            // Fetch Sessions for pricing calculation
+            const sessions = await Session.findAll({
+                where: { coachProfileId: profile.id }, 
+                attributes: ['price'],
+                raw: true,
+            });
+            const prices = sessions.map(s => s.price) || [];
 
+            const averageRating = ratings.length > 0 
+                ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
+                : '0.0';
+            
+            const startingPrice = prices.length > 0
+                ? Math.min(...prices)
+                : 0; 
+            
+            return {
+                id: plainCoach.id,
+                firstName: plainCoach.firstName, 
+                lastName: plainCoach.lastName,   
+                profilePicture: plainCoach.profilePicture, 
+                title: profile.professionalTitle,
+                shortBio: profile.bio ? profile.bio.substring(0, 150) + '...' : '',
+                specialties: profile.specialties || [],
+                startingPrice: startingPrice,
+                rating: parseFloat(averageRating),
+                totalReviews: ratings.length,
+            };
+        }));
+        
+        const processedCoaches = allResults.filter(coach => coach !== null); 
 
-        // --- End Where Clause Construction ---
-        
-        // STEP 1: Fetch all coach profiles with minimal includes to avoid SQL aggregation errors
-        const coachesWithProfiles = await User.findAll({
-            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'], 
-            where: whereClause, 
-            include: [
-                { 
-                    model: CoachProfile, 
-                    as: 'CoachProfile',
-                    required: true,
-                    // 🚨 CRITICAL FIX: Only include the *profile* attributes here.
-                    // Keep Testimonials and Sessions out of this initial fetch.
-                    attributes: ['id', 'professionalTitle', 'bio', 'specialties', 'yearsOfExperience'], 
-                    where: profileWhere, 
-                },
-            ],
-            // NOTE: Removed the {raw: true} to allow nested includes, then use .get({plain: true})
-        });
-
-        // STEP 2: Process coaches and fetch aggregated data separately
-        // 🚨 CRITICAL FIX: The logic inside this map function is where the stack overflow occurs. 
-        // By changing the way we access the properties (using .get({plain: true})), 
-        // we isolate the data fetching and resolve the issue.
-
-        const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
-            const plainCoach = coach.get({ plain: true });
-            const profile = plainCoach.CoachProfile;
-            
-            if (!profile) return null; 
-            
-            // Parse JSON fields
-            profile.specialties = safeParse(profile.specialties);
-            // profile.pricing = safeParse(profile.pricing); // Not part of CoachProfile model anymore
-            
-            // Fetch Testimonials for aggregation
-            const testimonials = await Testimonial.findAll({
-                where: { coachProfileId: profile.id }, 
-                attributes: ['rating'],
-                raw: true,
-            });
-            const ratings = testimonials.map(t => t.rating) || [];
-            
-            // Fetch Sessions for pricing calculation
-            const sessions = await Session.findAll({
-                where: { coachProfileId: profile.id }, 
-                attributes: ['price'],
-                raw: true,
-            });
-            const prices = sessions.map(s => s.price) || [];
-
-            const averageRating = ratings.length > 0 
-                ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
-                : '0.0';
-            
-            const startingPrice = prices.length > 0
-                ? Math.min(...prices)
-                : 0; // Use 0 as fallback if no pricing data is available
-            
-            return {
-                id: plainCoach.id,
-                firstName: plainCoach.firstName, 
-                lastName: plainCoach.lastName,   
-                profilePicture: plainCoach.profilePicture, 
-                title: profile.professionalTitle,
-                shortBio: profile.bio ? profile.bio.substring(0, 150) + '...' : '',
-                specialties: profile.specialties || [],
-                startingPrice: startingPrice,
-                rating: parseFloat(averageRating),
-                totalReviews: ratings.length,
-            };
-        }));
-        
-        const processedCoaches = allResults.filter(coach => coach !== null); 
-
-        res.status(200).json({ coaches: processedCoaches });
-    } catch (error) {
-        // The error log showed this function failed due to RangeError: Maximum call stack size exceeded
-        console.error('Error fetching all coach profiles:', error);
-        res.status(500).json({ error: 'Failed to fetch coach profiles' });
-    }
+        res.status(200).json({ coaches: processedCoaches });
+    } catch (error) {
+        console.error('Error fetching all coach profiles:', error);
+        res.status(500).json({ error: 'Failed to fetch coach profiles' });
+    }
 };
+
+// ==============================
+// GET Follow Status
+// ... (rest of the file remains unchanged)
 // ==============================
 // GET Follow Status
 // ==============================
