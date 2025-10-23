@@ -195,8 +195,8 @@ const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
         console.log('✅ Database connected');
 
         // 🚨 CRITICAL ACTION: Dropping old tables to fix the foreign key conflict.
-        // REMOVE { force: true } AFTER THE FIRST SUCCESSFUL RUN!
-        await sequelize.sync({ alter: true }); 
+        // REMOVE { force: true } { alter: true }AFTER THE FIRST SUCCESSFUL RUN!
+        await sequelize.sync(); 
         console.log('✅ Database synchronized (FORCED)');
 
         app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at ${APP_URL}`));

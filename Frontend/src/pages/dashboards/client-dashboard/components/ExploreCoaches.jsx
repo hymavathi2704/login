@@ -5,6 +5,13 @@ import { useAuth } from '@/auth/AuthContext';
 import CoachPublicProfile from '../../shared/coach-public-profile';
 import axios from 'axios';
 
+// === Specialty List (Reused from Coach Profile Editor) ===
+const popularSpecialties = [
+  'Life Coaching', 'Business Coaching', 'Career Coaching', 'Executive Coaching',
+  'Health & Wellness', 'Relationship Coaching', 'Leadership Development',
+  'Performance Coaching', 'Financial Coaching', 'Mindfulness & Meditation'
+];
+
 // === Debounce hook ===
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -35,7 +42,8 @@ const ExploreCoaches = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedCoach, setSelectedCoach] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedAudience, setSelectedAudience] = useState('');
+    // RENAMED: from selectedAudience to selectedSpecialty
+    const [selectedSpecialty, setSelectedSpecialty] = useState(''); 
     const [activeTab, setActiveTab] = useState('all');
     const [error, setError] = useState(null);
 
@@ -51,7 +59,8 @@ const ExploreCoaches = () => {
         let headers = {};
 
         if (activeTab === 'all') {
-            url = `${PUBLIC_PROFILES_URL}?search=${debouncedSearchTerm}&audience=${selectedAudience}`;
+            // UPDATED: Pass selectedSpecialty (which is 'audience' on the backend)
+            url = `${PUBLIC_PROFILES_URL}?search=${debouncedSearchTerm}&audience=${selectedSpecialty}`;
         } else {
             // Followed coaches
             url = `${API_BASE_URL}/api/profiles/followed`;
@@ -80,7 +89,8 @@ const ExploreCoaches = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [activeTab, isAuthenticated, debouncedSearchTerm, selectedAudience, user]);
+    // UPDATED dependencies
+    }, [activeTab, isAuthenticated, debouncedSearchTerm, selectedSpecialty, user]); 
 
     useEffect(() => {
         if (!selectedCoach) {
@@ -138,12 +148,12 @@ const ExploreCoaches = () => {
             <div className="bg-white rounded-xl border border-gray-200 p-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="md:col-span-2">
-                        <label className="text-sm font-medium text-gray-700">Search by Name or Specialty</label>
+                        <label className="text-sm font-medium text-gray-700">Search by Name, Title, or Specialty Keyword</label>
                         <div className="relative mt-1">
                             <Search size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <input
                                 type="text"
-                                placeholder={isFilterDisabled ? "Search/Filter disabled for Followed Coaches" : "e.g., Jane Doe or Life Coaching..."}
+                                placeholder={isFilterDisabled ? "Search/Filter disabled for Followed Coaches" : "e.g., Jane Doe, Leadership, or Life Coaching..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="w-full pl-10 pr-4 py-2 border rounded-lg"
@@ -152,17 +162,20 @@ const ExploreCoaches = () => {
                         </div>
                     </div>
                     <div>
-                        <label className="text-sm font-medium text-gray-700">Filter by Target Audience</label>
+                        <label className="text-sm font-medium text-gray-700">Filter by Specialty</label>
                         <div className="relative mt-1">
                             <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <select
-                                value={selectedAudience}
-                                onChange={(e) => setSelectedAudience(e.target.value)}
+                                value={selectedSpecialty}
+                                onChange={(e) => setSelectedSpecialty(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 border rounded-lg appearance-none"
                                 disabled={isFilterDisabled}
                             >
-                                <option value="">All Audiences</option>
-                                <option>Life coaches</option>
+                                <option value="">All Specialties</option>
+                                {/* Populate options from the popularSpecialties list */}
+                                {popularSpecialties.map(specialty => (
+                                    <option key={specialty} value={specialty}>{specialty}</option>
+                                ))}
                             </select>
                         </div>
                     </div>

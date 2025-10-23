@@ -164,28 +164,83 @@ export const getPublicCoachProfile = async (req, res) => {
 // GET All Coach Profiles (for client discovery)
 // ===================================
 export const getAllCoachProfiles = async (req, res) => { 
-  try {
-    const { search, audience } = req.query;
-    const whereClause = { /* ... omitted search logic ... */ };
+    try {
+        const { search, audience } = req.query;
 
-    // STEP 1: Fetch all coach profiles with minimal includes to avoid SQL aggregation errors
-    const coachesWithProfiles = await User.findAll({
-        // ... (omitted User attributes and where clause)
-        attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'], // Include basic user data
-        where: { 
-            // Include search logic here if needed
-            roles: { [Op.like]: '%"coach"%' } // Ensure they are coaches
-        },
-        include: [
-            { 
-                model: CoachProfile, 
-                as: 'CoachProfile',
-                required: true,
-                // Note: Testimonials and Sessions are REMOVED from the main query
-            },
-        ],
-        // FIX: Ensure the problematic group clause is gone
-    });
+        // --- Dynamic Where Clause Construction ---
+        
+        const searchLower = search ? `%${search.toLowerCase()}%` : null;
+        const audienceLower = audience ? `%${audience.toLowerCase()}%` : null;
+
+        // 1. User Where Clause (Base filter + Name Search)
+        let userWhere = { roles: { [Op.like]: '%"coach"%' } };
+
+        if (search) {
+            // Coach must be a coach AND match the search term in their name
+            userWhere = { 
+                [Op.and]: [
+                    { roles: { [Op.like]: '%"coach"%' } },
+                    {
+                        [Op.or]: [
+                            { firstName: { [Op.like]: searchLower } },
+                            { lastName: { [Op.like]: searchLower } },
+                        ]
+                    }
+                ]
+            };
+        }
+
+        // 2. CoachProfile Where Clause (Profile/Specialty Search + Audience Filter)
+        let profileWhere = {};
+        
+        // Conditions for search matching against profile fields (Title, Bio, Specialty)
+        const profileSearchConditions = [];
+        if (search) {
+            profileSearchConditions.push(
+                { professionalTitle: { [Op.like]: searchLower } },
+                { bio: { [Op.like]: searchLower } },
+                { specialties: { [Op.like]: searchLower } }
+            );
+        }
+
+        if (audience) {
+            // If both search and audience filter exist, audience must be a strict AND condition
+            if (search) {
+                profileWhere = {
+                    [Op.and]: [
+                        // Enforce the strict audience filter on specialties
+                        { specialties: { [Op.like]: audienceLower } }, 
+                        // Allow match on any profile search field (Title, Bio, Specialty)
+                        { [Op.or]: profileSearchConditions }
+                    ]
+                };
+            } else {
+                // Only audience filter
+                profileWhere.specialties = { [Op.like]: audienceLower };
+            }
+        } else if (search) {
+            // Only search, apply the OR conditions
+            profileWhere[Op.or] = profileSearchConditions;
+        }
+
+        // --- End Where Clause Construction ---
+        
+        // STEP 1: Fetch all coach profiles with minimal includes to avoid SQL aggregation errors
+        const coachesWithProfiles = await User.findAll({
+            // ... (omitted User attributes and where clause)
+            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'], // Include basic user data
+            where: userWhere, // ✅ Use dynamic userWhere clause
+            include: [
+                { 
+                    model: CoachProfile, 
+                    as: 'CoachProfile',
+                    required: true,
+                    where: profileWhere, // ✅ Apply dynamic profileWhere clause
+                    // Note: Testimonials and Sessions are REMOVED from the main query
+                },
+            ],
+            // FIX: Ensure the problematic group clause is gone
+        });
 
     // STEP 2: Process coaches and fetch aggregated data separately
     // FIX: Separate await and filter calls to prevent TypeError in some environments
