@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Eye, Filter } from 'lucide-react';
+import { Search, Eye, Filter, X } from 'lucide-react';
 import { useBreadcrumb } from '@/components/ui/BreadcrumbNavigation';
 import { useAuth } from '@/auth/AuthContext';
 import CoachPublicProfile from '../../shared/coach-public-profile';
@@ -7,10 +7,11 @@ import axios from 'axios';
 
 // === Specialty List (Reused from Coach Profile Editor) ===
 const popularSpecialties = [
-  'Life Coaching', 'Business Coaching', 'Career Coaching', 'Executive Coaching',
-  'Health & Wellness', 'Relationship Coaching', 'Leadership Development',
-  'Performance Coaching', 'Financial Coaching', 'Mindfulness & Meditation'
+    'Life Coaching', 'Business Coaching', 'Career Coaching', 'Executive Coaching',
+    'Health & Wellness', 'Relationship Coaching', 'Leadership Development',
+    'Performance Coaching', 'Financial Coaching', 'Mindfulness & Meditation'
 ];
+// =====================================================================
 
 // === Debounce hook ===
 const useDebounce = (value, delay) => {
@@ -49,7 +50,7 @@ const ExploreCoaches = () => {
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-    // === Fetch Coaches ===
+    // === Fetch Coaches (UPDATED: to use selectedSpecialty state) ===
     const fetchCoaches = useCallback(async () => {
         setError(null);
         setIsLoading(true);
@@ -59,7 +60,7 @@ const ExploreCoaches = () => {
         let headers = {};
 
         if (activeTab === 'all') {
-            // UPDATED: Pass selectedSpecialty (which is 'audience' on the backend)
+            // UPDATED: Pass selectedSpecialty (backend parameter is 'audience')
             url = `${PUBLIC_PROFILES_URL}?search=${debouncedSearchTerm}&audience=${selectedSpecialty}`;
         } else {
             // Followed coaches
@@ -76,20 +77,18 @@ const ExploreCoaches = () => {
 
         try {
             const response = await axios.get(url, { headers, withCredentials: true });
-
-            // ✅ THIS LINE CORRECTLY ASSUMES THE BACKEND RETURNS { coaches: [...] }
             const coachList = response.data.coaches || [];
-
             setCoaches(coachList);
 
         } catch (err) {
             console.error(`Failed to fetch ${activeTab} coaches:`, err);
+            // Use generic error message in case of deep failure like RangeError
             setError(`Failed to load coaches: ${err.response?.data?.error || err.message}`);
             setCoaches([]);
         } finally {
             setIsLoading(false);
         }
-    // UPDATED dependencies
+    // UPDATED dependencies to include the new specialty state
     }, [activeTab, isAuthenticated, debouncedSearchTerm, selectedSpecialty, user]); 
 
     useEffect(() => {
@@ -104,7 +103,7 @@ const ExploreCoaches = () => {
             });
         }
         
-        // ✅ CRITICAL FIX: Cleanup function runs when the component unmounts (i.e., tab changes)
+        // Cleanup function
         return () => {
             setBreadcrumb([]);
         };
@@ -116,6 +115,11 @@ const ExploreCoaches = () => {
     }
 
     const isFilterDisabled = activeTab === 'followed';
+    
+    // --- NEW HANDLER for clearing search ---
+    const handleClearSearch = () => {
+        setSearchTerm('');
+    };
 
     return (
         <div className="space-y-6">
@@ -156,9 +160,20 @@ const ExploreCoaches = () => {
                                 placeholder={isFilterDisabled ? "Search/Filter disabled for Followed Coaches" : "e.g., Jane Doe, Leadership, or Life Coaching..."}
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border rounded-lg"
+                                className="w-full pl-10 pr-10 py-2 border rounded-lg"
                                 disabled={isFilterDisabled}
                             />
+                            {/* NEW: Clear button (X) */}
+                            {searchTerm && !isFilterDisabled && (
+                                <button 
+                                    type="button" 
+                                    onClick={handleClearSearch}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-800"
+                                    aria-label="Clear search"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
                         </div>
                     </div>
                     <div>
@@ -166,6 +181,7 @@ const ExploreCoaches = () => {
                         <div className="relative mt-1">
                             <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <select
+                                // UPDATED: Use selectedSpecialty
                                 value={selectedSpecialty}
                                 onChange={(e) => setSelectedSpecialty(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 border rounded-lg appearance-none"
