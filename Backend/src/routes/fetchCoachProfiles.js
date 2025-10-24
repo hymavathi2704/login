@@ -3,23 +3,20 @@
 const express = require('express');
 const router = express.Router();
 
-const { authenticate } = require('../middleware/authMiddleware'); 
+// ✅ FIX: Import the new 'authenticateOptionally' middleware
+const { authenticate, authenticateOptionally } = require('../middleware/authMiddleware'); 
 const upload = require('../middleware/upload'); 
 
-// Import profile management functions (Profile Update, Picture Upload/Delete, Item Management)
+// ... (imports for coachProfileController, exploreCoachesController, sessionController) ...
 const coachProfileController = require('../controllers/coachProfileController');
-
-// ✅ Import discovery/follow functions from the dedicated Explore Controller (Updated)
 const { 
     getPublicCoachProfile,
     getFollowStatus, 
     followCoach, 
     unfollowCoach,
-    getAllCoachProfiles,  // Re-added for ExploreCoaches list
-    getFollowedCoaches,   // Re-added for Followed list
+    getAllCoachProfiles,
+    getFollowedCoaches,   
 } = require('../controllers/exploreCoachesController'); 
-
-// Import session management functions
 const {
     createSession,
     updateSession,
@@ -29,7 +26,7 @@ const {
 } = require('../controllers/sessionController');
 
 
-// Helper for CORS preflight handling
+// Helper for CORS
 const skipAuthForOptions = (req, res, next) => {
     if (req.method === 'OPTIONS') {
         return res.status(200).end(); 
@@ -41,27 +38,11 @@ const skipAuthForOptions = (req, res, next) => {
 // ==============================
 // Logged-in Coach Profile Management Routes (Protected)
 // ==============================
-router.get('/profile', authenticate, coachProfileController.getCoachProfile);
-
-router.put(
-    '/profile', 
-    skipAuthForOptions, 
-    authenticate, 
-    upload.single('profilePicture'), 
-    coachProfileController.updateCoachProfile
-);
-
-// Dedicated Picture management
-router.post(
-    '/profile/upload-picture', 
-    skipAuthForOptions, 
-    authenticate, 
-    upload.single('profilePicture'), 
-    coachProfileController.uploadProfilePicture
-);
+// (These all correctly use the strict 'authenticate')
+router.get('/profile', authenticate, coachProfileController.getCoachProfile); 
+router.put('/profile', skipAuthForOptions, authenticate, upload.single('profilePicture'), coachProfileController.updateCoachProfile);
+router.post('/profile/upload-picture', skipAuthForOptions, authenticate, upload.single('profilePicture'), coachProfileController.uploadProfilePicture);
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
-
-// JSON Array management
 router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
 router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
 
@@ -69,6 +50,7 @@ router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfi
 // ==============================
 // SESSION MANAGEMENT ROUTES (Protected)
 // ==============================
+// (These all correctly use the strict 'authenticate')
 router.post('/sessions', skipAuthForOptions, authenticate, createSession); 
 router.put('/sessions/:sessionId', skipAuthForOptions, authenticate, updateSession); 
 router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSession); 
@@ -77,28 +59,28 @@ router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSe
 // ==============================
 // BOOKING & FOLLOWER ROUTES (Internal/Protected)
 // ==============================
-
-// Coach views their session bookings
+// (These all correctly use the strict 'authenticate')
 router.get('/my-bookings', authenticate, getCoachSessionBookings); 
-
-// POST /public/:sessionId/book - Client books a session (protected route)
 router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); 
 
 
 // ==============================
-// Public/Discovery Routes (The FIX is here: changing /public to /coach)
+// Public/Discovery Routes 
 // ==============================
 
-// Re-added routes for fetching coach lists
+// For 'Explore Coaches' list - public, no auth needed
 router.get('/coaches', getAllCoachProfiles); 
+// For 'My Followed Coaches' list - needs auth
 router.get('/followed', authenticate, getFollowedCoaches);
 
 // GET Public Coach Profile 
-// ✅ FIX: Changed '/public/:id' to '/coach/:id' to match frontend API call
-router.get('/coach/:id', authenticate, getPublicCoachProfile);
+// ✅ THE MAIN FIX: 
+// Use 'authenticateOptionally' instead of 'authenticate'.
+// This will work for all 3 of your scenarios.
+router.get('/coach/:id', authenticateOptionally, getPublicCoachProfile);
 
-// Follow/Unfollow Routes 
-// NOTE: These routes use /public/ which is acceptable as they handle follow status
+// Follow/Unfollow Routes (These require a user to be logged in)
+// (These all correctly use the strict 'authenticate')
 router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);

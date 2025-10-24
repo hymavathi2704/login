@@ -162,7 +162,7 @@ export const getPublicCoachProfile = async (req, res) => {
 // ==============================
 // GET All Coach Profiles (for client discovery)
 // ===================================
-export const getAllCoachProfiles = async (req, res) => { 
+export const getAllCoachProfiles = async (req, res) => {
     try {
         // 'search' is the search term, 'audience' is the selected specialty filter
         const { search, audience } = req.query;
@@ -170,7 +170,7 @@ export const getAllCoachProfiles = async (req, res) => {
         // --- Setup ---
         const searchLower = search ? search.toLowerCase() : null;
         const audienceLower = audience ? audience.toLowerCase() : null;
-        
+
         let combinedIds = [];
         let profileMatchUserIds = [];
         let nameMatchUserIds = [];
@@ -179,7 +179,7 @@ export const getAllCoachProfiles = async (req, res) => {
         // ----------------------------------------------------
         // Step 1: Find CoachProfile IDs matching the Profile/Specialty Filter and Search
         // ----------------------------------------------------
-        
+
         let profileWhere = {};
         let profileSearchOrs = [];
 
@@ -188,24 +188,24 @@ export const getAllCoachProfiles = async (req, res) => {
             profileSearchOrs.push(
                 { professionalTitle: { [Op.like]: `%${searchLower}%` } },
                 { bio: { [Op.like]: `%${searchLower}%` } },
-                // 
+                //
                 Sequelize.where(
-                    Sequelize.fn('LOWER', Sequelize.col('specialties')), 
+                    Sequelize.fn('LOWER', Sequelize.col('specialties')),
                     { [Op.like]: `%${searchLower}%` }
                 )
             );
         }
 
         if (audience) {
-            // 
+            //
             // This forces a case-insensitive 'LIKE' by applying LOWER() to the database column
             // This is the main fix for the JSON LIKE issue
             profileWhere.specialties = Sequelize.where(
-                Sequelize.fn('LOWER', Sequelize.col('specialties')), 
+                Sequelize.fn('LOWER', Sequelize.col('specialties')),
                 { [Op.like]: `%${audienceLower}%` }
             );
         }
-        
+
         if (profileSearchOrs.length > 0) {
             const searchCondition = { [Op.or]: profileSearchOrs };
 
@@ -222,34 +222,34 @@ export const getAllCoachProfiles = async (req, res) => {
                 profileWhere = searchCondition;
             }
         }
-        // 
+        //
         // ----------------------------------------------------
 
         if (Object.keys(profileWhere).length > 0) {
              const profileMatches = await CoachProfile.findAll({
-                attributes: ['userId'],
-                where: profileWhere,
-                raw: true,
-            });
-            profileMatchUserIds = profileMatches.map(p => p.userId);
-            combinedIds.push(...profileMatchUserIds);
+                 attributes: ['userId'],
+                 where: profileWhere,
+                 raw: true,
+             });
+             profileMatchUserIds = profileMatches.map(p => p.userId);
+             combinedIds.push(...profileMatchUserIds);
         }
 
         // ----------------------------------------------------
         // Step 2: Find User IDs matching the Name Search (Name only)
         // ----------------------------------------------------
-        
+
         if (search) {
             const userNameOrs = [
                 { firstName: { [Op.like]: `%${searchLower}%` } },
                 { lastName: { [Op.like]: `%${searchLower}%` } }
             ];
-            
+
             const nameMatchUsers = await User.findAll({
                 attributes: ['id'],
-                where: { 
-                    // 
-                    roles: { [Op.like]: '%coach%' }, // 
+                where: {
+                    //
+                    roles: { [Op.like]: '%coach%' }, //
                     [Op.or]: userNameOrs
                 },
                 raw: true,
@@ -257,47 +257,42 @@ export const getAllCoachProfiles = async (req, res) => {
             nameMatchUserIds = nameMatchUsers.map(u => u.id);
             combinedIds.push(...nameMatchUserIds);
         }
-        
+
         // ----------------------------------------------------
         // Step 3: Consolidate IDs and Perform Final Fetch
         // ----------------------------------------------------
         const uniqueCombinedIds = [...new Set(combinedIds)].filter(id => id !== null);
-        
-        
+
 
         if (uniqueCombinedIds.length === 0 && !isSearchOrFilterActive) {
             // If nothing was searched/filtered, fetch ALL coaches
              const allCoachUsers = await User.findAll({
-                attributes: ['id'],
-                // 
-                where: { roles: { [Op.like]: '%coach%' } }, // 
-                raw: true,
-            });
-            uniqueCombinedIds.push(...allCoachUsers.map(u => u.id));
-             console.log("No search/filter, fetching ALL coach IDs:", uniqueCombinedIds.length);
+                 attributes: ['id'],
+                 //
+                 where: { roles: { [Op.like]: '%coach%' } }, //
+                 raw: true,
+             });
+             uniqueCombinedIds.push(...allCoachUsers.map(u => u.id));
         } else if (uniqueCombinedIds.length === 0 && isSearchOrFilterActive) {
             // Search/filter was active but yielded no results
-            console.log("Search/filter was active but yielded 0 results.");
             return res.status(200).json({ coaches: [] });
         }
-        
+
         if (uniqueCombinedIds.length === 0) {
-             console.log("No coach IDs found in any step.");
              return res.status(200).json({ coaches: [] });
         }
-        
-        console.log(`Fetching final User profiles for ${uniqueCombinedIds.length} IDs.`);
-        
+
+
         const coachesWithProfiles = await User.findAll({
-            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'], 
-            where: { id: { [Op.in]: uniqueCombinedIds } }, 
+            attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'],
+            where: { id: { [Op.in]: uniqueCombinedIds } },
             include: [
-                { 
-                    model: CoachProfile, 
+                {
+                    model: CoachProfile,
                     as: 'CoachProfile',
                     required: true,
                     // Explicitly list attributes to prevent deep cloning issues
-                    attributes: ['id', 'professionalTitle', 'bio', 'specialties', 'yearsOfExperience'], 
+                    attributes: ['id', 'professionalTitle', 'bio', 'specialties', 'yearsOfExperience'],
                 },
             ],
         });
@@ -307,23 +302,23 @@ export const getAllCoachProfiles = async (req, res) => {
         const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
             const plainCoach = coach.get({ plain: true });
             const profile = plainCoach.CoachProfile;
-            
-            if (!profile) return null; 
-            
+
+            if (!profile) return null;
+
             // Parse JSON fields
             profile.specialties = safeParse(profile.specialties);
-            
+
             // Fetch Testimonials for aggregation
             const testimonials = await Testimonial.findAll({
-                where: { coachProfileId: profile.id }, 
+                where: { coachProfileId: profile.id },
                 attributes: ['rating'],
                 raw: true,
             });
             const ratings = testimonials.map(t => t.rating) || [];
-            
+
             // Fetch Sessions for pricing calculation
             const sessions = await Session.findAll({
-                where: { coachProfileId: profile.id }, 
+                where: { coachProfileId: profile.id },
                 attributes: ['price'],
                 raw: true,
             });
@@ -332,16 +327,16 @@ export const getAllCoachProfiles = async (req, res) => {
             const averageRating = ratings.length > 0
                 ? (ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length).toFixed(1)
                 : '0.0';
-            
+
             const startingPrice = prices.length > 0
                 ? Math.min(...prices)
-                : 0; 
-            
+                : 0;
+
             return {
                 id: plainCoach.id,
-                firstName: plainCoach.firstName, 
-                lastName: plainCoach.lastName,   
-                profilePicture: plainCoach.profilePicture, 
+                firstName: plainCoach.firstName,
+                lastName: plainCoach.lastName,
+                profilePicture: plainCoach.profilePicture,
                 title: profile.professionalTitle,
                 shortBio: profile.bio ? profile.bio.substring(0, 150) + '...' : '',
                 specialties: profile.specialties || [],
@@ -350,8 +345,8 @@ export const getAllCoachProfiles = async (req, res) => {
                 totalReviews: ratings.length,
             };
         }));
-        
-        const processedCoaches = allResults.filter(coach => coach !== null); 
+
+        const processedCoaches = allResults.filter(coach => coach !== null);
 
         res.status(200).json({ coaches: processedCoaches });
     } catch (error) {
@@ -359,7 +354,6 @@ export const getAllCoachProfiles = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch coach profiles' });
     }
 };
-
 // ==============================
 // GET Follow Status
 // ... (rest of the file remains unchanged)
