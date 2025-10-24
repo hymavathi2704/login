@@ -31,7 +31,7 @@ const authenticateOptionally = jwt({
   secret: process.env.JWT_SECRET,
   algorithms: ['HS256'],
   requestProperty: 'user',
-  credentialsRequired: false, // <-- This allows requests without a token
+  credentialsRequired: false, // <-- This allows requests WITHOUT a token
   getToken: (req) => {
     // (Same token logic as 'authenticate')
     if (req.cookies && req.cookies[ACCESS_COOKIE_NAME]) {

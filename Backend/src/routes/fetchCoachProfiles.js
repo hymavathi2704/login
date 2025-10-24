@@ -3,11 +3,11 @@
 const express = require('express');
 const router = express.Router();
 
-// ✅ FIX: Import the new 'authenticateOptionally' middleware
+// ✅ FIX 1: Import the new 'authenticateOptionally' middleware
 const { authenticate, authenticateOptionally } = require('../middleware/authMiddleware'); 
 const upload = require('../middleware/upload'); 
 
-// ... (imports for coachProfileController, exploreCoachesController, sessionController) ...
+// ... (your other controller imports) ...
 const coachProfileController = require('../controllers/coachProfileController');
 const { 
     getPublicCoachProfile,
@@ -34,32 +34,35 @@ const skipAuthForOptions = (req, res, next) => {
     next();
 };
 
+// ✅ FIX 2: Add this error-catching middleware
+// This will catch 'invalid_token' or 'expired_token' errors from
+// 'authenticateOptionally' and just let the request continue without a user.
+const handleOptionalAuthError = (err, req, res, next) => {
+    if (err.name === 'UnauthorizedError') {
+        // The token was invalid/expired, but we don't care.
+        // Proceed as a public user.
+        req.user = null; // Ensure user is not set
+        next(); // Go to getPublicCoachProfile
+    } else {
+        // It was a different error, so pass it along
+        next(err);
+    }
+};
+
 
 // ==============================
 // Logged-in Coach Profile Management Routes (Protected)
 // ==============================
-// (These all correctly use the strict 'authenticate')
+// (These remain unchanged, using strict 'authenticate')
 router.get('/profile', authenticate, coachProfileController.getCoachProfile); 
 router.put('/profile', skipAuthForOptions, authenticate, upload.single('profilePicture'), coachProfileController.updateCoachProfile);
-router.post('/profile/upload-picture', skipAuthForOptions, authenticate, upload.single('profilePicture'), coachProfileController.uploadProfilePicture);
+// ... (all other protected routes remain the same) ...
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
 router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
 router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
-
-
-// ==============================
-// SESSION MANAGEMENT ROUTES (Protected)
-// ==============================
-// (These all correctly use the strict 'authenticate')
 router.post('/sessions', skipAuthForOptions, authenticate, createSession); 
 router.put('/sessions/:sessionId', skipAuthForOptions, authenticate, updateSession); 
 router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSession); 
-
-
-// ==============================
-// BOOKING & FOLLOWER ROUTES (Internal/Protected)
-// ==============================
-// (These all correctly use the strict 'authenticate')
 router.get('/my-bookings', authenticate, getCoachSessionBookings); 
 router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession); 
 
@@ -68,19 +71,20 @@ router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSes
 // Public/Discovery Routes 
 // ==============================
 
-// For 'Explore Coaches' list - public, no auth needed
 router.get('/coaches', getAllCoachProfiles); 
-// For 'My Followed Coaches' list - needs auth
 router.get('/followed', authenticate, getFollowedCoaches);
 
-// GET Public Coach Profile 
-// ✅ THE MAIN FIX: 
-// Use 'authenticateOptionally' instead of 'authenticate'.
-// This will work for all 3 of your scenarios.
-router.get('/coach/:id', authenticateOptionally, getPublicCoachProfile);
+// ---
+// ✅ FIX 3: Apply the new logic to your public route
+// ---
+router.get(
+    '/coach/:id', 
+    authenticateOptionally, // 1. Tries to log in
+    handleOptionalAuthError,  // 2. Catches errors if token is bad
+    getPublicCoachProfile     // 3. Runs the controller (with req.user or null)
+);
 
-// Follow/Unfollow Routes (These require a user to be logged in)
-// (These all correctly use the strict 'authenticate')
+// Follow/Unfollow Routes (These correctly use strict 'authenticate')
 router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
