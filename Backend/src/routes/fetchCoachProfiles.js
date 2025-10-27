@@ -25,6 +25,11 @@ const {
     getCoachSessionBookings
 } = require('../controllers/sessionController');
 
+const {
+    checkReviewEligibility, // 🔑 ADDED
+    addTestimonial,         // 🔑 ADDED
+} = require('../controllers/testimonialController');
+
 // Helper for CORS
 const skipAuthForOptions = (req, res, next) => {
     if (req.method === 'OPTIONS') {
@@ -87,5 +92,9 @@ router.get(
 router.get('/public/:coachId/follow-status', authenticate, getFollowStatus); 
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
+
+// 🔑 NEW: Testimonial Routes (MUST be protected by 'authenticate')
+router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility); // 🔑 ADDED
+router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticate, addTestimonial); // 🔑 ADDED
 
 module.exports = router;
