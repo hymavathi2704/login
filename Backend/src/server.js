@@ -83,46 +83,54 @@ app.use(
     })
 );
 
-
 // ==========================================
 // Model Associations
-// All models are correctly referenced from the 'db' object
+// Define associations here ONLY IF they are NOT defined in the model's static associate method.
+// Associations defined in model files (like Testimonial.js) are called by models/index.js
 // ==========================================
 // User <-> ClientProfile
 db.User.hasOne(db.ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
-db.ClientProfile.belongsTo(db.User, { foreignKey: 'userId', as: 'ClientProfile' });
+db.ClientProfile.belongsTo(db.User, { foreignKey: 'userId', as: 'user' }); // Consistent alias 'user'
 
 // User <-> CoachProfile
 db.User.hasOne(db.CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'CoachProfile' });
-db.CoachProfile.belongsTo(db.User, { foreignKey: 'userId', as: 'user' }); 
+db.CoachProfile.belongsTo(db.User, { foreignKey: 'userId', as: 'user' });
 
 // CoachProfile <-> Session (Services offered)
 db.CoachProfile.hasMany(db.Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'sessions' });
 db.Session.belongsTo(db.CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
-// Session <-> Booking (CRITICAL NEW ASSOCIATION)
+// Session <-> Booking
 db.Session.hasMany(db.Booking, { foreignKey: 'sessionId', onDelete: 'CASCADE', as: 'bookings' });
-db.Booking.belongsTo(db.Session, { foreignKey: 'sessionId', as: 'Session' }); 
+db.Booking.belongsTo(db.Session, { foreignKey: 'sessionId', as: 'Session' });
 
-// CoachProfile <-> Testimonial (Testimonials RECEIVED)
+// CoachProfile <-> Testimonial (Testimonials RECEIVED by Coach)
 db.CoachProfile.hasMany(db.Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
-db.Testimonial.belongsTo(db.CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
+// 🛑 COMMENTED OUT: Defined in Testimonial.js associate method
+// db.Testimonial.belongsTo(db.CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
-// NEW ASSOCIATION: User <-> Testimonial (Testimonials WRITTEN by client)
-db.User.hasMany(db.Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); 
-db.Testimonial.belongsTo(db.User, { foreignKey: 'clientId', as: 'clientUser' });
+// User (Client) <-> Testimonial (Testimonials WRITTEN by Client)
+db.User.hasMany(db.Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); // SET NULL if user is deleted?
+// 🛑 COMMENTED OUT: Defined in Testimonial.js associate method
+// db.Testimonial.belongsTo(db.User, { foreignKey: 'clientId', as: 'client' }); // Alias 'client' used in model
 
-// User <-> Booking (Client's bookings)
-db.User.hasMany(db.Booking, { foreignKey: 'clientId', as: 'bookings' });
+// User (Client) <-> Booking (Client's bookings)
+db.User.hasMany(db.Booking, { foreignKey: 'clientId', as: 'clientBookings' }); // Clearer alias
 db.Booking.belongsTo(db.User, { foreignKey: 'clientId', as: 'client' });
 
-// NEW ASSOCIATIONS: User <-> Follow (Client follows Coach)
-db.User.hasMany(db.Follow, { foreignKey: 'followerId', onDelete: 'CASCADE', as: 'followingRecords' });
-db.Follow.belongsTo(db.User, { foreignKey: 'followerId', as: 'followerUser' });
+// Booking <-> Testimonial (One-to-One)
+db.Booking.hasOne(db.Testimonial, { foreignKey: 'bookingId', as: 'testimonial'}); // Booking has one Testimonial
+// 🛑 COMMENTED OUT: Defined in Testimonial.js associate method
+// db.Testimonial.belongsTo(db.Booking, { foreignKey: 'bookingId', as: 'booking'}); // Testimonial belongs to one Booking
 
-db.User.hasMany(db.Follow, { foreignKey: 'followingId', onDelete: 'CASCADE', as: 'followedByRecords' });
-db.Follow.belongsTo(db.User, { foreignKey: 'followingId', as: 'followingCoach' });
+// User <-> Follow (Following relationship)
+db.User.hasMany(db.Follow, { foreignKey: 'followerId', onDelete: 'CASCADE', as: 'followingRecords' }); // Who the user follows
+db.Follow.belongsTo(db.User, { foreignKey: 'followerId', as: 'followerUser' }); // The user doing the following
 
+db.User.hasMany(db.Follow, { foreignKey: 'followingId', onDelete: 'CASCADE', as: 'followedByRecords' }); // Who follows the user
+db.Follow.belongsTo(db.User, { foreignKey: 'followingId', as: 'followedUser' }); // The user being followed
+
+// Note: The actual execution of associate methods defined in models happens via models/index.js
 // ==========================================
 // API Routes
 // ==========================================
