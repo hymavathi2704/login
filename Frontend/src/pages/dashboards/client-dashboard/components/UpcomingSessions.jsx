@@ -10,9 +10,9 @@ import {
   Video, 
   X, 
   IndianRupee,
-  Star as StarIcon,   // 🔑 ADDED: Icon for Review
-  MessageCircle,     // 🔑 ADDED: Icon for Review modal submit
-  XCircle,           // 🔑 ADDED: Icon for Review modal error
+  Star as StarIcon,   
+  MessageCircle,     
+  XCircle,           
 } from 'lucide-react'; 
 // 🔑 ADDED: External UI components needed for the Review Modal
 import Button from '@/components/ui/Button'; 
@@ -22,8 +22,7 @@ import { getMyClientSessions, checkClientReviewEligibility, submitTestimonial } 
 import { toast } from 'sonner';
 
 // ===========================================
-// 🔑 ADDED: Review Modal Component (Star rating and testimonial form)
-// This is placed before the main component to avoid redefining.
+// Review Modal Component
 // ===========================================
 const ReviewModal = ({ isOpen, onClose, eligibleSessions, refreshList }) => {
     const [form, setForm] = useState({
@@ -247,22 +246,17 @@ const UpcomingSessions = () => {
         }
 
         try {
-            // This API call checks if the client has an eligible completed session with this coach 
-            // and returns the session details, including any existing review data.
             const eligibilityResponse = await checkClientReviewEligibility(sessionToReview.coachId);
             const eligible = eligibilityResponse.data.eligibleSessions || [];
             
-            // Filter to the specific session clicked (using the booking ID)
             const clickedSessionAsEligible = eligible.filter(e => e.id === sessionToReview.id);
 
             if (clickedSessionAsEligible.length > 0) {
                  setEligibleReviews(clickedSessionAsEligible);
                  setIsReviewModalOpen(true);
             } else if (sessionToReview.status === 'completed' && sessionToReview.isReviewed) {
-                 // If already reviewed, but somehow missed in the first filter, ensure we show it's done.
                  toast.info("This session has already been reviewed. Use the 'Review' button to edit it.");
-                 // Re-run the eligibility check without filtering to let the user see/edit their review
-                 setEligibleReviews(eligible.filter(e => e.id === sessionToReview.id)); // Should already have review data
+                 setEligibleReviews(eligible.filter(e => e.id === sessionToReview.id)); 
                  setIsReviewModalOpen(true);
             } else {
                  toast.info("This session is not yet eligible for review (must be completed).");
@@ -369,14 +363,23 @@ const UpcomingSessions = () => {
             <div key={session.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  {/* ... (omitted details section - remains unchanged) ... */}
-                  <div className="flex items-center space-x-3 mb-2">
+                  <div className="flex items-center space-x-3 mb-2">
                     <h4 className="font-semibold text-lg text-gray-900">{session.title}</h4>
                         
                     {/* Session Type Highlight Badge */}
                     <span className={`px-2 py-1 text-xs rounded-full ${getTypeHighlight(session.type)}`}>
                       <Tag size={12} className="inline mr-1" /> {formatLabel}
                     </span>
+                    
+                    {/* 🔑 ADDED: Session Status Badge */}
+                    <span className={`px-2 py-1 text-xs rounded-full font-medium capitalize ${
+                        session.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        session.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        session.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                        'bg-red-100 text-red-800'
+                    }`}>
+                        {session.status}
+                    </span>
                   </div>
                   
                   {/* Highlighted Date and Time */}
@@ -414,7 +417,6 @@ const UpcomingSessions = () => {
                          <Video size={16} /> <span>JOIN</span>
                     </a>
                   ) : (
-                        // 🔑 MODIFIED: Display N/A if link is missing
                         <button className="bg-gray-100 text-gray-600 px-3 py-1 rounded text-sm opacity-50 cursor-not-allowed" disabled>
                           N/A
                        </button>
@@ -432,7 +434,7 @@ const UpcomingSessions = () => {
                     {isReviewable && (
                         <Button 
                             size="sm"
-                            variant={session.isReviewed ? 'outline' : 'warning'} // Different look for edit
+                            variant={session.isReviewed ? 'outline' : 'warning'} 
                             onClick={() => handleReviewClick(session)} 
                             iconName="Star"
                             iconPosition="left"
@@ -474,6 +476,21 @@ const UpcomingSessions = () => {
                   </span>
                 </div>
 
+                {/* Status Badge in Details Modal */}
+                <div className="flex items-center space-x-2">
+                    <Tag size={18} />
+                    <span>Status: 
+                        <span className={`font-medium capitalize px-2 py-1 ml-1 rounded-full text-xs ${
+                            selectedSession.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            selectedSession.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            selectedSession.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                            'bg-red-100 text-red-800'
+                        }`}>
+                            {selectedSession.status}
+                        </span>
+                    </span>
+                </div>
+
                 {/* Date & Time */}
                 <div className="flex items-center space-x-2 text-blue-600 font-semibold">
                   <Calendar size={20} />
@@ -496,12 +513,6 @@ const UpcomingSessions = () => {
                   <span>Price: <span className="font-medium">₹{selectedSession.price}</span></span>
                 </div>
 
-                {/* Status - Displayed clearly in modal as it's a detail */}
-                <div className="flex items-center space-x-2">
-                  <Tag size={18} />
-                  <span>Status: <span className="font-medium capitalize">{selectedSession.status}</span></span>
-                </div>
-
                 {/* Meeting Link (if confirmed) */}
                 {selectedSession.status === 'confirmed' && selectedSession.meetingLink && (
                   <div className="flex items-center space-x-2">
@@ -512,7 +523,7 @@ const UpcomingSessions = () => {
                   </div>
                 )}
                 
-                {/* 🔑 ADDED: Existing Review Status/Edit Link */}
+                {/* Existing Review Status/Edit Link */}
                 {selectedSession.isReviewed && (
                     <div className="flex items-center space-x-2 border-t pt-3 text-sm">
                         <StarIcon size={18} className="text-yellow-500" />
@@ -542,7 +553,7 @@ const UpcomingSessions = () => {
         </div>
       )}
 
-    {/* 🔑 ADDED: Review Modal Rendering */}
+    {/* Review Modal Rendering */}
     {isReviewModalOpen && (
         <ReviewModal 
             isOpen={isReviewModalOpen}
