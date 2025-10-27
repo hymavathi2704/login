@@ -9,21 +9,8 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const { UnauthorizedError } = require('express-jwt');
 
-// 🔑 FIX: This path is correct, it points to ./config/db.js
-const sequelize = require('./config/db.js');
-
-// ==========================================
-// Model Imports
-// 🔑 FIX: Changed all model paths from '../models/' to './models/'
-// This correctly points inside the 'src' folder.
-// ==========================================
-const User = require('./models/user.js');
-const CoachProfile = require('./models/CoachProfile.js');
-const ClientProfile = require('./models/ClientProfile.js');
-const Booking = require('./models/Booking.js');
-const Session = require('./models/Session.js');
-const Testimonial = require('./models/Testimonial.js');
-const Follow = require('./models/Follow.js'); 
+// 🔑 This path is correct: It points from 'Backend/src/' up to 'Backend/' and into 'models/'
+const db = require('../models'); 
 
 // ==========================================
 // Route Imports
@@ -50,7 +37,6 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-
 app.use(
     helmet({
         crossOriginResourcePolicy: false,
@@ -61,7 +47,7 @@ app.use(express.json({ limit: '5mb' }));
 
 // ==========================================
 // Static File Uploads
-// 🔑 FIX: Corrected path. Goes up from 'src' to 'Backend', then into 'uploads'.
+// This path is correct: It serves the 'uploads' folder from the 'Backend' directory
 // ==========================================
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
     setHeaders: (res, path) => {
@@ -100,42 +86,42 @@ app.use(
 
 // ==========================================
 // Model Associations
-// (Your associations are here, they are correct)
+// All models are correctly referenced from the 'db' object
 // ==========================================
 // User <-> ClientProfile
-User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
-ClientProfile.belongsTo(User, { foreignKey: 'userId', as: 'ClientProfile' });
+db.User.hasOne(db.ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
+db.ClientProfile.belongsTo(db.User, { foreignKey: 'userId', as: 'ClientProfile' });
 
 // User <-> CoachProfile
-User.hasOne(CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'CoachProfile' });
-CoachProfile.belongsTo(User, { foreignKey: 'userId', as: 'user' }); 
+db.User.hasOne(db.CoachProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'CoachProfile' });
+db.CoachProfile.belongsTo(db.User, { foreignKey: 'userId', as: 'user' }); 
 
 // CoachProfile <-> Session (Services offered)
-CoachProfile.hasMany(Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'sessions' });
-Session.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
+db.CoachProfile.hasMany(db.Session, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'sessions' });
+db.Session.belongsTo(db.CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
 // Session <-> Booking (CRITICAL NEW ASSOCIATION)
-Session.hasMany(Booking, { foreignKey: 'sessionId', onDelete: 'CASCADE', as: 'bookings' });
-Booking.belongsTo(Session, { foreignKey: 'sessionId', as: 'Session' }); 
+db.Session.hasMany(db.Booking, { foreignKey: 'sessionId', onDelete: 'CASCADE', as: 'bookings' });
+db.Booking.belongsTo(db.Session, { foreignKey: 'sessionId', as: 'Session' }); 
 
 // CoachProfile <-> Testimonial (Testimonials RECEIVED)
-CoachProfile.hasMany(Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
-Testimonial.belongsTo(CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
+db.CoachProfile.hasMany(db.Testimonial, { foreignKey: 'coachProfileId', onDelete: 'CASCADE', as: 'testimonials' });
+db.Testimonial.belongsTo(db.CoachProfile, { foreignKey: 'coachProfileId', as: 'coachProfile' });
 
 // NEW ASSOCIATION: User <-> Testimonial (Testimonials WRITTEN by client)
-User.hasMany(Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); 
-Testimonial.belongsTo(User, { foreignKey: 'clientId', as: 'clientUser' });
+db.User.hasMany(db.Testimonial, { foreignKey: 'clientId', onDelete: 'SET NULL', as: 'writtenTestimonials' }); 
+db.Testimonial.belongsTo(db.User, { foreignKey: 'clientId', as: 'clientUser' });
 
 // User <-> Booking (Client's bookings)
-User.hasMany(Booking, { foreignKey: 'clientId', as: 'bookings' });
-Booking.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
+db.User.hasMany(db.Booking, { foreignKey: 'clientId', as: 'bookings' });
+db.Booking.belongsTo(db.User, { foreignKey: 'clientId', as: 'client' });
 
 // NEW ASSOCIATIONS: User <-> Follow (Client follows Coach)
-User.hasMany(Follow, { foreignKey: 'followerId', onDelete: 'CASCADE', as: 'followingRecords' });
-Follow.belongsTo(User, { foreignKey: 'followerId', as: 'followerUser' });
+db.User.hasMany(db.Follow, { foreignKey: 'followerId', onDelete: 'CASCADE', as: 'followingRecords' });
+db.Follow.belongsTo(db.User, { foreignKey: 'followerId', as: 'followerUser' });
 
-User.hasMany(Follow, { foreignKey: 'followingId', onDelete: 'CASCADE', as: 'followedByRecords' });
-Follow.belongsTo(User, { foreignKey: 'followingId', as: 'followingCoach' });
+db.User.hasMany(db.Follow, { foreignKey: 'followingId', onDelete: 'CASCADE', as: 'followedByRecords' });
+db.Follow.belongsTo(db.User, { foreignKey: 'followingId', as: 'followingCoach' });
 
 // ==========================================
 // API Routes
@@ -152,6 +138,7 @@ app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 // Error Handling
 // ==========================================
 app.use((err, req, res, next) => {
+    // 🔑 THE FIX: Removed the stray word "section" from the line below
     if (res.headersSent) {
         return next(err);
     }
@@ -173,17 +160,18 @@ app.use((err, req, res, next) => {
 
 // ==========================================
 // Start Server and Sync Database
-// (This is correct and uses your 'db.js' file)
 // ==========================================
 const PORT = process.env.PORT || 4028;
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
 
 (async () => {
     try {
-        await sequelize.authenticate();
+        // Use the connection from the db object
+        await db.sequelize.authenticate();
         console.log('✅ Database connected');
 
-        await sequelize.sync({ alter: true }); 
+        // Use the connection from the db object
+        await db.sequelize.sync({ alter: true }); 
         console.log('✅ Database synchronized (alter: true)');
 
         app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at ${APP_URL}`));

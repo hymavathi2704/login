@@ -1,7 +1,6 @@
 // Backend/src/models/Follow.js
 
 const { DataTypes } = require('sequelize');
-const sequelize = require('../src/config/db'); 
 
 const Follow = sequelize.define('Follow', {
     id: {

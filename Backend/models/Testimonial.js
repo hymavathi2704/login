@@ -1,5 +1,4 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../src/config/db');
 // NOTE: Imports for other models (User, CoachProfile) are removed to prevent circular dependency issues.
 
 const Testimonial = sequelize.define('Testimonial', {

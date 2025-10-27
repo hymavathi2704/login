@@ -1,6 +1,5 @@
 // Backend/src/models/ClientProfile.js
 const { DataTypes } = require('sequelize');
-const db = require('../src/config/db');
 
 const ClientProfile = db.define('client_profiles', {
   id: {
