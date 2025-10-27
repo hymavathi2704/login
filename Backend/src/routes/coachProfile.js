@@ -3,20 +3,20 @@
 const express = require('express');
 const router = express.Router();
 
-// 🔑 IMPORT THE NEW MIDDLEWARE
-const { authenticate, authenticateOptionally } = require('../middleware/authMiddleware');
+// 🔑 MODIFIED: Import the new middleware
+const { authenticate, authenticateAllowExpired } = require('../middleware/authMiddleware');
 const upload = require('../middleware/upload');
 
-// Import profile management functions (Profile Update, Picture Upload/Delete, Item Management)
+// Import profile management functions
 const coachProfileController = require('../controllers/coachProfileController');
 
-// ✅ Import client management functions
+// Import client management functions
 const {
     getBookedClients,
     getFollowedClients
 } = require('../controllers/clientManagementController');
 
-// ✅ Import discovery/follow functions from the dedicated Explore Controller
+// Import discovery/follow functions
 const {
     getPublicCoachProfile,
     getFollowStatus,
@@ -24,7 +24,7 @@ const {
     unfollowCoach
 } = require('../controllers/exploreCoachesController');
 
-// 🔑 NEW: Import the testimonial controller functions
+// Import the testimonial controller functions
 const {
     checkReviewEligibility,
     addTestimonial
@@ -53,9 +53,7 @@ const skipAuthForOptions = (req, res, next) => {
 // Logged-in Coach Profile Management Routes (Protected)
 // ==============================
 router.get('/profile', authenticate, coachProfileController.getCoachProfile);
-
 router.get('/dashboard/overview', authenticate, coachProfileController.getCoachDashboardOverview);
-
 router.put(
     '/profile',
     skipAuthForOptions,
@@ -63,8 +61,6 @@ router.put(
     upload.single('profilePicture'),
     coachProfileController.updateCoachProfile
 );
-
-// Dedicated Picture management
 router.post(
     '/profile/upload-picture',
     skipAuthForOptions,
@@ -73,8 +69,6 @@ router.post(
     coachProfileController.uploadProfilePicture
 );
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture);
-
-// JSON Array management
 router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
 router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
 
@@ -90,43 +84,34 @@ router.delete('/sessions/:sessionId', skipAuthForOptions, authenticate, deleteSe
 // ==============================
 // COACH CLIENT MANAGEMENT ROUTES (NEW/FIXED)
 // ==============================
-
-// Coach views clients who have booked sessions
 router.get('/clients/booked', authenticate, getBookedClients);
-
-// Coach views clients who follow them
 router.get('/clients/followed', authenticate, getFollowedClients);
 
 
 // ==============================
 // BOOKING & FOLLOWER ROUTES (Internal/Protected)
 // ==============================
-
-// Coach views their session bookings
 router.get('/my-bookings', authenticate, getCoachSessionBookings);
-
-// POST /public/:sessionId/book - Client books a session (protected route)
 router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSession);
 
 
 // ==============================
 // Public/Follow Routes (Accessible via /api/coach base path)
 // ==============================
-
-// GET Public Coach Profile
-// NOTE: This uses 'authenticate' from your original code. If public view needs optional auth, use exploreCoachesController logic
 router.get('/public/:id', authenticate, getPublicCoachProfile);
-
-// Follow/Unfollow Routes
 router.get('/public/:coachId/follow-status', authenticate, getFollowStatus);
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
 
-// 🔑 Check if the logged-in client is eligible to write a review for this coach (Strict Auth)
+// 🔑 Check for review eligibility (Still strict)
 router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility);
 
-// 🔑 Submit a testimonial (Optional Auth - Allows viewing coach profile without login, but requires login to submit)
-router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticateOptionally, addTestimonial);
-
+// 🔑 FIX: Use new middleware to allow expired tokens ONLY for review submission
+router.post(
+    '/public/:coachId/testimonials', 
+    skipAuthForOptions, 
+    authenticateAllowExpired, // 👈 USE THE NEW MIDDLEWARE
+    addTestimonial
+);
 
 module.exports = router;

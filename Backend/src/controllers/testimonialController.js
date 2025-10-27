@@ -8,6 +8,8 @@ const Session = require('../models/Session');
 const CoachProfile = require('../models/CoachProfile'); 
 const User = require('../models/user'); // 🔑 ADDED: Needed for coachName in eligibility check
 
+
+
 /**
  * Checks if the logged-in client is eligible to leave a review for a coach.
  * Returns ALL completed bookings for the client/coach pair, including any existing testimonial.
@@ -88,71 +90,69 @@ const checkReviewEligibility = async (req, res) => {
 /**
  * Submits a new testimonial OR UPDATES an existing one and marks the associated booking as reviewed (if new).
  */
+// ===========================================
+// Add Testimonial
+// ===========================================
 const addTestimonial = async (req, res) => {
     try {
-        const clientId = req.user.id;
-        const coachId = req.params.coachId; // Not strictly necessary but useful for logging/context
-        const { rating, content, clientTitle, sessionId: bookingId } = req.body; 
+        const { coachId } = req.params;
+        const { rating, content, clientTitle, sessionId } = req.body;
 
-        if (!rating || !content || !bookingId) {
-            return res.status(400).json({ error: 'Missing required fields.' });
+        // 1. Check if user is authenticated (This check is now correct)
+        // Our new middleware provides req.user even if expired.
+        // This will only fail if no token was provided at all.
+        if (!req.user) {
+            return res.status(401).json({ error: 'Authentication required.' });
         }
+        const clientId = req.user.userId;
 
-        // 1. Verify and retrieve the booking and existing testimonial
+        // 2. Find the specific booking (session) to link the review to
         const booking = await Booking.findOne({
             where: {
-                id: bookingId,
-                clientId,
+                id: sessionId,
+                clientId: clientId,
                 status: 'completed',
             },
-            include: [{ 
-                model: Session, 
+            include: [{
+                model: Session,
                 as: 'Session',
-                attributes: ['coachProfileId', 'type'] 
-            }, {
-                model: Testimonial, 
-                as: 'Testimonial'
-            }] 
+                where: { coachProfileId: coachId }
+            }]
         });
 
-        if (!booking || !booking.Session) {
-            return res.status(403).json({ error: 'The selected session is not eligible for review.' });
+        if (!booking) {
+            return res.status(403).json({ error: 'You are not eligible to review this session. It must be a completed session with this coach.' });
         }
-        
-        const coachProfileId = booking.Session.coachProfileId;
-        const sessionType = booking.Session.type;
-        const existingTestimonial = booking.Testimonial;
 
-        const testimonialData = {
-            coachProfileId,
-            clientId,
-            clientTitle: clientTitle || null,
-            rating: parseInt(rating),
-            content,
-            date: new Date().toISOString().split('T')[0], 
-            sessionType, 
-        };
+        // 3. Create or Update the Testimonial
+        const [testimonial, created] = await Testimonial.upsert(
+            {
+                coachId: coachId,
+                clientId: clientId,
+                bookingId: sessionId, // Link to the booking
+                rating: parseInt(rating, 10),
+                content: content,
+                clientTitle: clientTitle || null,
+                isApproved: true, 
+            },
+            {
+                // Find existing testimonial by bookingId to update it
+                conflictFields: ['bookingId'], 
+                returning: true,
+            }
+        );
 
-        // 2. Create or Update the Testimonial entry
-        if (existingTestimonial) {
-            await existingTestimonial.update(testimonialData);
-            
-        } else {
-            // Create new review and associate it with the booking
-            await Testimonial.create({
-                id: uuidv4(),
-                bookingId: booking.id, // 🔑 NEW: Must link the testimonial to the booking
-                ...testimonialData,
-            });
-            // 3. Mark the Booking as reviewed
-            await booking.update({ isReviewed: true });
+        // 4. Mark the booking as reviewed
+        if (booking) {
+            booking.isReviewed = true;
+            await booking.save();
         }
-        
-        return res.status(201).json({ message: 'Testimonial submitted successfully!' });
+
+        res.status(created ? 201 : 200).json(testimonial);
 
     } catch (error) {
-        console.error('Error submitting testimonial:', error);
-        return res.status(500).json({ error: 'Failed to submit testimonial. Server error.' });
+        console.error("Failed to add testimonial:", error);
+        res.status(500).json({ error: "Failed to submit testimonial." });
     }
 };
 
