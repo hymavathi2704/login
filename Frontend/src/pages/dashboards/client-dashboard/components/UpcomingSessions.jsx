@@ -95,6 +95,12 @@ const ReviewModal = ({ isOpen, onClose, eligibleSessions, refreshList }) => {
             refreshList(); 
         } catch (error) {
             console.error('Testimonial submission failed:', error);
+            // Check for 401 status to prevent the loop if the modal is still open
+            if (error.response && error.response.status === 401) {
+                toast.error("Your login session has expired. Please log in again.");
+                onClose(); // Close the modal and rely on global auth to redirect
+                return;
+            }
             toast.error(error.response?.data?.error || 'Failed to submit testimonial. Please try again.');
         } finally {
             setIsSubmitting(false);
@@ -222,6 +228,7 @@ const UpcomingSessions = () => {
   const [allBookings, setAllBookings] = useState([]);
   // Removed obsolete state variables
   const [isLoading, setIsLoading] = useState(true);
+  // 🔑 MODIFIED: Initial error state message is more descriptive
   const [error, setError] = useState(null);
 
   // MODAL STATE 
@@ -238,7 +245,7 @@ const UpcomingSessions = () => {
     setIsDetailsModalOpen(true);
   };
     
- // 🔑 MODIFIED: Review Handler with clean 401 status check and graceful exit.
+ // 🔑 MODIFIED: Review Handler for robust 401 status check and graceful exit.
   const handleReviewClick = useCallback(async (sessionToReview) => {
         if (!sessionToReview.coachId) {
             toast.error("Cannot find coach details for review.");
@@ -263,17 +270,16 @@ const UpcomingSessions = () => {
             }
             
         } catch (error) {
-             // 1. Log the error (this produces the "Eligibility check error: Object" output)
              console.error("Eligibility check error:", error);
              
-             // 2. 🔑 FIX: Check for 401 status. If found, display specific message and stop execution.
+             // 🔑 FIX 1: Check for 401 status. If found, display specific message and stop local function execution.
              if (error.response && error.response.status === 401) {
-                 // Token is cleared by authApi.js. This toast is the user feedback.
+                 // The authApi.js interceptor has cleared the token. This toast is the user feedback.
                  toast.error("Your login session has expired. Please log in again.");
                  return; // Stops further local processing in this function.
              }
              
-             // 3. Fallback for all other errors (network issues, 500 server errors, etc.)
+             // For all other errors
              toast.error(error.message || error.response?.data?.error || 'Failed to check review eligibility.');
         }
     }, []);
@@ -332,6 +338,17 @@ const UpcomingSessions = () => {
 
     } catch (err) {
       console.error("Failed to fetch client sessions:", err);
+        
+        // 🔑 FIX 2: Check for 401 status during initial data fetch (prevents the loop).
+        if (err.response && err.response.status === 401) {
+            // Token is cleared by authApi.js. Set an error message and clear data.
+            setError("Your session has expired. Please log in to view your sessions.");
+            setAllBookings([]); // Clear any stale data
+            toast.error("Your session has expired. Please log in.");
+            setIsLoading(false);
+            return; 
+        }
+
       setError("Could not load your upcoming sessions.");
       toast.error("Could not load your upcoming sessions.");
     } finally {
@@ -349,7 +366,7 @@ const UpcomingSessions = () => {
   // --- Rendering ---
 
   if (isLoading) return <div className="text-center p-8"><p>Loading your sessions...</p></div>;
-  if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
+  if (error) return <div className="text-center p-8 text-red-500">{error}</div>; // This will display the "Your session has expired" error state
 
 
   return (
