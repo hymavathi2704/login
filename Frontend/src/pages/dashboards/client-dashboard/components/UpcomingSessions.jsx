@@ -238,7 +238,7 @@ const UpcomingSessions = () => {
     setIsDetailsModalOpen(true);
   };
     
- // 🔑 MODIFIED: Review Handler to explicitly check for the 401 status and stop execution (fixing the loop)
+ // 🔑 MODIFIED: Review Handler with clean 401 status check and graceful exit.
   const handleReviewClick = useCallback(async (sessionToReview) => {
         if (!sessionToReview.coachId) {
             toast.error("Cannot find coach details for review.");
@@ -263,17 +263,18 @@ const UpcomingSessions = () => {
             }
             
         } catch (error) {
+             // 1. Log the error (this produces the "Eligibility check error: Object" output)
              console.error("Eligibility check error:", error);
-             // 🔑 FIX: Check for 401 response status directly.
+             
+             // 2. 🔑 FIX: Check for 401 status. If found, display specific message and stop execution.
              if (error.response && error.response.status === 401) {
-                 // The authApi.js interceptor has cleared the token.
-                 // We show a message and stop function execution immediately.
+                 // Token is cleared by authApi.js. This toast is the user feedback.
                  toast.error("Your login session has expired. Please log in again.");
-                 return; 
+                 return; // Stops further local processing in this function.
              }
              
-             // For all other errors
-             toast.error(error.response?.data?.error || 'Failed to check review eligibility.');
+             // 3. Fallback for all other errors (network issues, 500 server errors, etc.)
+             toast.error(error.message || error.response?.data?.error || 'Failed to check review eligibility.');
         }
     }, []);
 
