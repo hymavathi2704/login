@@ -27,6 +27,14 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 🔑 FIX: Specific 401 Unauthorized handling
+    if (error.response && error.response.status === 401) {
+        // Clear expired tokens from local storage
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+        // Note: The main AuthContext should handle redirection to /login after token removal
+    }
+    
     const message =
       error?.response?.data?.error ||
       error?.response?.data?.message ||
