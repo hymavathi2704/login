@@ -2,9 +2,11 @@
 
 import { Op } from 'sequelize'; 
 // --- Model Imports ---
-const { User, Follow, Booking, ClientProfile, Session, CoachProfile } = require('../../models');
-// ---------------------
+// Add this at the top
+import db from '../../models/index.js';
 
+// Then destructure the models you need from 'db'
+const { User, Follow, Booking, ClientProfile, Session, CoachProfile } = db;
 // === Helper: Calculate Age ===
 const calculateAge = (dateOfBirth) => {
     if (!dateOfBirth) return 'N/A';

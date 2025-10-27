@@ -2,8 +2,13 @@
 
 import { Op, Sequelize } from 'sequelize';
 // --- Model Imports ---
-const { User, CoachProfile, Testimonial, Session, Follow, Booking, ClientProfile } = require('../../models');
+// Add this at the top
+import db from '../../models/index.js';
 
+// Then destructure the models you need from 'db'
+const { User, CoachProfile, Testimonial, Session, Follow, Booking, ClientProfile } = db;
+
+// Make sure to remove any old, separate import lines for these models
 // === Helper: Safe JSON parse (required for database fields) ===
 const safeParse = (value) => {
   if (typeof value === 'string') {
