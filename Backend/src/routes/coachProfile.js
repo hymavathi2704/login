@@ -24,12 +24,6 @@ const {
     unfollowCoach
 } = require('../controllers/exploreCoachesController');
 
-// Import the testimonial controller functions
-const {
-    checkReviewEligibility,
-    addTestimonial
-} = require('../controllers/testimonialController');
-
 // Import session management functions
 const {
     createSession,
@@ -109,25 +103,6 @@ router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followC
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
 
 
-// ==============================
-// Public Review Routes (FIXED)
-// ==============================
 
-// 🔑 FIX: Use new middleware here
-// This allows the eligibility check to pass with an expired token
-router.get(
-    '/public/:coachId/review-eligibility',
-    authenticateAllowExpired, // 👈 APPLY THE FIX HERE
-    checkReviewEligibility
-);
-
-// 🔑 FIX: Use new middleware here
-// This allows the submission to pass with an expired token
-router.post(
-    '/public/:coachId/testimonials',
-    skipAuthForOptions,
-    authenticateAllowExpired,
-    addTestimonial
-);
 
 module.exports = router;

@@ -21,7 +21,7 @@ const profileRoutes = require('./routes/fetchCoachProfiles');
 const clientProfileRoutes = require('./routes/clientProfile'); 
 const bookingRoutes = require('./routes/bookings');
 const { authenticate } = require('./middleware/authMiddleware');
-
+const testimonialRoutes = require('./routes/testimonial'); // <-- ADD THIS LINE
 const app = express();
 
 
@@ -131,7 +131,7 @@ app.use('/api/coach', coachProfileRoutes);
 app.use('/api/profiles', profileRoutes);
 app.use('/api/client', clientProfileRoutes); 
 app.use('/api/bookings', bookingRoutes);
-
+app.use('/api/testimonials', testimonialRoutes); // <-- ADD THIS LINE
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
