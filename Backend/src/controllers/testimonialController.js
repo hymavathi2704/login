@@ -16,7 +16,8 @@ const User = require('../models/user'); // 🔑 ADDED: Needed for coachName in e
  */
 const checkReviewEligibility = async (req, res) => {
     try {
-        const clientId = req.user.id; 
+        // 🔑 THE FIX: The JWT payload uses 'userId', not 'id'.
+        const clientId = req.user.userId; 
         const coachId = req.params.coachId; // The Coach's User ID
         
         if (!clientId) {
