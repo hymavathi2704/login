@@ -24,7 +24,7 @@ const authenticate = jwt({
   getToken: getTokenFromRequest,
 });
 
-// ✅ NEW: Middleware to OPTIONALLY check for a user
+// Middleware to OPTIONALLY check for a user
 const authenticateOptionally = jwt({
   secret: process.env.JWT_SECRET,
   algorithms: ['HS256'],
@@ -34,13 +34,13 @@ const authenticateOptionally = jwt({
 });
 
 // ✅ NEW: Middleware to get user from token, but NOT fail on expiration
-// This is specifically for testimonial submission
+// This is specifically for testimonial submission and eligibility
 const authenticateAllowExpired = (req, res, next) => {
   const token = getTokenFromRequest(req);
 
   if (!token) {
-    // No token, just proceed. 
-    // The controller will handle if user is required (which it is for testimonials)
+    // No token, just proceed.
+    // The controller will then fail with a 401, which is correct.
     return next();
   }
 
@@ -52,7 +52,7 @@ const authenticateAllowExpired = (req, res, next) => {
   } catch (error) {
     // 2. If it fails, check if it's an expiration error
     if (error.name === 'TokenExpiredError') {
-      console.warn('Auth Middleware: Token expired, but proceeding for testimonial submission.');
+      console.warn('Auth Middleware: Token expired, but proceeding for review check/submission.');
       // Token is expired, but we still want the user ID
       const decodedPayload = jsonwebtoken.decode(token);
       req.user = decodedPayload; // Attach EXPIRED user to request
@@ -61,7 +61,7 @@ const authenticateAllowExpired = (req, res, next) => {
     
     // 3. If it's another error (e.g., invalid signature), treat as unauthenticated
     console.error('Auth Middleware: Invalid token.', error.message);
-    // Do not attach user, just proceed. Controller will reject this.
+    // Do not attach user. The controller will now fail with a 401.
     return next();
   }
 };
