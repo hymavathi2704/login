@@ -50,6 +50,7 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+
 // --- AUTHENTICATION API ---
 export const registerUser = (userData) => {
   return axiosInstance.post("/api/auth/register", userData);
@@ -220,7 +221,7 @@ export const getFollowedCoachesClient = () => {
 };
 
 export const getCoachDashboardOverview = () => {
-    return axiosInstance.get('/api/coach/dashboard/overview');
+    return axiosInstance.get('/api/coach/dashboard/overview');
 };
 
 
