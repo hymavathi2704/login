@@ -27,14 +27,18 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 🔑 FIX: Removed hard window.location.replace to fix infinite loop.
-    // Rely on AuthContext/PrivateRoute to detect missing token and redirect gracefully.
+    // 🔑 THE FIX:
+    // We COMMENT OUT the token removal.
+    // This allows the expired token to remain in localStorage
+    // so it can be sent to our 'authenticateAllowExpired' middleware.
+    // The AuthContext will still handle logging the user out on navigation.
     if (error.response && error.response.status === 401) {
         // Clear expired tokens from local storage
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("user");
-        // Note: The main AuthContext should handle redirection to /login after token removal
-        // If necessary, add toast.error("Your session has expired.") here.
+        // localStorage.removeItem("accessToken");  // 👈 COMMENTED OUT
+        // localStorage.removeItem("user");         // 👈 COMMENTED OUT
+        
+        // We no longer automatically delete the token here.
+        // This stops the "Authentication Required" error loop.
     }
     
     const message =
@@ -45,7 +49,6 @@ axiosInstance.interceptors.response.use(
     return Promise.reject({ ...error, message });
   }
 );
-
 
 // --- AUTHENTICATION API ---
 export const registerUser = (userData) => {
