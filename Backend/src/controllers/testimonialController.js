@@ -16,79 +16,42 @@ const {
  * Checks if the logged-in client is eligible to leave a review for a coach.
  * Returns ALL completed bookings for the client/coach pair, including any existing testimonial.
  */
+// ==============================
+// Check Review Eligibility (FIXED)
+// ==============================
 const checkReviewEligibility = async (req, res) => {
     try {
-        const clientId = req.user.userId; // Correct: Use 'userId' from token
-        const coachId = req.params.coachId; // This is the Coach's User ID
-        
-        if (!clientId) {
-            return res.status(401).json({ message: 'Authentication required.' });
-        }
-        
-        // 1. Get the CoachProfile ID and associate User details
-        const coachProfile = await CoachProfile.findOne({ 
-            where: { userId: coachId },
-            attributes: ['id'],
-            include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName'] }]
+        const { bookingId } = req.params;
+        const userId = req.user.userId;
+
+        // 1. Find the booking by its ID and the client ID (to ensure ownership)
+        const booking = await Booking.findOne({
+            where: { id: bookingId, clientId: userId }
         });
 
-        if (!coachProfile || !coachProfile.user) {
-            return res.status(404).json({ error: 'Coach profile not found.' });
+        // 2. Check if booking exists
+        if (!booking) {
+            return res.status(404).json({ error: 'Booking not found or you are not authorized to review it.' });
         }
-        const coachProfileId = coachProfile.id;
-        const coachName = `${coachProfile.user.firstName} ${coachProfile.user.lastName}`;
 
+        // 3. Check if the booking status is 'completed'
+        if (booking.status !== 'completed') {
+            return res.status(403).json({ error: 'You can only review completed sessions.' });
+        }
 
-        // 2. Find ALL completed bookings for this client and coach, and include existing testimonials
-        const completedBookings = await Booking.findAll({
-            where: {
-                clientId,
-                status: 'completed', 
-            },
-            // 3. Join with Session model to ensure the booking is for the specified coach
-            include: [
-                {
-                    model: Session,
-                    as: 'Session', // This alias now works because of the correct import
-                    required: true,
-                    attributes: ['id', 'title', 'type', 'coachProfileId'], 
-                    where: { coachProfileId: coachProfileId } // Filter by the target coach
-                },
-                // 🔑 Join with Testimonial model to see if a review already exists
-                {
-                    model: Testimonial,
-                    as: 'Testimonial', // This alias now works
-                    required: false, 
-                    attributes: ['id', 'rating', 'content', 'clientTitle']
-                }
-            ],
-        });
-        
-        const eligibleSessions = completedBookings
-            .map(booking => ({
-                id: booking.id, // Booking ID is used as the key
-                title: booking.Session.title,
-                coachName: coachName,
-                coachId: coachId,
-                existingReview: booking.Testimonial 
-                    ? {
-                        id: booking.Testimonial.id,
-                        rating: booking.Testimonial.rating,
-                        content: booking.Testimonial.content,
-                        clientTitle: booking.Testimonial.clientTitle
-                      }
-                    : null,
-            }));
+        // 4. Check the 'isReviewed' flag (This is the correct logic)
+        if (booking.isReviewed) {
+            return res.status(403).json({ error: 'A review has already been submitted for this booking.' });
+        }
 
-        return res.status(200).json({ eligibleSessions });
+        // 5. If all checks pass, the client is eligible
+        res.status(200).json({ eligible: true, message: 'You are eligible to review this booking.' });
 
     } catch (error) {
-        // This 'catch' block was being triggered by the association error
-        console.error('Error checking review eligibility:', error); 
-        return res.status(500).json({ message: 'Server error while checking review eligibility.' });
+        console.error('Error checking review eligibility:', error);
+        res.status(500).json({ message: 'Server error while checking review eligibility.' });
     }
 };
-
 
 /**
  * Submits a new testimonial OR UPDATES an existing one and marks the associated booking as reviewed (if new).

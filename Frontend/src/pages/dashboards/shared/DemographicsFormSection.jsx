@@ -25,7 +25,7 @@ const DemographicsFormSection = ({ formData, handleChange, maxDate }) => {
             id="dateOfBirth"
             name="dateOfBirth"
             type="date"
-            value={formData.dateOfBirth || ''}
+            value={formData.dateOfBirth === '0000-00-00' ? '' : formData.dateOfBirth || ''}
             onChange={handleChange}
             className="w-full"
             // ✅ FIX 1: Disable future dates

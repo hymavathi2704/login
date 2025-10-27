@@ -7,6 +7,11 @@ const { Booking, User, Session, CoachProfile } = require('../../models');
 // GET /api/bookings/client-sessions - Get a client's session bookings
 // GET /api/bookings/client-sessions - Get a client's session bookings
 // Renamed the path for clarity
+const { 
+    checkReviewEligibility, 
+    addTestimonial 
+} = require('../controllers/testimonialController');
+
 router.get('/client-sessions', authenticate, async (req, res) => {
     try {
         const userId = req.user.userId;
@@ -43,5 +48,23 @@ router.get('/client-sessions', authenticate, async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch session bookings.' });
     }
 });
+
+// @desc    Check if a client is eligible to review a booking
+// @route   GET /api/bookings/check-review/:bookingId
+// @access  Private (Client)
+router.get(
+    '/check-review/:bookingId', 
+    authenticate, 
+    checkReviewEligibility
+);
+
+// @desc    Add a new testimonial (review) for a booking
+// @route   POST /api/bookings/review
+// @access  Private (Client)
+router.post(
+    '/review', 
+    authenticate, 
+    addTestimonial
+);
 
 module.exports = router;
