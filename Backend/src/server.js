@@ -138,7 +138,6 @@ app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 // Error Handling
 // ==========================================
 app.use((err, req, res, next) => {
-    // 🔑 THE FIX: Removed the stray word "section" from the line below
     if (res.headersSent) {
         return next(err);
     }

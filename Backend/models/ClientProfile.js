@@ -1,40 +1,50 @@
-// Backend/src/models/ClientProfile.js
-const { DataTypes } = require('sequelize');
+// Backend/models/ClientProfile.js
+'use strict';
+const { Model } = require('sequelize');
 
-const ClientProfile = db.define('client_profiles', {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    autoIncrement: true,
-  },
-  userId: {
-    type: DataTypes.CHAR(36), // <-- CORRECTED
-    allowNull: false,
-    unique: true,
-    references: {
-      model: 'users',
-      key: 'id',
+module.exports = (sequelize, DataTypes) => {
+  class ClientProfile extends Model {
+    static associate(models) {
+      // Associations are in server.js
+    }
+  }
+  ClientProfile.init({
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    onDelete: 'CASCADE',
-  },
-  dateOfBirth: {
-    type: DataTypes.DATEONLY,
-    allowNull: true,
-  },
-  gender: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  ethnicity: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-  country: {
-    type: DataTypes.STRING,
-    allowNull: true,
-  },
-}, {
-  timestamps: true,
-});
-
-module.exports = ClientProfile;
+    userId: {
+      type: DataTypes.CHAR(36),
+      allowNull: false,
+      unique: true,
+      references: {
+        model: 'users',
+        key: 'id',
+      },
+      onDelete: 'CASCADE',
+    },
+    dateOfBirth: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    gender: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    ethnicity: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    country: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  }, {
+    sequelize,
+    modelName: 'ClientProfile',
+    tableName: 'client_profiles',
+    timestamps: true,
+  });
+  return ClientProfile;
+};

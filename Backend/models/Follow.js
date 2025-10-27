@@ -1,44 +1,51 @@
-// Backend/src/models/Follow.js
+// Backend/models/Follow.js
+'use strict';
+const { Model } = require('sequelize');
 
-const { DataTypes } = require('sequelize');
-
-const Follow = sequelize.define('Follow', {
+module.exports = (sequelize, DataTypes) => {
+  class Follow extends Model {
+    static associate(models) {
+      // Associations are in server.js
+    }
+  }
+  Follow.init({
     id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
     followerId: { 
-        type: DataTypes.CHAR(36), 
-        allowNull: false,
-        references: { model: 'users', key: 'id' },
-        onDelete: 'CASCADE',
+      type: DataTypes.CHAR(36), 
+      allowNull: false,
+      references: { model: 'users', key: 'id' },
+      onDelete: 'CASCADE',
     },
     followingId: { 
-        type: DataTypes.CHAR(36), 
-        allowNull: false,
-        references: { model: 'users', key: 'id' },
-        onDelete: 'CASCADE',
+      type: DataTypes.CHAR(36), 
+      allowNull: false,
+      references: { model: 'users', key: 'id' },
+      onDelete: 'CASCADE',
     },
-    // Explicitly defined columns for MySQL to avoid schema errors
     created_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
     },
     updated_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
     },
-}, {
+  }, {
+    sequelize,
+    modelName: 'Follow',
     tableName: 'follows', 
     timestamps: true,
     createdAt: 'created_at', 
     updatedAt: 'updated_at',
     indexes: [
-        { unique: true, fields: ['followerId', 'followingId'] }
+      { unique: true, fields: ['followerId', 'followingId'] }
     ]
-});
-
-module.exports = Follow;
+  });
+  return Follow;
+};
