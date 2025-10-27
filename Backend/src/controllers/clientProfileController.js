@@ -2,9 +2,7 @@
 
 const path = require('path');
 const fs = require('fs/promises'); // Import for file deletion
-const User = require('../../models/user');
-const ClientProfile = require('../../models/ClientProfile');
-
+const { User, ClientProfile } = require('../../models');
 // === Environment and Path Setup ===
 // Using standard Node.js approach to find the uploads directory
 const UPLOADS_DIR = path.join(process.cwd(), 'src', 'uploads'); 

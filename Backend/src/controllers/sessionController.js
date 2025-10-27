@@ -1,11 +1,7 @@
 // Backend/src/controllers/sessionController.js
 
-const Session = require('../../models/Session');
-const CoachProfile = require('../../models/CoachProfile');
 const { Op } = require('sequelize');
-const Booking = require('../../models/Booking'); // 🚨 FIX: ADDED MISSING IMPORT
-const User = require('../../models/user');       // 🚨 FIX: ADDED MISSING IMPORT
-
+const { Session, CoachProfile, Booking, User } = require('../../models');
 // ==============================
 // Helper: Sanitize & Map Data (UPDATED)
 // ==============================

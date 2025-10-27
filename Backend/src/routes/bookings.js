@@ -3,12 +3,7 @@ const { Op } = require('sequelize');
 const router = express.Router();
 const { authenticate } = require('../middleware/authMiddleware');
 
-// Only import the models actually needed for *this* route
-const Booking = require('../../models/Booking');
-const User = require('../../models/user');
-const Session = require('../../models/Session'); 
-const CoachProfile = require('../../models/CoachProfile'); 
-
+const { Booking, User, Session, CoachProfile } = require('../../models');
 // GET /api/bookings/client-sessions - Get a client's session bookings
 // GET /api/bookings/client-sessions - Get a client's session bookings
 // Renamed the path for clarity

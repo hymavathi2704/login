@@ -2,14 +2,7 @@
 
 import { Op, Sequelize } from 'sequelize';
 // --- Model Imports ---
-import User from '../../models/user.js';
-import CoachProfile from '../../models/CoachProfile.js';
-import Testimonial from '../../models/Testimonial.js';
-import Session from '../../models/Session.js';
-import Follow from '../../models/Follow.js';
-import Booking from '../../models/Booking.js';
-import ClientProfile from '../../models/ClientProfile.js';
-// ---------------------
+const { User, CoachProfile, Testimonial, Session, Follow, Booking, ClientProfile } = require('../../models');
 
 // === Helper: Safe JSON parse (required for database fields) ===
 const safeParse = (value) => {

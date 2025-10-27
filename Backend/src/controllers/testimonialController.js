@@ -9,7 +9,7 @@ const {
     Session,
     CoachProfile,
     User
-} = require('./models');
+} = require('../../models');
 
 
 /**

@@ -2,12 +2,7 @@
 
 import { Op } from 'sequelize'; 
 // --- Model Imports ---
-import User from '../../models/user.js'; 
-import Follow from '../../models/Follow.js'; 
-import Booking from '../../models/Booking.js'; 
-import ClientProfile from '../../models/ClientProfile.js'; 
-import Session from '../../models/Session.js'; // <- Ensure Session is imported for JOIN
-import CoachProfile from '../../models/CoachProfile.js';
+const { User, Follow, Booking, ClientProfile, Session, CoachProfile } = require('../../models');
 // ---------------------
 
 // === Helper: Calculate Age ===

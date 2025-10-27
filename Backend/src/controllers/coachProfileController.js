@@ -4,14 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path'); 
 const fs = require('fs/promises'); 
 const { Op } = require('sequelize'); 
-
-const User = require('../../models/user'); 
-const CoachProfile = require('../../models/CoachProfile'); 
-const ClientProfile = require('../../models/ClientProfile'); 
-const Testimonial = require('../../models/Testimonial'); 
-const Session = require('../../models/Session'); 
-const Booking = require('../../models/Booking');
-
+const { User, CoachProfile, ClientProfile, Testimonial, Session, Booking } = require('../../models');
 // === Environment and Path Setup ===
 const UPLOADS_DIR = path.join(process.cwd(), 'src', 'uploads'); 
 
