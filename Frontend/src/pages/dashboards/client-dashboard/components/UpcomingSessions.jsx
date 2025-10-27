@@ -263,7 +263,7 @@ const UpcomingSessions = () => {
             }
             
         } catch (error) {
-             // 🔑 FIX: Catch specific 401 error
+             // 🔑 FIX: Catch specific 401 error and show user-friendly message
              if (error.response && error.response.status === 401) {
                  toast.error("Your login session has expired. Please log in again to leave a review.");
              } else {
