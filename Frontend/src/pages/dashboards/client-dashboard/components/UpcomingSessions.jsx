@@ -95,7 +95,7 @@ const ReviewModal = ({ isOpen, onClose, eligibleSessions, refreshList }) => {
             refreshList(); 
         } catch (error) {
             console.error('Testimonial submission failed:', error);
-            // Check for 401 status to prevent the loop if the modal is still open
+            // Check for 401 status and handle it gracefully
             if (error.response && error.response.status === 401) {
                 toast.error("Your login session has expired. Please log in again.");
                 onClose(); // Close the modal and rely on global auth to redirect
@@ -245,7 +245,8 @@ const UpcomingSessions = () => {
     setIsDetailsModalOpen(true);
   };
     
- // 🔑 MODIFIED: Review Handler for robust 401 status check and graceful exit.
+// 🔑 MODIFIED: Review Handler for robust 401 status check and graceful exit.
+// NOTE: We still rely on checkClientReviewEligibility (a PROTECTED route) to fetch which sessions are reviewable.
   const handleReviewClick = useCallback(async (sessionToReview) => {
         if (!sessionToReview.coachId) {
             toast.error("Cannot find coach details for review.");
@@ -274,7 +275,7 @@ const UpcomingSessions = () => {
              
              // 🔑 FIX 1: Check for 401 status. If found, display specific message and stop local function execution.
              if (error.response && error.response.status === 401) {
-                 // The authApi.js interceptor has cleared the token. This toast is the user feedback.
+                 // Token is cleared by authApi.js. We show a message and halt the local function.
                  toast.error("Your login session has expired. Please log in again.");
                  return; // Stops further local processing in this function.
              }
