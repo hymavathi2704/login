@@ -1,6 +1,6 @@
 // Backend/src/models/CoachProfile.js
 const { DataTypes, UUIDV4 } = require('sequelize');
-const db = require('../config/db');
+const db = require('../src/config/db');
 
 const CoachProfile = db.define('coach_profiles', {
   id: {

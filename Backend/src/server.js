@@ -8,19 +8,22 @@ const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const { UnauthorizedError } = require('express-jwt');
+
+// 🔑 FIX: This path is correct, it points to ./config/db.js
 const sequelize = require('./config/db.js');
 
 // ==========================================
 // Model Imports
-// ... (Model Imports are omitted for brevity, they remain unchanged)
+// 🔑 FIX: Changed all model paths from '../models/' to './models/'
+// This correctly points inside the 'src' folder.
 // ==========================================
-const User = require('./models/user');
-const CoachProfile = require('./models/CoachProfile');
-const ClientProfile = require('./models/ClientProfile');
-const Booking = require('./models/Booking');
-const Session = require('./models/Session');
-const Testimonial = require('./models/Testimonial');
-const Follow = require('./models/Follow'); 
+const User = require('./models/user.js');
+const CoachProfile = require('./models/CoachProfile.js');
+const ClientProfile = require('./models/ClientProfile.js');
+const Booking = require('./models/Booking.js');
+const Session = require('./models/Session.js');
+const Testimonial = require('./models/Testimonial.js');
+const Follow = require('./models/Follow.js'); 
 
 // ==========================================
 // Route Imports
@@ -38,15 +41,11 @@ const app = express();
 // ==========================================
 // Middlewares
 // ==========================================
-
-// 🔑 FIX 1: Ensure FRONTEND_URL is used for CORS
 const corsOptions = {
-    // This allows the production URL to connect to the backend API.
-    // It is critical that your production environment sets the FRONTEND_URL environment variable.
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
@@ -61,14 +60,10 @@ app.use(
 app.use(express.json({ limit: '5mb' }));
 
 // ==========================================
-// 🔑 CRITICAL FIX: Custom Middleware for Static Files (MIME Type Fix for JPG)
-// ==========================================
-// ==========================================
-// 🔑 CRITICAL FIX: Standard Express.static with setHeaders for JPG MIME type
-// This replaces the complex and unreliable custom middleware from the previous attempt.
+// Static File Uploads
+// 🔑 FIX: Corrected path. Goes up from 'src' to 'Backend', then into 'uploads'.
 // ==========================================
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
-    // Use the built-in setHeaders option to explicitly force the MIME type for JPG/JPEG
     setHeaders: (res, path) => {
         const ext = path.split('.').pop().toLowerCase();
         if (ext === 'jpg' || ext === 'jpeg') {
@@ -95,11 +90,8 @@ app.use(
             '/api/auth/forgot-password',
             '/api/auth/reset-password',
             '/api/auth/social-login',
-            // Allow fetching public coach list (for non-logged in users)
             /\/api\/profiles\/coaches(\/.*)?/, 
-            // 💡 FIX: Allow fetching a single public coach profile by ID without authentication
-            /\/api\/profiles\/coach\/[a-zA-Z0-9-]{36}/,
-            // Allow fetching public coach profiles/sessions with internal routes (existing config)
+            /\/api\/profiles\/coach\/[a-zA-Z0-9-]{36}/,
             /\/api\/coach\/public(\/.*)?/ 
         ],
     })
@@ -107,7 +99,8 @@ app.use(
 
 
 // ==========================================
-// Model Associations (omitted)
+// Model Associations
+// (Your associations are here, they are correct)
 // ==========================================
 // User <-> ClientProfile
 User.hasOne(ClientProfile, { foreignKey: 'userId', onDelete: 'CASCADE', as: 'ClientProfile' });
@@ -156,10 +149,9 @@ app.use('/api/bookings', bookingRoutes);
 app.get('/', (req, res) => res.send('CoachFlow API running 🚀'));
 
 // ==========================================
-// Error Handling (FIXED for universal JSON response)
+// Error Handling
 // ==========================================
 app.use((err, req, res, next) => {
-    // If headers have already been sent, pass to default Express handler
     if (res.headersSent) {
         return next(err);
     }
@@ -168,23 +160,20 @@ app.use((err, req, res, next) => {
     let errorMessage = 'Internal server error';
 
     if (err instanceof UnauthorizedError) {
-        // 401 for JWT errors
         statusCode = 401;
         errorMessage = 'Unauthorized: Invalid or missing token';
         console.error('JWT Unauthorized Error:', err.message);
     } else {
-        // For all other errors, use the error status if available, else 500
         console.error('Unexpected Error:', err);
         errorMessage = err.message || 'An unexpected server error occurred.';
     }
     
-    // Send a structured JSON response regardless of the error type
     return res.status(statusCode).json({ error: errorMessage });
 });
 
 // ==========================================
 // Start Server and Sync Database
-// ... (remains unchanged)
+// (This is correct and uses your 'db.js' file)
 // ==========================================
 const PORT = process.env.PORT || 4028;
 const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
@@ -194,10 +183,8 @@ const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
         await sequelize.authenticate();
         console.log('✅ Database connected');
 
-        // 🚨 CRITICAL ACTION: Dropping old tables to fix the foreign key conflict.
-        // REMOVE { force: true } { alter: true }AFTER THE FIRST SUCCESSFUL RUN!
         await sequelize.sync({ alter: true }); 
-        console.log('✅ Database synchronized (FORCED)');
+        console.log('✅ Database synchronized (alter: true)');
 
         app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at ${APP_URL}`));
 

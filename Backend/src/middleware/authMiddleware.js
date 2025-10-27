@@ -1,5 +1,5 @@
 const { expressjwt: jwt } = require('express-jwt');
-const User = require('../models/user');
+const User = require('../../models/user');
 const jsonwebtoken = require('jsonwebtoken'); // 👈 ADD THIS
 
 const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || 'refresh_token';

@@ -1,6 +1,6 @@
 // Backend/src/models/Booking.js
 const { DataTypes } = require('sequelize');
-const db = require('../config/db');
+const db = require('../src/config/db');
 
 const Booking = db.define('booking', {
   id: {

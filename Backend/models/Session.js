@@ -1,6 +1,6 @@
 // Backend/src/models/Session.js
 const { DataTypes, UUIDV4 } = require('sequelize');
-const db = require('../config/db');
+const db = require('../src/config/db');
 // NOTE: Imports for other models are removed to prevent circular dependency issues.
 
 const Session = db.define('Session', {
