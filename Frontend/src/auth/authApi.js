@@ -189,6 +189,7 @@ export const bookSession = async (sessionId) => {
 };
 
 
+
 // --- COACH DASHBOARD CLIENT MANAGEMENT API (FIXED ENDPOINTS) ---
 export const getBookedClients = () => {
     return axiosInstance.get('/api/coach/clients/booked');
@@ -209,8 +210,16 @@ export const getCoachDashboardOverview = () => {
     return axiosInstance.get('/api/coach/dashboard/overview');
 };
 
+
+
+// 🔑 NEW: Client submits a testimonial
+export const submitTestimonial = (coachId, data) => { //
+    return axiosInstance.post(`/api/coach/public/${coachId}/testimonials`, data); //
+};
+
+
 // 🔑 NEW: Check if the logged-in client has booked a session with this coach
-export const checkClientReviewEligibility = (coachId) => {
-    // This endpoint will return true if the client has a confirmed booking history with this coach.
-    return axiosInstance.get(`/api/coach/public/${coachId}/review-eligibility`);
+export const checkClientReviewEligibility = (coachId) => { //
+    // This endpoint will return an array of eligible session bookings.
+    return axiosInstance.get(`/api/coach/public/${coachId}/review-eligibility`); //
 };

@@ -10,6 +10,7 @@ const Session = require('../models/Session');
 const CoachProfile = require('../models/CoachProfile'); 
 
 // GET /api/bookings/client-sessions - Get a client's session bookings
+// GET /api/bookings/client-sessions - Get a client's session bookings
 // Renamed the path for clarity
 router.get('/client-sessions', authenticate, async (req, res) => {
     try {
@@ -21,7 +22,8 @@ router.get('/client-sessions', authenticate, async (req, res) => {
                 // Ensure it only fetches Session-based bookings, not old Events
                 sessionId: { [Op.ne]: null } 
             },
-            attributes: ['id', 'clientId', 'sessionId', 'status', 'bookedAt'],
+            // 🔑 FIX: Include isReviewed in attributes
+            attributes: ['id', 'clientId', 'sessionId', 'status', 'bookedAt', 'isReviewed'],
             include: [
                 {
                     model: Session,
@@ -31,7 +33,8 @@ router.get('/client-sessions', authenticate, async (req, res) => {
                     include: [{ 
                         model: CoachProfile, 
                         as: 'coachProfile', 
-                        attributes: ['userId'],
+                        // 🔑 FIX: Fetch coach's user ID for frontend logic
+                        attributes: ['userId'], 
                         include: [{ model: User, as: 'user', attributes: ['firstName', 'lastName'] }] 
                     }]
                 }
