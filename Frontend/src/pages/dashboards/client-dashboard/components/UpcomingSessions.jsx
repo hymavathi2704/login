@@ -238,7 +238,7 @@ const UpcomingSessions = () => {
     setIsDetailsModalOpen(true);
   };
     
- // 🔑 ADDED/MODIFIED: Review Handler with improved error handling (relying on centralized 401 redirect)
+ // 🔑 MODIFIED: Review Handler to explicitly check for the 401 status and stop execution (fixing the loop)
   const handleReviewClick = useCallback(async (sessionToReview) => {
         if (!sessionToReview.coachId) {
             toast.error("Cannot find coach details for review.");
@@ -263,11 +263,17 @@ const UpcomingSessions = () => {
             }
             
         } catch (error) {
-             // 🔑 MODIFIED: Removed specific 401 check.
-             // The 401 error is now caught by the interceptor in authApi.js, which clears the token
-             // and immediately redirects the user to /login, which is a better flow.
-             toast.error(error.message || error.response?.data?.error || 'Failed to check review eligibility.');
              console.error("Eligibility check error:", error);
+             // 🔑 FIX: Check for 401 response status directly.
+             if (error.response && error.response.status === 401) {
+                 // The authApi.js interceptor has cleared the token.
+                 // We show a message and stop function execution immediately.
+                 toast.error("Your login session has expired. Please log in again.");
+                 return; 
+             }
+             
+             // For all other errors
+             toast.error(error.response?.data?.error || 'Failed to check review eligibility.');
         }
     }, []);
 
@@ -325,7 +331,6 @@ const UpcomingSessions = () => {
 
     } catch (err) {
       console.error("Failed to fetch client sessions:", err);
-      // If this fails with 401, the interceptor will handle the redirect first.
       setError("Could not load your upcoming sessions.");
       toast.error("Could not load your upcoming sessions.");
     } finally {
@@ -552,8 +557,8 @@ const UpcomingSessions = () => {
                   Close
                 </button>
               </div>
+            </div>
           </div>
-        </div>
         </div>
       )}
 

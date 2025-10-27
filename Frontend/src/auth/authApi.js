@@ -14,9 +14,6 @@ const axiosInstance = axios.create({
   },
 });
 
-// 🔑 ADDED: Flag to prevent multiple redirects/logout calls
-let isRefreshing = false;
-
 // Request interceptor to automatically attach the auth token
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
@@ -30,33 +27,14 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    const originalRequest = error.config;
-    
-    // 🔑 MODIFIED: Centralized 401 handling for immediate logout and redirect
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
-        
-        // Avoid redirection loop
-        if (isRefreshing) {
-            return Promise.reject(error);
-        }
-        
-        isRefreshing = true;
-
-        // Clear tokens from local storage
+    // 🔑 FIX: Removed hard window.location.replace to fix infinite loop.
+    // Rely on AuthContext/PrivateRoute to detect missing token and redirect gracefully.
+    if (error.response && error.response.status === 401) {
+        // Clear expired tokens from local storage
         localStorage.removeItem("accessToken");
         localStorage.removeItem("user");
-        
-        // Redirect the user to the login page immediately
-        setTimeout(() => {
-            if (window.location.pathname !== '/login') {
-                // Use replace to prevent user from returning via back button
-                window.location.replace('/login');
-            }
-            isRefreshing = false; // Reset flag after redirect attempt
-        }, 100);
-
-        // Reject the promise for the original request, adding a clear message
-        return Promise.reject({ ...error, message: "Session expired. Redirecting to login." });
+        // Note: The main AuthContext should handle redirection to /login after token removal
+        // If necessary, add toast.error("Your session has expired.") here.
     }
     
     const message =
