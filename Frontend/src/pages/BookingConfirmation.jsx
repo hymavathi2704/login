@@ -1,8 +1,10 @@
 // Frontend/src/pages/BookingConfirmation.jsx
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-// Assuming API utility is in a services directory
-import API from '../services/api'; 
+// 🛑 FIX THIS LINE: Change "../services/api" to '@/auth/authApi' 
+// or use your specific API file if it's named differently (e.g., '@/services/api').
+// Assuming your primary API helper is authApi.js, which is in src/auth/
+import { API } from "@/auth/authApi";
 // Assuming you have components for displaying UI state
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert'; 
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'; 

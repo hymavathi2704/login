@@ -234,3 +234,6 @@ export const updateMyTestimonial = (testimonialId, data) => { return axiosInstan
 export const followCoach = (coachId) => { return axiosInstance.post(`/api/profiles/public/${coachId}/follow`); };
 export const unfollowCoach = (coachId) => { return axiosInstance.delete(`/api/profiles/public/${coachId}/follow`); };
 export const getFollowStatus = (coachId) => { return axiosInstance.get(`/api/profiles/public/${coachId}/follow-status`); };
+
+
+export const API = axiosInstance;

@@ -198,6 +198,11 @@
     "@babel/helper-string-parser" "^7.27.1"
     "@babel/helper-validator-identifier" "^7.27.1"
 
+"@cashfreepayments/cashfree-js@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.npmjs.org/@cashfreepayments/cashfree-js/-/cashfree-js-1.0.5.tgz"
+  integrity sha512-fP9wi9mseXJmESGIkD9vb6RAKdSZw42jXiQY2LUt5A2STyEqMv0mYLgK2zqpMNSbdK9QdN1c4YnEv9mmyxC8mg==
+
 "@cush/relative@^1.0.0":
   version "1.0.0"
   resolved "https://registry.npmjs.org/@cush/relative/-/relative-1.0.0.tgz"
