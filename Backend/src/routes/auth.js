@@ -3,20 +3,15 @@
 const express = require('express');
 const router = express.Router();
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-rsa');
-
 // VITAL CONTROLLERS
 const auth = require('../controllers/authController');
 
-// VITAL MIDDLEWARE (Destructuring for clarity)
-const { authenticate, authorize } = require('../middleware/authMiddleware');  
+// VITAL MIDDLEWARE
+const { authenticate } = require('../middleware/authMiddleware');
 const { authLimiter } = require('../middleware/rateLimiter');
-// REMOVED: const uploadMiddleware = require('../middleware/upload'); 
 
 // Allow preflight requests for CORS
 router.options('*', cors());
-
 // ==============================
 // ⚠️ TEMPORARILY DISABLED: Auth0 JWKS client for social login
 // ==============================
@@ -62,14 +57,26 @@ const verifyAuth0Token = (req, res, next) => {
 */
 
 
+
+
+// ❌ DISABLED SOCIAL LOGIN ROUTE: Replace the original route with a placeholder
+// router.post('/social-login', authLimiter, verifyAuth0Token, auth.socialLogin); 
+router.post('/social-login', authLimiter, (req, res) => {
+    return res.status(503).json({ error: 'Social login is temporarily disabled.' });
+});
+
 // ==============================
-// Core Auth Routes (KEEP)
+// Core Auth Routes
 // ==============================
 router.post('/register', authLimiter, auth.register);
 router.post('/login', authLimiter, auth.login);
 
-// ❌ DISABLED SOCIAL LOGIN ROUTE: Replace the original route with a placeholder
-// router.post('/social-login', authLimiter, verifyAuth0Token, auth.socialLogin); 
+// --- NEW REFRESH TOKEN ROUTE ---
+// Does not need authenticate middleware, relies on HttpOnly cookie
+router.post('/refresh-token', auth.refreshToken);
+// ------------------------------
+
+// --- Social Login (Keep Disabled) ---
 router.post('/social-login', authLimiter, (req, res) => {
     return res.status(503).json({ error: 'Social login is temporarily disabled.' });
 });
@@ -80,16 +87,11 @@ router.post('/verify-email', auth.verifyEmail);
 router.post('/forgot-password', authLimiter, auth.forgotPassword);
 router.post('/reset-password', authLimiter, auth.resetPassword);
 
-router.post('/logout', auth.logout);
-
-// Gets user details (KEEP)
+// --- PROTECTED ROUTES ---
+router.post('/logout', auth.logout); // Logout ideally requires knowing who is logging out
 router.get('/me', authenticate, auth.me);
-
-// Handles role selection after registration (KEEP)
 router.post('/create-profile', authenticate, auth.createProfile);
-// -----------------
-router.put('/change-password', authenticate, auth.changePassword); // <-- NEW ROUTE ADDED
-// REMOVED: The DEDICATED PROFILE PICTURE UPLOAD ROUTE is removed, 
-// it will be handled by the clientProfile route using clientProfileController.
-router.delete('/me', authenticate, auth.deleteAccount); // <-- ADD THIS NEW ROUTE
+router.put('/change-password', authenticate, auth.changePassword);
+router.delete('/me', authenticate, auth.deleteAccount);
+
 module.exports = router;

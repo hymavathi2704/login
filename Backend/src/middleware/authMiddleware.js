@@ -1,12 +1,14 @@
 const { expressjwt: jwt } = require('express-jwt');
 
 const { User } = require('../../models')
-const jsonwebtoken = require('jsonwebtoken'); // 👈 ADD THIS
+const jsonwebtoken = require('jsonwebtoken'); // 👈 This import is needed for authenticateAllowExpired
 
+// This variable is unused in this file, which is fine.
 const REFRESH_COOKIE_NAME = process.env.REFRESH_COOKIE_NAME || 'refresh_token';
-const ACCESS_COOKIE_NAME = 'jwt'; // The name of the cookie where the Access Token is stored
+// This is the correct cookie name for the ACCESS token
+const ACCESS_COOKIE_NAME = 'jwt'; 
 
-// (Helper function to get token - copied from your existing middleware)
+// This helper function correctly reads the 'jwt' cookie OR the Bearer token
 const getTokenFromRequest = (req) => {
   if (req.cookies && req.cookies[ACCESS_COOKIE_NAME]) {
     return req.cookies[ACCESS_COOKIE_NAME];
@@ -18,8 +20,9 @@ const getTokenFromRequest = (req) => {
 };
 
 // Middleware to protect routes (STRICT - requires login)
+// This will correctly fail with a 401 when the access token expires
 const authenticate = jwt({
-  secret: process.env.JWT_SECRET,
+  secret: process.env.JWT_SECRET, // Uses the main access token secret
   algorithms: ['HS256'],
   requestProperty: 'user', // <- put decoded token on req.user
   getToken: getTokenFromRequest,
@@ -34,14 +37,12 @@ const authenticateOptionally = jwt({
   getToken: getTokenFromRequest,
 });
 
-// ✅ NEW: Middleware to get user from token, but NOT fail on expiration
-// This is specifically for testimonial submission and eligibility
+// This custom middleware for testimonials is also fine
 const authenticateAllowExpired = (req, res, next) => {
   const token = getTokenFromRequest(req);
 
   if (!token) {
     // No token, just proceed.
-    // The controller will then fail with a 401, which is correct.
     return next();
   }
 
@@ -62,7 +63,6 @@ const authenticateAllowExpired = (req, res, next) => {
     
     // 3. If it's another error (e.g., invalid signature), treat as unauthenticated
     console.error('Auth Middleware: Invalid token.', error.message);
-    // Do not attach user. The controller will now fail with a 401.
     return next();
   }
 };
@@ -93,5 +93,5 @@ module.exports = {
   authenticate,
   authorize,
   authenticateOptionally,
-  authenticateAllowExpired, // 👈 Export the new function
+  authenticateAllowExpired, 
 };
