@@ -91,6 +91,8 @@ export const AuthProvider = ({ children }) => {
     }
   }, [logout]);
 
+  // 🛑 FIX: Calculate isAuthenticated. It's true if the user object is not null.
+  const isAuthenticated = !!user;
 
   const value = {
     user,
@@ -101,7 +103,9 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     switchRole,
-    refreshUserData
+    refreshUserData,
+    // 🛑 FIX: Export the calculated isAuthenticated state
+    isAuthenticated,
   };
 
   return (

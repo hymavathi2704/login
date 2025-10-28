@@ -1,5 +1,4 @@
-// Frontend/src/pages/dashboards/shared/coach-public-profile/components/ServicesSection.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // 🛑 ADD useEffect
 import Icon from '@/components/AppIcon';
 import Button from '@/components/ui/Button';
 // ✅ ADD Calendar and X for pop-up UI
@@ -13,9 +12,9 @@ import { load } from "@cashfreepayments/cashfree-js";
 
 // 🚨 Must accept onSessionBooked prop
 const ServicesSection = ({ coach, onSessionBooked }) => {
+  // Access isAuthenticated and user object for debugging
   const { isAuthenticated, roles, user } = useAuth(); 
   const [bookingSessionId, setBookingSessionId] = useState(null); 
-  // ✅ NEW STATE: To control the session detail pop-up
   const [selectedSession, setSelectedSession] = useState(null); 
   // 🛑 NEW STATE: To hold the initialized Cashfree SDK instance
   const [cashfree, setCashfree] = useState(null);
@@ -23,14 +22,13 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
   // 🛑 NEW EFFECT: Initialize Cashfree SDK once on component mount
   useEffect(() => {
     const initializeCashfree = async () => {
-        // Set mode based on environment variable (e.g., VITE_CASHFREE_MODE="sandbox")
+        // Use sandbox mode for testing (you must define VITE_CASHFREE_MODE in .env)
         const mode = import.meta.env.VITE_CASHFREE_MODE || "sandbox"; 
         try {
             const cf = await load({ mode });
             setCashfree(cf);
         } catch (error) {
             console.error("Failed to load Cashfree SDK:", error);
-            toast.error("Payment system failed to load. Please try again later.");
         }
     };
     initializeCashfree();
@@ -40,9 +38,7 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
   const formatPrice = (price) => {
     const p = parseFloat(price);
     if (p === 0) return 'FREE';
-    // START OF CHANGE: Updated currency to Indian Rupees (INR) and locale to 'en-IN'
     return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(p);
-    // END OF CHANGE
   };
 
   const formatDuration = (minutes) => {
@@ -53,16 +49,13 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
     return remaining > 0 ? `${hours}h ${remaining}m` : `${hours}h`;
   };
 
-  // ✅ NEW HELPER: Combines separate defaultDate and defaultTime fields from the backend
   const getScheduledDateTime = (session) => {
-    // If both date and time exist, combine them into an ISO-like string
     if (session?.defaultDate && session?.defaultTime) {
         return `${session.defaultDate}T${session.defaultTime}`; 
     }
     return null;
   };
 
-  // ✅ MODIFIED FUNCTION: Formats the date and time using the helper
   const formatDateTime = (session) => {
     const dateTimeString = getScheduledDateTime(session);
     if (!dateTimeString) return 'No fixed date/time (Flexible Booking)';
@@ -78,20 +71,17 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
   };
 
 
-  // 🚨 Must accept isBooked argument
   const getButtonConfig = (sessionType, isBooked) => {
-    // 1. Logic for already booked session
     if (isBooked) {
         return { 
-          label: 'Purchased / Booked', // The required text change
+          label: 'Purchased / Booked', 
           icon: 'CheckCircle', 
           variant: 'success', 
-          disabled: true, // Disable button
-          className: 'opacity-80 cursor-default' // Style for booked state
+          disabled: true, 
+          className: 'opacity-80 cursor-default'
         };
     }
     
-    // 2. Original logic for unbooked sessions
     if (!sessionType) return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default', disabled: false, className: '' };
     const type = sessionType.toLowerCase();
     if (type.includes('subscription') || type.includes('package')) {
@@ -100,36 +90,39 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
     return { label: 'Purchase/Book', icon: 'ArrowRight', variant: 'default', disabled: false, className: '' };
   };
 
-  // 🛑 MODIFIED FUNCTION: Handle payment flow
+  // 🛑 CRITICAL MODIFICATION: Updated function signature and logic for payment flow
   const handleBookSession = async (session) => {
     const { id: sessionId, title: sessionTitle, price } = session;
-
-    if (!isAuthenticated) {
-        toast.error("Please log in to purchase this service.");
-        return;
-    }
-
-    // Check if the Cashfree SDK is loaded
-    if (parseFloat(price) > 0 && !cashfree) {
-        toast.error("Payment system not initialized. Please refresh the page.");
-        return;
-    }
+    const sessionPrice = parseFloat(price);
     
-    // Changed confirmation message to reflect purchase
+    // --------------------------------------------------------
+    // 🛑 DEBUGGING LOG 🛑
+    console.log("DEBUG: Purchase Attempt:", sessionTitle);
+    console.log("DEBUG: Is Authenticated:", isAuthenticated);
+    console.log("DEBUG: User object (to check roles/ID):", user);
+    // --------------------------------------------------------
+    
+    if (!isAuthenticated) {
+        toast.error("Please log in to purchase this service."); 
+        return;
+    }
+
+    if (sessionPrice > 0 && !cashfree) {
+        toast.error("Payment system not initialized. Please wait a moment or refresh.");
+        return;
+    }
+
     if (!window.confirm(`Confirm purchase and booking for: ${sessionTitle} (${formatPrice(price)})?`)) return;
 
     setBookingSessionId(sessionId); 
 
     try {
-      // 1. Call Backend API to Create Order (This API must now return payment_session_id)
+      // 1. Call Backend API to Create Order (Must now return payment_session_id)
       const bookResponse = await bookSession(sessionId);
-      const paymentSessionId = bookResponse?.data?.payment_session_id; // Assuming backend returns this key
+      const paymentSessionId = bookResponse?.data?.payment_session_id; 
       
-      const sessionPrice = parseFloat(price);
-
-      // 2. Check if payment is required (price > 0)
       if (sessionPrice > 0 && paymentSessionId) {
-          // 3. Initiate Cashfree Checkout Flow
+          // 2. Initiate Cashfree Checkout Flow
           const checkoutOptions = {
             paymentSessionId: paymentSessionId,
             redirectTarget: "_self", // Redirect in the current window
@@ -139,41 +132,31 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
           // Launch the Cashfree Payment Gateway screen
           cashfree.checkout(checkoutOptions); 
           
-          // NOTE: Execution halts here. The success/failure is handled by the redirect to /booking-confirmed.
-          // We do NOT show a toast here, as the payment is not complete yet.
       } else if (sessionPrice === 0) {
-          // 4. Handle Free Sessions
+          // 3. Handle Free Sessions
           toast.success(`Successfully booked: ${sessionTitle}! View it in My Sessions.`);
+          if (onSessionBooked) {
+            onSessionBooked(); 
+          }
       } else {
-          // 5. Handle unexpected flow (e.g., paid session but no session ID returned)
-          throw new Error("Payment session could not be initiated by the server.");
-      }
-
-      // 🚨 CRITICAL: Call the callback to force the parent component to re-fetch coach data 
-      // (Only for free sessions, or for paid sessions, this will be called after successful payment verification)
-      if (sessionPrice === 0 && onSessionBooked) {
-        onSessionBooked(); 
+          throw new Error("Server failed to initiate payment session.");
       }
       
     } catch (err) {
       console.error("Booking Error:", err);
-      // Assuming the API returns a standard error format
       const errorMsg = err.response?.data?.error || err.message || 'Purchase/Booking failed due to server error.';
       toast.error(errorMsg);
     } finally {
-      // Only clear loading state for flows that don't redirect (e.g., errors or free sessions)
-      if (parseFloat(price) === 0 || !cashfree || (cashfree && bookingSessionId === sessionId)) {
+      if (sessionPrice === 0 || !cashfree || (cashfree && bookingSessionId === sessionId)) {
          setBookingSessionId(null);
       }
     }
   };
   
-  // ✅ NEW FUNCTION: Handles the click on the session card to open the modal
   const handleSessionClick = (session) => {
     setSelectedSession(session);
   };
   
-  // ✅ NEW FUNCTION: Closes the session detail modal
   const handleCloseModal = () => {
     setSelectedSession(null);
   };
@@ -190,25 +173,17 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
       <div className="space-y-4">
         {availableSessions.length > 0 ? (
           availableSessions.map((session) => {
-            // 🚨 CRITICAL: Read the isBooked flag passed from the backend
             const isBooked = session?.isBooked;
-
-            // ✅ Use the helper function here
             const scheduledDateTimeString = getScheduledDateTime(session);
-
-            // 🚨 CRITICAL: Pass isBooked to getButtonConfig
             const { label, icon, variant, disabled: configDisabled, className: configClassName } = getButtonConfig(session?.type, isBooked);
             
-            // 🛑 MODIFIED: Check if Cashfree is initialized before allowing payment
             const isPaidSession = parseFloat(session?.price) > 0;
             const isPaymentDisabled = isPaidSession && !cashfree;
 
             const isLoading = bookingSessionId === session?.id;
-            // Combine loading state, configured disabled state, and payment system state
             const isDisabled = isLoading || configDisabled || isPaymentDisabled; 
 
             return (
-              // ✅ MODIFIED: Added onClick handler to the container div
               <div
                 key={session?.id}
                 className="border border-border rounded-card p-4 hover:shadow-soft transition-smooth cursor-pointer"
@@ -229,16 +204,14 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
 
                 <div className="flex items-center justify-between pt-3 border-t border-dashed border-border">
                   <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                    {/* ✅ MODIFIED: Use the scheduledDateTimeString */}
                     <div className="flex items-center space-x-1">
                       <Calendar size={14} /> 
                       <span>
                         {scheduledDateTimeString 
-                            ? new Date(scheduledDateTimeString).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
-                            : 'Flexible'}
+                           ? new Date(scheduledDateTimeString).toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) 
+                           : 'Flexible'}
                       </span>
                     </div>
-                    {/* Existing Duration and Type */}
                     <div className="flex items-center space-x-1">
                       <Clock size={14} />
                       <span>{formatDuration(session?.duration)}</span>
@@ -252,7 +225,7 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
                   <Button
                     variant={variant}
                     size="sm"
-                    // 🛑 CRITICAL: Pass the full session object to handleBookSession
+                    // 🛑 CRITICAL: Pass the entire session object to the handler
                     onClick={(e) => { e.stopPropagation(); handleBookSession(session); }} 
                     iconName={icon}
                     iconPosition="right"
@@ -262,7 +235,6 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
                   >
                     {isLoading 
                         ? 'Processing...' 
-                        // 🛑 MODIFIED Label for clarity
                         : isPaymentDisabled ? 'Payment Unavailable' : label}
                   </Button>
                 </div>
@@ -279,12 +251,12 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
         )}
       </div>
 
-      {/* 🛑 NEW: Session Details Modal */}
+      {/* 🛑 Session Details Modal */}
       {selectedSession && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={handleCloseModal}>
           <div 
             className="bg-card rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 relative"
-            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+            onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={handleCloseModal}
@@ -308,7 +280,7 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
                 </div>
               </div>
               
-              {/* ✅ CRITICAL: Date and Time Display - Passing the full session object */}
+              {/* Date and Time Display */}
               <div className="flex items-center space-x-2 text-foreground font-medium">
                 <Calendar size={18} />
                 <span className="text-sm">
@@ -330,13 +302,13 @@ const ServicesSection = ({ coach, onSessionBooked }) => {
                 <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedSession.description}</p>
               </div>
 
-              {/* Booking CTA - Optional, but helpful for user flow */}
+              {/* Booking CTA */}
               <div className="pt-4 border-t border-border mt-4">
                   <p className="text-xs text-muted-foreground mb-2">Ready to book this service?</p>
                    <Button
                       variant={getButtonConfig(selectedSession.type, selectedSession.isBooked).variant}
                       fullWidth
-                      // 🛑 CRITICAL: Pass the full session object here and close modal
+                      // 🛑 CRITICAL: Pass the entire session object to the handler
                       onClick={(e) => { e.stopPropagation(); handleBookSession(selectedSession); handleCloseModal(); }}
                       iconName={getButtonConfig(selectedSession.type, selectedSession.isBooked).icon}
                       iconPosition="right"
