@@ -7,7 +7,6 @@ const router = express.Router();
 const { authenticate, authenticateOptionally } = require('../middleware/authMiddleware'); 
 const upload = require('../middleware/upload'); 
 
-// ... (your other controller imports) ...
 const coachProfileController = require('../controllers/coachProfileController');
 const { 
     getPublicCoachProfile,
@@ -26,8 +25,9 @@ const {
 } = require('../controllers/sessionController');
 
 const {
-    checkReviewEligibility, // 🔑 ADDED
-    addTestimonial,         // 🔑 ADDED
+    checkReviewEligibility, 
+    addTestimonial,
+    getClientReviewEligibility, // 🔑 CRITICAL FIX: Must import the correct eligibility function
 } = require('../controllers/testimonialController');
 
 // Helper for CORS
@@ -38,17 +38,12 @@ const skipAuthForOptions = (req, res, next) => {
     next();
 };
 
-// ✅ FIX 2: Add this error-catching middleware
-// This will catch 'invalid_token' or 'expired_token' errors from
-// 'authenticateOptionally' and just let the request continue without a user.
+// ... (handleOptionalAuthError middleware remains the same) ...
 const handleOptionalAuthError = (err, req, res, next) => {
     if (err.name === 'UnauthorizedError') {
-        // The token was invalid/expired, but we don't care.
-        // Proceed as a public user.
-        req.user = null; // Ensure user is not set
-        next(); // Go to getPublicCoachProfile
+        req.user = null; 
+        next(); 
     } else {
-        // It was a different error, so pass it along
         next(err);
     }
 };
@@ -57,10 +52,8 @@ const handleOptionalAuthError = (err, req, res, next) => {
 // ==============================
 // Logged-in Coach Profile Management Routes (Protected)
 // ==============================
-// (These remain unchanged, using strict 'authenticate')
 router.get('/profile', authenticate, coachProfileController.getCoachProfile); 
 router.put('/profile', skipAuthForOptions, authenticate, upload.single('profilePicture'), coachProfileController.updateCoachProfile);
-// ... (all other protected routes remain the same) ...
 router.delete('/profile/picture', authenticate, coachProfileController.deleteProfilePicture); 
 router.post('/profile/add-item', skipAuthForOptions, authenticate, coachProfileController.addProfileItem);
 router.post('/profile/remove-item', skipAuthForOptions, authenticate, coachProfileController.removeProfileItem);
@@ -78,14 +71,11 @@ router.post('/public/:sessionId/book', skipAuthForOptions, authenticate, bookSes
 router.get('/coaches', getAllCoachProfiles); 
 router.get('/followed', authenticate, getFollowedCoaches);
 
-// ---
-// ✅ FIX 3: Apply the new logic to your public route
-// ---
 router.get(
     '/coach/:id', 
-    authenticateOptionally, // 1. Tries to log in
-    handleOptionalAuthError,  // 2. Catches errors if token is bad
-    getPublicCoachProfile     // 3. Runs the controller (with req.user or null)
+    authenticateOptionally, 
+    handleOptionalAuthError,  
+    getPublicCoachProfile    
 );
 
 // Follow/Unfollow Routes (These correctly use strict 'authenticate')
@@ -93,8 +83,9 @@ router.get('/public/:coachId/follow-status', authenticate, getFollowStatus);
 router.post('/public/:coachId/follow', skipAuthForOptions, authenticate, followCoach);
 router.delete('/public/:coachId/follow', skipAuthForOptions, authenticate, unfollowCoach);
 
-// 🔑 NEW: Testimonial Routes (MUST be protected by 'authenticate')
-router.get('/public/:coachId/review-eligibility', authenticate, checkReviewEligibility); // 🔑 ADDED
-router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticate, addTestimonial); // 🔑 ADDED
+// 🔑 CRITICAL FIX: Map the coachId route to the correct controller function
+// This function expects the COACH ID, which the route provides.
+router.get('/public/:coachId/review-eligibility', authenticate, getClientReviewEligibility); 
+router.post('/public/:coachId/testimonials', skipAuthForOptions, authenticate, addTestimonial);
 
 module.exports = router;

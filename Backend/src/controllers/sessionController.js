@@ -1,5 +1,5 @@
 // Backend/src/controllers/sessionController.js
-
+const asyncHandler = require('express-async-handler');
 const { Op } = require('sequelize');
 const { Session, CoachProfile, Booking, User } = require('../../models');
 // ==============================
@@ -141,48 +141,116 @@ const deleteSession = async (req, res) => {
 
 
 // ==========================================
-// 4. BOOK SESSION (Anti-Duplication Logic)
+// 4. BOOK SESSION (Payment Initiation Logic)
 // ==========================================
-const bookSession = async (req, res) => {
-    try {
-        // Assuming your authMiddleware adds req.user.userId
-        const clientId = req.user.userId;
-        const { sessionId } = req.params;
-        
-        const session = await Session.findByPk(sessionId);
-        if (!session) {
-            return res.status(404).json({ error: 'Session not found.' });
-        }
-        
-        // 🚨 CRITICAL CHECK: Prevent multiple active bookings for the same session by one client
-        const existingBooking = await Booking.findOne({ 
-            where: { 
-                clientId, 
-                sessionId, 
-                // Status must NOT be 'cancelled'. Adjust if you have other terminal statuses.
-                status: { [Op.ne]: 'cancelled' } 
-            } 
-        });
+const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asyncHandler
+    const clientId = req.user.userId;
+    const { sessionId } = req.params;
 
-        if (existingBooking) {
-            // This is the error message returned when a client tries to re-book.
-            return res.status(400).json({ 
-                error: 'You have already purchased or booked this session.' 
+    const session = await Session.findByPk(sessionId, {
+        // Include coach details to get name/email for payment gateway metadata
+        include: [{ model: CoachProfile, as: 'CoachProfile', include: [{ model: User, as: 'user' }] }] 
+    });
+
+    if (!session) {
+        return res.status(404).json({ error: 'Session not found.' });
+    }
+
+    const amount = parseFloat(session.price);
+    
+    // --- Anti-Duplication Check (Updated to include payment statuses) ---
+    const existingBooking = await Booking.findOne({ 
+        where: { 
+            clientId, 
+            sessionId, 
+            // Do not re-book if confirmed, paid, or order is already created
+            status: { [Op.in]: ['confirmed', 'payment_success', 'order_created'] } 
+        } 
+    });
+
+    if (existingBooking) {
+        // If an order exists but is awaiting payment, send back the existing session ID
+        if (existingBooking.status === 'order_created' && existingBooking.paymentSessionId) {
+             return res.status(200).json({ 
+                message: 'Existing payment order found. Resuming checkout.',
+                payment_session_id: existingBooking.paymentSessionId,
+                order_id: existingBooking.paymentOrderId // Return your system's ID
             });
         }
-        
-        // Create the new booking
-        const booking = await Booking.create({ clientId, sessionId, status: 'confirmed' });
-
-        // Optional: Send confirmation email (assuming functionality exists)
-        // await sendBookingConfirmation(clientId, session.id); 
-
-        return res.status(201).json({ message: 'Session booked successfully.', booking });
-    } catch (error) {
-        console.error("Session Booking Error:", error);
-        return res.status(500).json({ error: 'Failed to book session.' });
+        return res.status(400).json({ 
+            error: 'You have already purchased or booked this session.' 
+        });
     }
-};
+
+    // --- Payment Initiation Flow ---
+
+    const orderId = generateUniqueOrderId(clientId);
+    // Use FRONTEND_URL from your .env file
+    const frontendBaseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const confirmationPath = "/booking-confirmed";
+    const returnUrl = `${frontendBaseUrl}${confirmationPath}`;
+
+
+    // 1. Handle Free Sessions
+    if (amount === 0) {
+        const booking = await Booking.create({ clientId, sessionId, status: 'confirmed' });
+        return res.status(201).json({ message: 'Session booked successfully.', booking });
+    }
+
+    // 2. Create initial Booking Entry (for paid sessions)
+    let booking = await Booking.create({
+        clientId: clientId,
+        sessionId: sessionId,
+        status: 'order_initiated',
+        paymentOrderId: orderId, // Store your unique system ID
+    });
+
+
+    // 3. Prepare data for Cashfree
+    const coachUser = session.CoachProfile.user;
+    const pgRequest = {
+        order_id: orderId,
+        order_amount: amount,
+        order_currency: "INR", 
+        customer_details: {
+            customer_id: clientId,
+            customer_email: req.user.email, // Use client email from req.user
+            customer_phone: req.user.phone || "9999999999" 
+        },
+        order_meta: {
+            // CRITICAL: Cashfree replaces {order_id} placeholder with the actual PG order ID
+            return_url: `${returnUrl}?order_id={order_id}` 
+        },
+        order_note: `Session: ${session.title} with Coach ${coachUser.firstName}`
+    };
+
+
+    // 4. Call Cashfree PGCreateOrder
+    const pgResponse = await PGCreateOrder(pgRequest);
+
+    if (!pgResponse.success) {
+        // Update booking status to reflect order creation failure
+        await booking.update({ status: 'order_creation_failed' });
+        // The frontend expects this specific message on failure
+        return res.status(500).json({ 
+            message: 'Server failed to initiate payment session.', 
+            error: pgResponse.error 
+        });
+    }
+
+    // 5. Update Booking with Cashfree Session ID and Status
+    await booking.update({
+        status: 'order_created',
+        paymentSessionId: pgResponse.paymentSessionId // Store the session ID
+    });
+
+    // 6. Return the paymentSessionId to the frontend
+    return res.status(200).json({
+        message: 'Payment session initiated.',
+        payment_session_id: pgResponse.paymentSessionId,
+        order_id: orderId
+    });
+});
 
 
 // ==========================================

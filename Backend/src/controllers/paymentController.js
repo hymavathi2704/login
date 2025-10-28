@@ -1,8 +1,7 @@
 // Backend/src/controllers/paymentController.js
-const models = require('../models'); 
+const { Booking } = require('../../models');
 const { PGFetchOrder } = require('../utils/cashfree');
 
-const Booking = models.Booking;
 
 exports.verifyPayment = async (req, res) => {
   const { orderId } = req.params;

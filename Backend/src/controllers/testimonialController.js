@@ -1,16 +1,19 @@
 // Backend/src/controllers/testimonialController.js
 const { Op } = require('sequelize');
-const asyncHandler = require('express-async-handler'); // Make sure this is imported
+const asyncHandler = require('express-async-handler');
 
-// Import all necessary models from the central index file
 const { User, Testimonial, Session, Booking, CoachProfile } = require('../../models');
 
 // ==============================
-// Check Review Eligibility (MODIFIED FOR EDITING)
+// Check Review Eligibility (mapped to checkBookingReviewEligibility)
 // ==============================
 const checkReviewEligibility = asyncHandler(async (req, res) => {
     const { bookingId } = req.params;
     const userId = req.user.userId;
+
+    if (!bookingId) {
+        return res.status(400).json({ error: 'Booking ID is missing.' });
+    }
 
     const booking = await Booking.findOne({
         where: { id: bookingId, clientId: userId }
@@ -48,9 +51,9 @@ const addTestimonial = asyncHandler(async (req, res) => {
     const { rating, content, clientTitle, sessionId } = req.body;
     const clientId = req.user.userId; 
 
-    if (!rating || !content || !sessionId) {
+    if (!coachId || !rating || !content || !sessionId) { // 🛑 GUARD: Check coachId
         res.status(400); 
-        throw new Error('Missing required fields: rating, content, sessionId (bookingId).');
+        throw new Error('Missing required fields (coachId, rating, content, bookingId).');
     }
 
     const coachProfile = await CoachProfile.findOne({
@@ -64,6 +67,7 @@ const addTestimonial = asyncHandler(async (req, res) => {
     }
     const coachProfileId = coachProfile.id; 
 
+    // 2. Verify the booking exists, belongs to the client, is completed, and matches the coach profile
     const booking = await Booking.findOne({
         where: {
             id: sessionId, 
@@ -120,20 +124,19 @@ const addTestimonial = asyncHandler(async (req, res) => {
 
 
 // ===================================
-// Get Client's Review Eligibility for ALL sessions with a Coach
+// Get Client's Review Eligibility for ALL sessions with a Coach (CRASHING FUNCTION)
 // ===================================
 const getClientReviewEligibility = asyncHandler(async (req, res) => {
     const clientId = req.user.userId;
     const { coachId } = req.params; // Coach's USER ID
 
-    // 🛑 CRITICAL FIX: Add a guard clause to prevent the Sequelize crash
+    // 🛑 CRITICAL FIX: Add a guard clause here to prevent the Sequelize crash
     if (!coachId) {
         console.error("getClientReviewEligibility called with missing Coach ID.");
         // Return a 400 status with an empty eligibility list instead of crashing
         return res.status(400).json({ eligibleSessions: [], error: 'Coach ID is missing from the request parameters.' });
     }
     // ----------------------------------------------------------------------
-
 
     const coachProfile = await CoachProfile.findOne({ where: { userId: coachId } });
     if (!coachProfile) {
@@ -175,7 +178,7 @@ const getClientReviewEligibility = asyncHandler(async (req, res) => {
 const getCoachTestimonials = asyncHandler(async (req, res) => {
     const { coachId } = req.params; // Coach's USER ID
 
-    // 🛑 Add guard here as well for consistency
+    // 🛑 GUARD: Check coachId
     if (!coachId) {
         return res.status(400).json({ error: 'Coach ID is missing.' });
     }
@@ -208,6 +211,10 @@ const deleteTestimonial = asyncHandler(async (req, res) => {
     const { testimonialId } = req.params;
     const clientId = req.user.userId;
 
+    if (!testimonialId) {
+        return res.status(400).json({ error: 'Testimonial ID is missing.' });
+    }
+
     const testimonial = await Testimonial.findByPk(testimonialId);
 
     if (!testimonial) {
@@ -238,6 +245,10 @@ const updateTestimonial = asyncHandler(async (req, res) => {
     const { testimonialId } = req.params;
     const { rating, content, clientTitle } = req.body;
     const clientId = req.user.userId;
+
+    if (!testimonialId) {
+        return res.status(400).json({ error: 'Testimonial ID is missing.' });
+    }
 
     const testimonial = await Testimonial.findByPk(testimonialId);
 
