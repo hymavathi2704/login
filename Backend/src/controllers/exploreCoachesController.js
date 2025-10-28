@@ -37,7 +37,7 @@ const getPublicCoachProfile = async (req, res) => {
                     attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
                     include: [{ 
                         model: User,
-                        as: 'client', // ✅ FIX 1: Corrected alias to 'client' (matches Testimonial model)
+                        as: 'client', // ✅ CRITICAL FIX: Alias changed to 'client' to match Testimonial.js
                         attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
                     }]
                 },
@@ -91,8 +91,7 @@ const getPublicCoachProfile = async (req, res) => {
         const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
             id: t.id,
             clientId: t.clientId,
-            // ✅ FIX 2: Updated property access from 't.clientUser' to 't.client'
-            clientName: t.client ? `${t.client.firstName} ${t.client.lastName}` : 'Anonymous Client',
+            clientName: t.client ? `${t.client.firstName} ${t.client.lastName}` : 'Anonymous Client', // Use t.client
             clientAvatar: t.client?.profilePicture || '/default-avatar.png', 
             clientTitle: t.clientTitle,
             rating: t.rating,
@@ -144,16 +143,10 @@ const getPublicCoachProfile = async (req, res) => {
     }
 };
 
-// ==============================
-// GET All Coach Profiles (for client discovery)
-// (omitted for brevity, assume contents from previous response)
-// ==============================
-
 const getAllCoachProfiles = async (req, res) => {
     try {
         const { search, audience } = req.query;
 
-        // --- Setup ---
         const searchLower = search ? search.toLowerCase() : null;
         const audienceLower = audience ? audience.toLowerCase() : null;
 
@@ -627,7 +620,7 @@ const checkReviewEligibility = async (req, res) => {
                 model: Session,
                 as: 'Session', 
                 required: true,
-                attributes: ['id', 'title', 'type', 'defaultDate', 'defaultTime'],
+                attributes: ['id', 'title', 'type', 'defaultDate', 'defaultTime'], 
                 where: { coachProfileId: coachProfileId }
             }]
         });
@@ -649,7 +642,6 @@ const checkReviewEligibility = async (req, res) => {
         return res.status(500).json({ error: 'Server error checking eligibility.' });
     }
 };
-
 
 module.exports = {
     getPublicCoachProfile,
