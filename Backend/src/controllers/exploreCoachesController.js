@@ -34,7 +34,7 @@ const getPublicCoachProfile = async (req, res) => {
                     as: 'testimonials',
                     required: false,
                     foreignKey: 'coachProfileId',
-                    attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
+                    attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date'], 
                     include: [{ 
                         model: User,
                         as: 'client', // ✅ CRITICAL FIX: Alias changed to 'client' to match Testimonial.js

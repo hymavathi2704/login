@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'clientId',
         as: 'client'
       });
-      // Association with Booking <-- ADDED
+      // Association with Booking
       Testimonial.belongsTo(models.Booking, {
         foreignKey: 'bookingId',
         as: 'booking'
@@ -23,12 +23,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Testimonial.init({
-    // Keep existing ID if needed, or remove if you want Sequelize default
-    // id: {
-    //   type: DataTypes.STRING, // Or INTEGER if you changed Booking ID type
-    //   primaryKey: true,
-    //   allowNull: false,
-    // },
+    id: {
+      type: DataTypes.INTEGER, // Using INTEGER for primary key if auto-incremented
+      primaryKey: true,
+      autoIncrement: true, // Assuming you want auto-incrementing ID
+      allowNull: false,
+    },
     coachProfileId: {
       type: DataTypes.CHAR(36), // Assuming CoachProfile ID is UUID
       allowNull: false,
@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       onDelete: 'CASCADE',
     },
-    // bookingId field <-- ADDED
+    // bookingId field
     bookingId: {
         type: DataTypes.INTEGER, // Match the Booking model's ID type
         allowNull: false,
@@ -56,22 +56,20 @@ module.exports = (sequelize, DataTypes) => {
             key: 'id',
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE', // Or 'SET NULL' if testimonials should remain
+        onDelete: 'CASCADE', 
         unique: true // Ensure only one testimonial per booking
     },
-    clientName: { // Added clientName field
+    clientName: { 
         type: DataTypes.STRING,
-        allowNull: true, // Or false if you always want a name
+        allowNull: true, 
     },
     clientTitle: DataTypes.STRING,
     rating: DataTypes.INTEGER,
     content: DataTypes.TEXT,
-    date: DataTypes.DATEONLY, // Consider DATE if you need time too
-    // sessionType might be redundant if linked to Booking -> Session
-    // sessionType: DataTypes.STRING,
-    isApproved: { // Added approval flag
+    date: DataTypes.DATEONLY, 
+    isApproved: { // Approval flag
         type: DataTypes.BOOLEAN,
-        defaultValue: false, // Default to not approved? Or true?
+        defaultValue: false, 
         allowNull: false,
     },
   }, {
@@ -79,7 +77,6 @@ module.exports = (sequelize, DataTypes) => {
     modelName: 'Testimonial',
     tableName: 'coach_testimonials', // Ensure this table name is correct
     timestamps: true, // Adds createdAt and updatedAt automatically
-    // paranoid: true, // Uncomment if you want soft deletes (adds deletedAt)
   });
   return Testimonial;
 };

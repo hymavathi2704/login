@@ -178,8 +178,8 @@ const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
         console.log('✅ Database connected');
 
         // Use the connection from the db object
-        await db.sequelize.sync({ alter: true }); 
-        console.log('✅ Database synchronized (alter: true)');
+        await db.sequelize.sync(); 
+        console.log('✅ Database synchronized ');
 
         app.listen(PORT, "0.0.0.0", () => console.log(`🚀 Server running at ${APP_URL}`));
 
