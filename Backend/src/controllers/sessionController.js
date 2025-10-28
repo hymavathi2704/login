@@ -1,7 +1,21 @@
-// Backend/src/controllers/sessionController.js
-const asyncHandler = require('express-async-handler');
-const { Op } = require('sequelize');
-const { Session, CoachProfile, Booking, User } = require('../../models');
+
+// 🛑 Ensure all these required dependencies are imported
+const asyncHandler = require('express-async-handler'); 
+const { Op } = require('sequelize'); // Import Op from Sequelize
+const { v4: uuidv4 } = require('uuid'); // If you use uuid for other IDs
+const { PGCreateOrder } = require('../utils/cashfree'); // Your payment utility
+const { Booking, Session, User, CoachProfile } = require('../../models'); // Corrected model path
+
+// 🛑 CRITICAL FIX: The missing helper function
+const generateUniqueOrderId = (userId) => {
+    // Format: cf_{random_number}_{customer_id}_{currentTimestamp}
+    const randomPart = Math.floor(Math.random() * 900) + 100;
+    const userPart = userId.slice(0, 4); // Use slice for a compact ID
+    return `cf_${randomPart}_${userPart}_${Date.now()}`;
+};
+// -------------------------------------------------------------------
+
+
 // ==============================
 // Helper: Sanitize & Map Data (UPDATED)
 // ==============================
@@ -140,16 +154,21 @@ const deleteSession = async (req, res) => {
 };
 
 
+
 // ==========================================
 // 4. BOOK SESSION (Payment Initiation Logic)
 // ==========================================
-const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asyncHandler
+const bookSession = asyncHandler(async (req, res) => {
     const clientId = req.user.userId;
     const { sessionId } = req.params;
 
+    // 1. Fetch Session and Coach Details
     const session = await Session.findByPk(sessionId, {
-        // Include coach details to get name/email for payment gateway metadata
-        include: [{ model: CoachProfile, as: 'CoachProfile', include: [{ model: User, as: 'user' }] }] 
+        include: [{ 
+            model: CoachProfile, 
+            as: 'coachProfile', 
+            include: [{ model: User, as: 'user' }] 
+        }] 
     });
 
     if (!session) {
@@ -158,23 +177,21 @@ const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asy
 
     const amount = parseFloat(session.price);
     
-    // --- Anti-Duplication Check (Updated to include payment statuses) ---
+    // --- Anti-Duplication Check ---
     const existingBooking = await Booking.findOne({ 
         where: { 
             clientId, 
             sessionId, 
-            // Do not re-book if confirmed, paid, or order is already created
             status: { [Op.in]: ['confirmed', 'payment_success', 'order_created'] } 
         } 
     });
 
     if (existingBooking) {
-        // If an order exists but is awaiting payment, send back the existing session ID
         if (existingBooking.status === 'order_created' && existingBooking.paymentSessionId) {
              return res.status(200).json({ 
                 message: 'Existing payment order found. Resuming checkout.',
                 payment_session_id: existingBooking.paymentSessionId,
-                order_id: existingBooking.paymentOrderId // Return your system's ID
+                order_id: existingBooking.paymentOrderId
             });
         }
         return res.status(400).json({ 
@@ -185,10 +202,17 @@ const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asy
     // --- Payment Initiation Flow ---
 
     const orderId = generateUniqueOrderId(clientId);
-    // Use FRONTEND_URL from your .env file
     const frontendBaseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     const confirmationPath = "/booking-confirmed";
     const returnUrl = `${frontendBaseUrl}${confirmationPath}`;
+
+
+    // 🛑 CRITICAL FIX: Safely access coachUser using optional chaining
+    // This resolves the "Cannot read properties of undefined (reading 'user')" error
+    const coachUser = session.coachProfile?.user;
+    
+    // Default values if coach profile data is inconsistent
+    const coachFirstName = coachUser?.firstName || 'Unknown Coach';
 
 
     // 1. Handle Free Sessions
@@ -202,26 +226,25 @@ const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asy
         clientId: clientId,
         sessionId: sessionId,
         status: 'order_initiated',
-        paymentOrderId: orderId, // Store your unique system ID
+        paymentOrderId: orderId,
     });
 
 
     // 3. Prepare data for Cashfree
-    const coachUser = session.CoachProfile.user;
     const pgRequest = {
         order_id: orderId,
         order_amount: amount,
         order_currency: "INR", 
         customer_details: {
             customer_id: clientId,
-            customer_email: req.user.email, // Use client email from req.user
+            customer_email: req.user.email,
             customer_phone: req.user.phone || "9999999999" 
         },
         order_meta: {
-            // CRITICAL: Cashfree replaces {order_id} placeholder with the actual PG order ID
             return_url: `${returnUrl}?order_id={order_id}` 
         },
-        order_note: `Session: ${session.title} with Coach ${coachUser.firstName}`
+        // Safely use the retrieved or default name
+        order_note: `Session: ${session.title} with Coach ${coachFirstName}`
     };
 
 
@@ -229,9 +252,7 @@ const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asy
     const pgResponse = await PGCreateOrder(pgRequest);
 
     if (!pgResponse.success) {
-        // Update booking status to reflect order creation failure
         await booking.update({ status: 'order_creation_failed' });
-        // The frontend expects this specific message on failure
         return res.status(500).json({ 
             message: 'Server failed to initiate payment session.', 
             error: pgResponse.error 
@@ -241,7 +262,7 @@ const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asy
     // 5. Update Booking with Cashfree Session ID and Status
     await booking.update({
         status: 'order_created',
-        paymentSessionId: pgResponse.paymentSessionId // Store the session ID
+        paymentSessionId: pgResponse.paymentSessionId
     });
 
     // 6. Return the paymentSessionId to the frontend
@@ -251,7 +272,7 @@ const bookSession = asyncHandler(async (req, res) => { // Must be wrapped in asy
         order_id: orderId
     });
 });
-
+// ... (rest of the file remains the same) ...
 
 // ==========================================
 // 5. GET COACH SESSION BOOKINGS (FIXED)
