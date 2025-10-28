@@ -1,13 +1,10 @@
 // Backend/src/controllers/exploreCoachesController.js
 
-// FIX: Changed 'import' to 'require'
 const { Op, Sequelize } = require('sequelize');
 const db = require('../../models/index.js');
 
-// Then destructure the models you need from 'db'
 const { User, CoachProfile, Testimonial, Session, Follow, Booking, ClientProfile } = db;
 
-// === Helper: Safe JSON parse (required for database fields) ===
 const safeParse = (value) => {
   if (typeof value === 'string') {
     try { return JSON.parse(value); } catch { return value; }
@@ -40,7 +37,7 @@ const getPublicCoachProfile = async (req, res) => {
                     attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
                     include: [{ 
                         model: User,
-                        as: 'clientUser', 
+                        as: 'client', // ✅ FIX 1: Corrected alias to 'client' (matches Testimonial model)
                         attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
                     }]
                 },
@@ -94,8 +91,9 @@ const getPublicCoachProfile = async (req, res) => {
         const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
             id: t.id,
             clientId: t.clientId,
-            clientName: t.clientUser ? `${t.clientUser.firstName} ${t.clientUser.lastName}` : 'Anonymous Client',
-            clientAvatar: t.clientUser?.profilePicture || '/default-avatar.png', 
+            // ✅ FIX 2: Updated property access from 't.clientUser' to 't.client'
+            clientName: t.client ? `${t.client.firstName} ${t.client.lastName}` : 'Anonymous Client',
+            clientAvatar: t.client?.profilePicture || '/default-avatar.png', 
             clientTitle: t.clientTitle,
             rating: t.rating,
             content: t.content,
@@ -146,12 +144,12 @@ const getPublicCoachProfile = async (req, res) => {
     }
 };
 
-// ... (Rest of the functions rewritten to use 'const functionName = async (req, res) => { ... }' and 'require')
+// ==============================
+// GET All Coach Profiles (for client discovery)
+// (omitted for brevity, assume contents from previous response)
+// ==============================
+
 const getAllCoachProfiles = async (req, res) => {
-    // ... (rest of the code using require, omitted for brevity)
-    // The previous implementation using require in my last response was correct.
-    // For a complete file, please use the full contents from my last response for this file.
-    // ...
     try {
         const { search, audience } = req.query;
 
@@ -164,19 +162,13 @@ const getAllCoachProfiles = async (req, res) => {
         let nameMatchUserIds = [];
         const isSearchOrFilterActive = search || audience;
 
-        // ----------------------------------------------------
-        // Step 1: Find CoachProfile IDs matching the Profile/Specialty Filter and Search
-        // ----------------------------------------------------
-
         let profileWhere = {};
         let profileSearchOrs = [];
 
         if (search) {
-            // Build Profile search conditions (Title, Bio, Specialty)
             profileSearchOrs.push(
                 { professionalTitle: { [Op.like]: `%${searchLower}%` } },
                 { bio: { [Op.like]: `%${searchLower}%` } },
-                //
                 Sequelize.where(
                     Sequelize.fn('LOWER', Sequelize.col('specialties')),
                     { [Op.like]: `%${searchLower}%` }
@@ -195,20 +187,16 @@ const getAllCoachProfiles = async (req, res) => {
             const searchCondition = { [Op.or]: profileSearchOrs };
 
             if (audience) {
-                // If we have both search and audience, combine them with AND
                 profileWhere = {
                     [Op.and]: [
                         searchCondition,
-                        profileWhere.specialties // Add the specialty filter
+                        profileWhere.specialties
                     ]
                 };
             } else {
-                // If we only have search, use the OR block
                 profileWhere = searchCondition;
             }
         }
-        //
-        // ----------------------------------------------------
 
         if (Object.keys(profileWhere).length > 0) {
              const profileMatches = await CoachProfile.findAll({
@@ -220,10 +208,6 @@ const getAllCoachProfiles = async (req, res) => {
              combinedIds.push(...profileMatchUserIds);
         }
 
-        // ----------------------------------------------------
-        // Step 2: Find User IDs matching the Name Search (Name only)
-        // ----------------------------------------------------
-
         if (search) {
             const userNameOrs = [
                 { firstName: { [Op.like]: `%${searchLower}%` } },
@@ -233,7 +217,7 @@ const getAllCoachProfiles = async (req, res) => {
             const nameMatchUsers = await User.findAll({
                 attributes: ['id'],
                 where: {
-                    roles: { [Op.like]: '%coach%' }, //
+                    roles: { [Op.like]: '%coach%' },
                     [Op.or]: userNameOrs
                 },
                 raw: true,
@@ -242,22 +226,17 @@ const getAllCoachProfiles = async (req, res) => {
             combinedIds.push(...nameMatchUserIds);
         }
 
-        // ----------------------------------------------------
-        // Step 3: Consolidate IDs and Perform Final Fetch
-        // ----------------------------------------------------
         const uniqueCombinedIds = [...new Set(combinedIds)].filter(id => id !== null);
 
 
         if (uniqueCombinedIds.length === 0 && !isSearchOrFilterActive) {
-            // If nothing was searched/filtered, fetch ALL coaches
              const allCoachUsers = await User.findAll({
                  attributes: ['id'],
-                 where: { roles: { [Op.like]: '%coach%' } }, //
+                 where: { roles: { [Op.like]: '%coach%' } },
                  raw: true,
              });
              uniqueCombinedIds.push(...allCoachUsers.map(u => u.id));
         } else if (uniqueCombinedIds.length === 0 && isSearchOrFilterActive) {
-            // Search/filter was active but yielded no results
             return res.status(200).json({ coaches: [] });
         }
 
@@ -274,24 +253,20 @@ const getAllCoachProfiles = async (req, res) => {
                     model: CoachProfile,
                     as: 'CoachProfile',
                     required: true,
-                    // Explicitly list attributes to prevent deep cloning issues
                     attributes: ['id', 'professionalTitle', 'bio', 'specialties', 'yearsOfExperience'],
                 },
             ],
         });
 
 
-        // STEP 4: Process coaches and fetch aggregated data separately (Remaining logic)
         const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
             const plainCoach = coach.get({ plain: true });
             const profile = plainCoach.CoachProfile;
 
             if (!profile) return null;
 
-            // Parse JSON fields
             profile.specialties = safeParse(profile.specialties);
 
-            // Fetch Testimonials for aggregation
             const testimonials = await Testimonial.findAll({
                 where: { coachProfileId: profile.id },
                 attributes: ['rating'],
@@ -299,7 +274,6 @@ const getAllCoachProfiles = async (req, res) => {
             });
             const ratings = testimonials.map(t => t.rating) || [];
 
-            // Fetch Sessions for pricing calculation
             const sessions = await Session.findAll({
                 where: { coachProfileId: profile.id },
                 attributes: ['price'],
@@ -426,7 +400,6 @@ const getFollowedCoaches = async (req, res) => {
     try {
         const followerId = req.user.userId; 
 
-        // === STEP 1: Get the base list of coaches the user follows ===
         const followedRecords = await Follow.findAll({
             where: { followerId: followerId },
             attributes: ['followingId'] 
@@ -438,7 +411,6 @@ const getFollowedCoaches = async (req, res) => {
             return res.status(200).json({ coaches: [] });
         }
 
-        // === STEP 2: Get and apply search/audience filters (copied from getAllCoachProfiles) ===
         const { search, audience } = req.query;
         const searchLower = search ? search.toLowerCase() : null;
         const audienceLower = audience ? audience.toLowerCase() : null;
@@ -512,28 +484,22 @@ const getFollowedCoaches = async (req, res) => {
         
         const searchAndFilterMatchIds = [...new Set(combinedIds)].filter(id => id !== null);
 
-        // === STEP 3: Find the INTERSECTION of the two lists ===
-        
         let finalIds = [];
-        const followedSet = new Set(followedCoachIds); // Use a Set for efficient lookup
+        const followedSet = new Set(followedCoachIds);
 
         if (isSearchOrFilterActive) {
-            // If filters are active, only include coaches that are BOTH followed AND match the filter
             finalIds = searchAndFilterMatchIds.filter(id => followedSet.has(id));
         } else {
-            // If no filters, just return all followed coaches
             finalIds = followedCoachIds;
         }
 
         if (finalIds.length === 0) {
-            // This means either no followed coaches, or none matched the filter
             return res.status(200).json({ coaches: [] });
         }
 
-        // === STEP 4: Fetch and process the final list of coaches ===
         const coachesWithProfiles = await User.findAll({
             where: { 
-                id: { [Op.in]: finalIds }, // Use the final intersected/filtered list
+                id: { [Op.in]: finalIds },
             },
             attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture'],
             include: [
@@ -545,7 +511,6 @@ const getFollowedCoaches = async (req, res) => {
             ],
         });
 
-        // (The rest of the function: Promise.all, processing, etc. remains the same)
         const allResults = await Promise.all(coachesWithProfiles.map(async (coach) => {
             const plainCoach = coach.get({ plain: true });
             const profile = plainCoach.CoachProfile;
@@ -604,7 +569,6 @@ const getClientsWhoFollow = async (req, res) => {
     try {
         const coachId = req.user.userId; 
 
-        // 1. Find all Follow records where the current coach is the 'followingId'
         const followerRecords = await Follow.findAll({
             where: { followingId: coachId },
             attributes: ['followerId'] 
@@ -616,11 +580,9 @@ const getClientsWhoFollow = async (req, res) => {
             return res.status(200).json({ clients: [] });
         }
         
-        // 2. Fetch the full User data for all followers, ensuring they are clients
         const clients = await User.findAll({
             where: { 
                 id: { [Op.in]: followerIds },
-                // Optional: Filter for only 'client' roles
                 roles: { [Op.like]: '%client%' } 
             },
             attributes: ['id', 'firstName', 'lastName', 'email', 'profilePicture', 'roles'],
@@ -655,37 +617,31 @@ const checkReviewEligibility = async (req, res) => {
         }
         const coachProfileId = coachProfile.id;
 
-        // 🚨 CRITICAL FIX: Find all 'completed' bookings that have NOT been reviewed.
         const eligibleBookings = await Booking.findAll({
             where: { 
                 clientId: clientId,
-                // Assuming you have a 'status: completed' or equivalent in your Booking model
                 status: 'completed', 
-                // 🔑 CRITICAL: Assuming a boolean field 'isReviewed' exists in the Booking model
                 isReviewed: { [Op.not]: true } 
             },
             include: [{
                 model: Session,
                 as: 'Session', 
                 required: true,
-                attributes: ['id', 'title', 'type', 'defaultDate', 'defaultTime'], // Fetch session details
+                attributes: ['id', 'title', 'type', 'defaultDate', 'defaultTime'],
                 where: { coachProfileId: coachProfileId }
             }]
         });
 
-        // Map the bookings to a list of eligible sessions for the frontend
         const eligibleSessions = eligibleBookings
             .map(booking => {
                 const session = booking.Session;
-                // We return the Booking ID (booking.id) but label it as a "session" on the frontend for context
                 return {
-                    id: booking.id, // 🔑 IMPORTANT: This is the Booking ID to be used in the testimonial POST
+                    id: booking.id, 
                     title: `${session.title} (on ${new Date(session.defaultDate).toLocaleDateString('en-US')})`,
                     type: session.type
                 };
             });
         
-        // This is the correct response payload for the frontend
         return res.json({ eligibleSessions });
 
     } catch (error) {
