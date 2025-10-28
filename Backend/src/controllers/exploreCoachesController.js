@@ -1,14 +1,12 @@
 // Backend/src/controllers/exploreCoachesController.js
 
-import { Op, Sequelize } from 'sequelize';
-// --- Model Imports ---
-// Add this at the top
-import db from '../../models/index.js';
+// FIX: Changed 'import' to 'require'
+const { Op, Sequelize } = require('sequelize');
+const db = require('../../models/index.js');
 
 // Then destructure the models you need from 'db'
 const { User, CoachProfile, Testimonial, Session, Follow, Booking, ClientProfile } = db;
 
-// Make sure to remove any old, separate import lines for these models
 // === Helper: Safe JSON parse (required for database fields) ===
 const safeParse = (value) => {
   if (typeof value === 'string') {
@@ -20,15 +18,14 @@ const safeParse = (value) => {
 // ==============================
 // GET Public Coach Profile (by ID) 
 // ==============================
-export const getPublicCoachProfile = async (req, res) => {
+const getPublicCoachProfile = async (req, res) => {
     try {
         const coachId = req.params.id;
-        // 🚨 NEW: Get viewer ID from authentication middleware if available
         const viewerId = req.user?.userId || null; 
 
         // Step 1: Find the coach profile
         const coachProfile = await CoachProfile.findOne({
-            where: { userId: coachId }, // coachId = User ID
+            where: { userId: coachId },
             include: [
                 {
                     model: User,
@@ -39,7 +36,7 @@ export const getPublicCoachProfile = async (req, res) => {
                     model: Testimonial,
                     as: 'testimonials',
                     required: false,
-                    foreignKey: 'coachProfileId', // Explicitly set foreign key
+                    foreignKey: 'coachProfileId',
                     attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'sessionType'], 
                     include: [{ 
                         model: User,
@@ -51,7 +48,7 @@ export const getPublicCoachProfile = async (req, res) => {
                     model: Session,
                     as: 'sessions', 
                     required: false,
-                    foreignKey: 'coachProfileId', // Explicitly set foreign key
+                    foreignKey: 'coachProfileId',
                 }
             ],
         });
@@ -60,27 +57,22 @@ export const getPublicCoachProfile = async (req, res) => {
             return res.status(404).json({ error: 'Coach profile not found' });
         }
 
-        // CRITICAL: Parse JSON strings before sending to the frontend
         let plainCoachProfile = coachProfile.get({ plain: true });
         
         if (plainCoachProfile.specialties) plainCoachProfile.specialties = safeParse(plainCoachProfile.specialties);
         if (plainCoachProfile.education) plainCoachProfile.education = safeParse(plainCoachProfile.education);
         if (plainCoachProfile.certifications) plainCoachProfile.certifications = safeParse(plainCoachProfile.certifications);
-        // Removed parsing for plainCoachProfile.pricing and plainCoachProfile.availability (as per model changes)
         
-
         const user = plainCoachProfile.user;
 
-        // 🚨 NEW LOGIC: Post-process sessions to check for existing bookings
+        // Post-process sessions to check for existing bookings
         let availableSessions = plainCoachProfile.sessions || [];
 
         if (viewerId && availableSessions.length > 0) {
-            // Find active bookings for this client for any of these sessions
             const clientBookings = await Booking.findAll({
                 where: { 
                     clientId: viewerId,
                     sessionId: { [Op.in]: availableSessions.map(s => s.id) },
-                    // Check for any active status (confirmed, pending, etc.) excluding 'cancelled'
                     status: { [Op.ne]: 'cancelled' } 
                 },
                 attributes: ['sessionId', 'status'],
@@ -93,13 +85,12 @@ export const getPublicCoachProfile = async (req, res) => {
             
             availableSessions = availableSessions.map(session => ({
                 ...session,
-                isBooked: bookedMap.has(session.id), // <-- NEW FLAG: true if an active booking exists
-                bookingStatus: bookedMap.get(session.id) || null // <-- NEW STATUS
+                isBooked: bookedMap.has(session.id),
+                bookingStatus: bookedMap.get(session.id) || null
             }));
         }
-        // 🚨 END NEW LOGIC
-
-        // Format testimonials to include the client's name/avatar from the User model
+        
+        // Format testimonials
         const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
             id: t.id,
             clientId: t.clientId,
@@ -112,12 +103,10 @@ export const getPublicCoachProfile = async (req, res) => {
             sessionType: t.sessionType,
         }));
 
-        // Calculate starting price based on available sessions only
         const sessionPrices = availableSessions.length > 0 ? availableSessions.map(s => s.price) : [0];
         const calculatedStartingPrice = Math.min(...sessionPrices);
 
-
-        // Step 2: Construct final object
+        // Construct final object
         const profile = {
             id: user.id,
             name: `${user.firstName} ${user.lastName}`,
@@ -125,10 +114,10 @@ export const getPublicCoachProfile = async (req, res) => {
             phone: user.phone,
             profileImage: plainCoachProfile.profilePicture || user.profilePicture, 
             testimonials: formattedTestimonials,
-            availableSessions: availableSessions, // <-- Use the processed array
+            availableSessions: availableSessions,
             title: plainCoachProfile.professionalTitle,
-            rating: 4.9, // This is a hardcoded value, consider calculating or removing if unused
-            totalReviews: formattedTestimonials.length, // This is calculated dynamically from testimonials
+            rating: 4.9,
+            totalReviews: formattedTestimonials.length,
             totalClients: 0,
             yearsExperience: plainCoachProfile.yearsOfExperience || 0,
             shortBio: plainCoachProfile.bio ? plainCoachProfile.bio.substring(0, 150) + '...' : '',
@@ -157,12 +146,13 @@ export const getPublicCoachProfile = async (req, res) => {
     }
 };
 
-// ==============================
-// GET All Coach Profiles (for client discovery)
-// ===================================
-export const getAllCoachProfiles = async (req, res) => {
+// ... (Rest of the functions rewritten to use 'const functionName = async (req, res) => { ... }' and 'require')
+const getAllCoachProfiles = async (req, res) => {
+    // ... (rest of the code using require, omitted for brevity)
+    // The previous implementation using require in my last response was correct.
+    // For a complete file, please use the full contents from my last response for this file.
+    // ...
     try {
-        // 'search' is the search term, 'audience' is the selected specialty filter
         const { search, audience } = req.query;
 
         // --- Setup ---
@@ -195,9 +185,6 @@ export const getAllCoachProfiles = async (req, res) => {
         }
 
         if (audience) {
-            //
-            // This forces a case-insensitive 'LIKE' by applying LOWER() to the database column
-            // This is the main fix for the JSON LIKE issue
             profileWhere.specialties = Sequelize.where(
                 Sequelize.fn('LOWER', Sequelize.col('specialties')),
                 { [Op.like]: `%${audienceLower}%` }
@@ -246,7 +233,6 @@ export const getAllCoachProfiles = async (req, res) => {
             const nameMatchUsers = await User.findAll({
                 attributes: ['id'],
                 where: {
-                    //
                     roles: { [Op.like]: '%coach%' }, //
                     [Op.or]: userNameOrs
                 },
@@ -266,7 +252,6 @@ export const getAllCoachProfiles = async (req, res) => {
             // If nothing was searched/filtered, fetch ALL coaches
              const allCoachUsers = await User.findAll({
                  attributes: ['id'],
-                 //
                  where: { roles: { [Op.like]: '%coach%' } }, //
                  raw: true,
              });
@@ -352,13 +337,8 @@ export const getAllCoachProfiles = async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch coach profiles' });
     }
 };
-// ==============================
-// GET Follow Status
-// ... (rest of the file remains unchanged)
-// ==============================
-// GET Follow Status
-// ==============================
-export const getFollowStatus = async (req, res) => { 
+
+const getFollowStatus = async (req, res) => { 
     try {
         const coachId = req.params.coachId; 
         const followerId = req.user.userId; 
@@ -382,10 +362,7 @@ export const getFollowStatus = async (req, res) => {
     }
 };
 
-// ==============================
-// POST Follow Coach
-// ==============================
-export const followCoach = async (req, res) => {
+const followCoach = async (req, res) => {
     try {
         const coachId = req.params.coachId;
         const followerId = req.user.userId;
@@ -417,10 +394,7 @@ export const followCoach = async (req, res) => {
     }
 };
 
-// ==============================
-// DELETE Unfollow Coach
-// ==============================
-export const unfollowCoach = async (req, res) => {
+const unfollowCoach = async (req, res) => {
     try {
         const coachId = req.params.coachId;
         const followerId = req.user.userId;
@@ -448,14 +422,7 @@ export const unfollowCoach = async (req, res) => {
     }
 };
 
-
-// ==============================
-// GET Followed Coaches (for client dashboard)
-// ==============================
-// ==============================
-// GET Followed Coaches (for client dashboard) - NOW WITH FILTERING
-// ==============================
-export const getFollowedCoaches = async (req, res) => {
+const getFollowedCoaches = async (req, res) => {
     try {
         const followerId = req.user.userId; 
 
@@ -633,10 +600,7 @@ export const getFollowedCoaches = async (req, res) => {
     }
 };
 
-// ==============================
-// GET Clients Who Follow This Coach
-// ==============================
-export const getClientsWhoFollow = async (req, res) => {
+const getClientsWhoFollow = async (req, res) => {
     try {
         const coachId = req.user.userId; 
 
@@ -675,10 +639,7 @@ export const getClientsWhoFollow = async (req, res) => {
     }
 };
 
-// ==============================
-// 🔑 UPDATED: Check Client Review Eligibility
-// ==============================
-export const checkReviewEligibility = async (req, res) => {
+const checkReviewEligibility = async (req, res) => {
     const { coachId } = req.params;
     const clientId = req.user?.userId;
 
@@ -731,4 +692,16 @@ export const checkReviewEligibility = async (req, res) => {
         console.error('Error checking review eligibility:', error);
         return res.status(500).json({ error: 'Server error checking eligibility.' });
     }
+};
+
+
+module.exports = {
+    getPublicCoachProfile,
+    getAllCoachProfiles,
+    getFollowStatus,
+    followCoach,
+    unfollowCoach,
+    getFollowedCoaches,
+    getClientsWhoFollow,
+    checkReviewEligibility
 };
