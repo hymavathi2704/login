@@ -2,19 +2,19 @@
 
 import axios from 'axios';
 
-// Define API_BASE_URL
+// Define API Base URL (using environment variable with fallback)
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4028";
 
-// Create an Axios instance for API requests
+// Create Axios instance for API requests
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Send cookies with requests
+  withCredentials: true, // Send cookies (important for session/refresh tokens if used)
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor to automatically attach the auth token from localStorage
+// Request interceptor: Attach Authorization token from localStorage if it exists
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem("accessToken");
   if (token) {
@@ -23,31 +23,26 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor for error handling, including 401 Unauthorized
+// Response interceptor: Basic error message extraction
 axiosInstance.interceptors.response.use(
-  (response) => response, // Directly return successful responses
+  (response) => response, // Pass through successful responses
   (error) => {
-    // Check if the error is due to a 401 Unauthorized response
+    // Note: The automatic token removal on 401 is currently commented out.
+    // AuthContext handles logout based on API call failures.
     if (error.response && error.response.status === 401) {
-      // 🛑 UNCOMMENTED: Immediately clear user/token data on 401 error
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("user");
-      // Optional: Redirect to login page or trigger a logout event
-      // This helps prevent further failed requests with the expired token.
-      // Example: window.location.href = '/login';
-      // Consider using a more robust method like a custom event or context update
-      // if directly manipulating window.location is too abrupt.
-      console.warn("Unauthorized (401) detected. Token cleared."); // Log for debugging
+       // console.warn("Unauthorized (401) detected by interceptor.");
+       // localStorage.removeItem("accessToken"); // Previously uncommented, now keeping commented as requested
+       // localStorage.removeItem("user");        // Previously uncommented, now keeping commented as requested
     }
 
-    // Extract a user-friendly error message
+    // Extract a user-friendly error message from the response or error object
     const message =
-      error?.response?.data?.error ||   // Backend's custom error message
-      error?.response?.data?.message || // Alternative backend message field
-      error?.message ||                 // Axios's generic error message
-      "Something went wrong!";          // Fallback message
+      error?.response?.data?.error ||   // Prefer backend's specific 'error' field
+      error?.response?.data?.message || // Or backend's 'message' field
+      error?.message ||                 // Or Axios's error message
+      "An unexpected error occurred.";  // Fallback
 
-    // Reject the promise with the error object enhanced with the message
+    // Reject with an enhanced error object containing the message
     return Promise.reject({ ...error, message });
   }
 );
@@ -62,10 +57,12 @@ export const loginUser = (credentials) => {
   return axiosInstance.post("/api/auth/login", credentials);
 };
 
+// Fetches the logged-in user's details
 export const getMe = () => {
   return axiosInstance.get("/api/auth/me");
 };
 
+// Creates a secondary profile (e.g., coach profile after being a client)
 export const createProfile = (profileData) => {
   return axiosInstance.post('/api/auth/create-profile', profileData);
 };
@@ -86,209 +83,195 @@ export const resetPassword = (data) => {
   return axiosInstance.post('/api/auth/reset-password', data);
 };
 
-// Function for uploading profile pictures (uses a separate Axios instance for FormData)
+// Uploads coach profile picture (uses separate instance for FormData)
 export const uploadProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file);
-  const token = localStorage.getItem("accessToken"); // Get token manually
+  const token = localStorage.getItem("accessToken");
 
-  // Create a temporary Axios instance configured for multipart/form-data
-  return axios.create({
+  return axios.create({ // Use plain axios instance for FormData
     baseURL: API_BASE_URL,
     withCredentials: true,
     headers: {
-      'Content-Type': 'multipart/form-data', // Important for file uploads
-      'Authorization': token ? `Bearer ${token}` : undefined, // Attach token
+      'Content-Type': 'multipart/form-data', // Crucial for file uploads
+      'Authorization': token ? `Bearer ${token}` : undefined,
     },
-  }).post('/api/coach-profile/upload-picture', formData); // Ensure endpoint matches backend route
+    // Ensure POST method is used
+  }).post('/api/coach-profile/profile/upload-picture', formData); // Corrected Path
 };
 
-// Function to handle user logout (clears localStorage)
+
+// Handles client-side logout (clears local storage)
 export const logoutUser = () => {
   localStorage.removeItem("accessToken");
   localStorage.removeItem("user");
-  localStorage.removeItem("rememberMe"); // Clear rememberMe flag if used
-  // Optionally: redirect or update app state after logout
+  localStorage.removeItem("rememberMe"); // If you use this flag
+  // Consider redirecting or updating global state here as well
 };
 
-// Fetch client's booked sessions
+
+// --- BOOKINGS & SESSIONS API (Client Perspective) ---
+// Fetches sessions the client has booked
 export const getMyClientSessions = () => {
   return axiosInstance.get("/api/bookings/client-sessions");
 };
 
-// Fetch coach's bookings (clients who booked them)
-export const getMyCoachBookings = () => {
-  return axiosInstance.get("/api/coach-profile/my-bookings");
+// Client books a specific session (by Session ID)
+export const bookSession = async (sessionId) => {
+  // Use the dedicated booking route
+  return axiosInstance.post(`/api/bookings/book/${sessionId}`);
 };
 
 
-// --- PROFILES & COACH DISCOVERY API ---
+// --- COACH PROFILE & DISCOVERY API (Public & Logged-in User) ---
 
-// Fetch list of all coaches (public, with optional search/filter)
+// Fetches list of coaches (public, supports search/filter)
 export const getAllCoaches = (searchTerm = '', audience = '') => {
-  return axiosInstance.get(`/api/coach-profile/coaches`, { // Match backend route
-    params: {
-      search: searchTerm,
-      audience: audience,
-    }
+  // Uses the public profiles route
+  return axiosInstance.get(`/api/profiles/coaches`, { // Corrected Path
+    params: { search: searchTerm, audience: audience }
   });
 };
 
-// Fetch details for a specific coach (public)
+// Fetches public details of a specific coach (by User ID)
 export const getCoachById = (coachId) => {
-  // Assuming coachId is the User ID, adjust if it's CoachProfile ID
-  return axiosInstance.get(`/api/coach-profile/coach/${coachId}`); // Match backend route
+  // Uses the public profiles route
+  return axiosInstance.get(`/api/profiles/coach/${coachId}`); // Corrected Path
 };
 
-// Add an item to coach profile (e.g., certification, education) - Requires auth
-export const addProfileItem = (payload) => {
-  return axiosInstance.post('/api/coach-profile/add-item', payload); // Match backend route
-};
-
-// Remove an item from coach profile - Requires auth
-export const removeProfileItem = (payload) => {
-  return axiosInstance.post('/api/coach-profile/remove-item', payload); // Match backend route
-};
-
-// Update coach profile data - Requires auth
-export const updateUserProfile = (profileData) => {
-  // Check if data is FormData (for file uploads alongside other data)
-  const isFormData = profileData instanceof FormData;
-  const config = {};
-  if (isFormData) {
-    // Let Axios set Content-Type automatically for FormData
-    config.headers = { 'Content-Type': undefined };
-  }
-  return axiosInstance.put('/api/coach-profile/profile', profileData, config); // Match backend route
-};
-
-// Fetch the logged-in coach's own profile - Requires auth
+// Fetches the logged-in coach's own detailed profile - Requires auth
 export const getCoachProfile = () => {
-  return axiosInstance.get("/api/coach-profile/profile"); // Match backend route
+  return axiosInstance.get("/api/coach-profile/profile"); // Uses the coach-specific route
 };
 
-// --- CLIENT PROFILES API ---
+// Updates the logged-in coach's profile - Requires auth
+export const updateUserProfile = (profileData) => {
+  const isFormData = profileData instanceof FormData;
+  const config = isFormData ? { headers: { 'Content-Type': undefined } } : {};
+  return axiosInstance.put('/api/coach-profile/profile', profileData, config); // Uses the coach-specific route
+};
 
-// Update client profile data - Requires auth
+// Adds an item (e.g., certification) to coach profile - Requires auth
+export const addProfileItem = (payload) => {
+  return axiosInstance.post('/api/coach-profile/add-item', payload); // Uses the coach-specific route
+};
+
+// Removes an item from coach profile - Requires auth
+export const removeProfileItem = (payload) => {
+  return axiosInstance.post('/api/coach-profile/remove-item', payload); // Uses the coach-specific route
+};
+
+
+// --- CLIENT PROFILE API ---
+
+// Updates the logged-in client's profile - Requires auth
 export const updateClientProfile = (profileData) => {
-  return axiosInstance.put('/api/client-profile/profile', profileData); // Match backend route
+  return axiosInstance.put('/api/client-profile/profile', profileData); // Corrected Path
 };
 
-// Upload client profile picture - Requires auth (uses separate instance for FormData)
+// Uploads client profile picture - Requires auth (uses separate instance)
 export const uploadClientProfilePicture = (file) => {
   const formData = new FormData();
   formData.append('profilePicture', file);
   const token = localStorage.getItem("accessToken");
 
-  return axios.create({ // Use plain axios.create
+  return axios.create({ // Use plain axios instance
     baseURL: API_BASE_URL,
     withCredentials: true,
     headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': token ? `Bearer ${token}` : undefined,
+      'Content-Type': 'multipart/form-data',
+      'Authorization': token ? `Bearer ${token}` : undefined,
     },
-  }).post('/api/client-profile/upload-picture', formData); // Match backend route
+  }).post('/api/client-profile/profile/upload-picture', formData); // Corrected Path
 };
 
-// Delete client profile picture - Requires auth
+// Deletes the logged-in client's profile picture - Requires auth
 export const deleteClientProfilePicture = () => {
-    return axiosInstance.delete('/api/client-profile/picture'); // Match backend route
+  return axiosInstance.delete('/api/client-profile/profile/picture'); // Corrected Path
 };
 
 
-// =========================================================
-// SESSION MANAGEMENT FUNCTIONS (Coach perspective)
-// =========================================================
-// Create a new session type - Requires coach auth
+// --- SESSION MANAGEMENT API (Coach Perspective) ---
+// Creates a new session type - Requires coach auth
 export const createSession = async (sessionData) => {
-    return axiosInstance.post(`/api/coach-profile/sessions`, sessionData); // Match backend route
+    // Assumes sessions are managed under coach-profile route
+    return axiosInstance.post(`/api/coach-profile/sessions`, sessionData);
 };
 
-// Update an existing session type - Requires coach auth
+// Updates a session type - Requires coach auth
 export const updateSession = async (sessionId, sessionData) => {
-    return axiosInstance.put(`/api/coach-profile/sessions/${sessionId}`, sessionData); // Match backend route
+    return axiosInstance.put(`/api/coach-profile/sessions/${sessionId}`, sessionData);
 };
 
-// Delete a session type - Requires coach auth
+// Deletes a session type - Requires coach auth
 export const deleteSession = async (sessionId) => {
-    return axiosInstance.delete(`/api/coach-profile/sessions/${sessionId}`); // Match backend route
-};
-
-// =========================================================
-// BOOKING FUNCTION (Client perspective)
-// =========================================================
-// Client books a specific session - Requires client auth
-export const bookSession = async (sessionId) => {
-    // Assuming this endpoint handles booking creation based on session ID
-    return axiosInstance.post(`/api/bookings/book/${sessionId}`); // Example route, adjust to match backend
-    // Or if using the old public route (less ideal if auth is needed):
-    // return axiosInstance.post(`/api/coach-profile/public/${sessionId}/book`);
+    return axiosInstance.delete(`/api/coach-profile/sessions/${sessionId}`);
 };
 
 
-// --- COACH DASHBOARD CLIENT MANAGEMENT API ---
-// Get clients who have booked sessions with the coach - Requires coach auth
+// --- COACH DASHBOARD API ---
+// Fetches clients who booked the coach - Requires coach auth
 export const getBookedClients = () => {
-    return axiosInstance.get('/api/coach-profile/clients/booked'); // Match backend route
+    return axiosInstance.get('/api/coach-profile/clients/booked');
 };
 
-// Get clients who follow the coach - Requires coach auth
+// Fetches clients following the coach - Requires coach auth
 export const getFollowedClients = () => {
-    return axiosInstance.get('/api/coach-profile/clients/followed'); // Match backend route
+    return axiosInstance.get('/api/coach-profile/clients/followed');
 };
 
-// --- CLIENT DASHBOARD: FOLLOWING ---
-// Client gets list of coaches they follow - Requires client auth
-export const getFollowedCoachesClient = () => {
-    // Needs a dedicated backend route, e.g., GET /api/client-profile/following
-    return axiosInstance.get(`/api/client-profile/following`); // Example route, adjust to match backend
-};
-
-// --- DASHBOARD OVERVIEWS ---
-// Fetch overview stats for coach dashboard - Requires coach auth
+// Fetches overview stats for the coach dashboard - Requires coach auth
 export const getCoachDashboardOverview = () => {
-    return axiosInstance.get('/api/coach-profile/dashboard/overview'); // Match backend route
+    return axiosInstance.get('/api/coach-profile/dashboard/overview');
 };
-// Fetch overview stats for client dashboard - Requires client auth
+
+// Fetches the coach's own bookings list - Requires coach auth
+export const getMyCoachBookings = () => {
+  return axiosInstance.get("/api/coach-profile/my-bookings");
+};
+
+
+// --- CLIENT DASHBOARD API ---
+// Fetches overview stats for the client dashboard - Requires client auth
 export const getClientDashboardOverview = () => {
-    // Needs a dedicated backend route, e.g., GET /api/client-profile/dashboard/overview
-    return axiosInstance.get('/api/client-profile/dashboard/overview'); // Example route, adjust to match backend
-}
+    return axiosInstance.get('/api/client-profile/dashboard/overview'); // Corrected Path, Added Function
+};
+
+// Fetches coaches the client is following - Requires client auth
+export const getFollowedCoachesClient = () => {
+    // Needs matching backend route, e.g., in clientProfile routes
+    return axiosInstance.get(`/api/client-profile/following`); // Example Path
+};
 
 
 // --- TESTIMONIALS API ---
 
-// Client submits a testimonial for a coach - Requires client auth
+// Submits a new testimonial or updates an existing one - Requires client auth
 export const submitTestimonial = (coachId, data) => { // coachId is User ID
-    return axiosInstance.post(`/api/testimonials/coach/${coachId}`, data); // Matches new route
+    return axiosInstance.post(`/api/testimonials/coach/${coachId}`, data); // Matches testimonial route
 };
 
-// Client checks general eligibility to review ANY session by a coach - Requires client auth
+// Checks if client can review *any* session by a coach - Requires client auth
 export const checkClientReviewEligibility = (coachId) => { // coachId is User ID
-    // Calls GET /api/testimonials/eligibility/:coachId
-    return axiosInstance.get(`/api/testimonials/eligibility/${coachId}`); // Matches new route
+    return axiosInstance.get(`/api/testimonials/eligibility/${coachId}`); // Matches testimonial route
 };
 
-// Client checks eligibility to review a SPECIFIC booking - Requires client auth
+// Checks if client can review a *specific* booking - Requires client auth
 export const checkBookingReviewEligibility = (bookingId) => {
-    // Calls GET /api/testimonials/check-booking/:bookingId
-    return axiosInstance.get(`/api/testimonials/check-booking/${bookingId}`); // Matches new route
+    return axiosInstance.get(`/api/testimonials/check-booking/${bookingId}`); // Matches testimonial route
 };
 
-// Fetch approved testimonials for a specific coach (public)
+// Fetches approved testimonials for a specific coach (public)
 export const getCoachTestimonials = (coachId) => { // coachId is User ID
-    // Calls GET /api/testimonials/coach/:coachId
-    return axiosInstance.get(`/api/testimonials/coach/${coachId}`); // Matches new route (public endpoint)
-}
+    return axiosInstance.get(`/api/testimonials/coach/${coachId}`); // Matches testimonial route (public)
+};
 
-// Client deletes their own testimonial - Requires client auth
+// Deletes the logged-in client's own testimonial - Requires client auth
 export const deleteMyTestimonial = (testimonialId) => {
-    // Calls DELETE /api/testimonials/:testimonialId
-    return axiosInstance.delete(`/api/testimonials/${testimonialId}`); // Matches new route
-}
+    return axiosInstance.delete(`/api/testimonials/${testimonialId}`); // Matches testimonial route
+};
 
-// Client updates their own testimonial - Requires client auth
+// Updates the logged-in client's own testimonial - Requires client auth
 export const updateMyTestimonial = (testimonialId, data) => {
-     // Calls PUT /api/testimonials/:testimonialId
-    return axiosInstance.put(`/api/testimonials/${testimonialId}`, data); // Matches new route
-}
+    return axiosInstance.put(`/api/testimonials/${testimonialId}`, data); // Matches testimonial route
+};

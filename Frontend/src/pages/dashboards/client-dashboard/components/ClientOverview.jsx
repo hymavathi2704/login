@@ -2,181 +2,150 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Users,
-  Calendar,
-  Clock,
-  MessageSquare,
-  Star,
-  Target,
-  BookOpen,
-  Video
+  Users,
+  CalendarCheck2, // Changed from Calendar for completed
+  Clock,
+  Target,
+  // Removed unused icons like MessageSquare, Star, BookOpen, Video
 } from 'lucide-react';
 import { useAuth } from '../../../../auth/AuthContext';
-import { getMyClientSessions, getFollowedCoachesClient } from '@/auth/authApi';
+// 🛑 Import the CORRECT API function
+import { getClientDashboardOverview } from '@/auth/authApi';
 import { toast } from 'sonner';
-
-// REMOVED IMPORT: Import of UpcomingSessions is no longer needed
 
 
 const ClientOverview = () => {
-  const { user } = useAuth();
-  
-  // ✅ NEW STATE: To hold dynamic counts
-  const [sessionCount, setSessionCount] = useState({
-      allBooked: "...", // Total Sessions I Booked
-      completed: "...",
-      upcoming: "...",
-  });
-  const [followedCoachesCount, setFollowedCoachesCount] = useState("...");
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const { user } = useAuth();
 
-  // Utility function to calculate session counts (kept local to this component for independence)
-  const calculateSessionCounts = (sessionsData) => {
-      const today = new Date();
-      // Set time to 00:00:00 for accurate day-based comparison
-      today.setHours(0, 0, 0, 0);
+  // State to hold dynamic counts fetched from the API
+  const [statsData, setStatsData] = useState({
+    upcomingSessions: "...",
+    completedSessions: "...",
+    followedCoaches: "...",
+    // Add other stats if your backend provides them
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-      let upcoming = 0;
-      let completed = 0;
-      let allBooked = 0;
+  // Fetch all required stats on component mount
+  const fetchClientStats = useCallback(async () => {
+    setIsLoadingStats(true);
+    try {
+        // 🛑 Call the correct API endpoint
+        const response = await getClientDashboardOverview();
 
-      sessionsData.forEach(booking => {
-          // Only process bookings that are confirmed and have a date
-          if (booking.status === 'confirmed' && booking.Session?.defaultDate) {
-              allBooked++;
-              const sessionDate = new Date(booking.Session.defaultDate);
-              sessionDate.setHours(0, 0, 0, 0);
+        // Update state with data directly from the backend response
+        setStatsData({
+            upcomingSessions: response.data.upcomingSessions?.toString() || '0',
+            completedSessions: response.data.completedSessions?.toString() || '0',
+            followedCoaches: response.data.followedCoaches?.toString() || '0',
+            // Map other stats if returned by the backend
+        });
 
-              if (sessionDate >= today) {
-                  upcoming++;
-              } else {
-                  completed++;
-              }
-          } else if (booking.Session?.defaultDate) {
-              // Count pending/cancelled sessions towards total if they have a scheduled date
-              allBooked++;
-          }
-      });
-      
-      return { allBooked, upcoming, completed };
-  };
+    } catch (error) {
+        console.error("Failed to fetch client dashboard stats:", error);
+        toast.error(error.message || "Failed to load dashboard statistics.");
+        // Set stats to N/A on error
+        setStatsData({
+            upcomingSessions: "N/A",
+            completedSessions: "N/A",
+            followedCoaches: "N/A",
+        });
+    } finally {
+        setIsLoadingStats(false);
+    }
+  }, []); // Empty dependency array means this runs once on mount
 
-  // ✅ NEW: Fetch all required stats on mount
-  const fetchClientStats = useCallback(async () => {
-    setIsLoadingStats(true);
-    try {
-        // 1. Fetch all bookings for session counts
-        const bookingsResponse = await getMyClientSessions();
-        const counts = calculateSessionCounts(bookingsResponse.data);
-        setSessionCount({
-            allBooked: counts.allBooked.toString(),
-            completed: counts.completed.toString(),
-            upcoming: counts.upcoming.toString(),
-        });
+  useEffect(() => {
+      fetchClientStats();
+  }, [fetchClientStats]);
 
-        // 2. Fetch Followed Coaches Count
-        const followedResponse = await getFollowedCoachesClient();
-        // Assuming the response data contains a 'coaches' array
-        setFollowedCoachesCount(followedResponse.data?.coaches?.length?.toString() || '0');
+  // Define the stats structure using fetched data
+  const stats = [
+    {
+      title: "Upcoming Sessions",
+      value: isLoadingStats ? "..." : statsData.upcomingSessions,
+      // You can add more dynamic change text if needed
+      change: statsData.upcomingSessions > 0 ? "Check schedule" : "Time to book!",
+      changeType: statsData.upcomingSessions > 0 ? "positive" : "neutral",
+      icon: Clock,
+      color: "bg-blue-500"
+    },
+    {
+      title: "Completed Sessions",
+      value: isLoadingStats ? "..." : statsData.completedSessions,
+      change: "Sessions attended", // Simplified change text
+      changeType: "neutral",
+      icon: CalendarCheck2, // Use updated icon
+      color: "bg-green-500"
+    },
+    {
+      title: "Coaches Followed",
+      value: isLoadingStats ? "..." : statsData.followedCoaches,
+      change: "Explore More",
+      changeType: "neutral",
+      icon: Users,
+      color: "bg-purple-500"
+    },
+    // You could add a 4th stat here if needed, e.g., total bookings
+    {
+      title: "Total Bookings", // Example 4th Stat
+      // This assumes your backend sends a total, otherwise calculate from upcoming+completed
+      value: isLoadingStats ? "..." : (parseInt(statsData.upcomingSessions || 0) + parseInt(statsData.completedSessions || 0)).toString(),
+      change: "All sessions",
+      changeType: "neutral",
+      icon: Target,
+      color: "bg-yellow-500"
+    },
+  ];
 
-    } catch (error) {
-        console.error("Failed to fetch client dashboard stats:", error);
-        toast.error("Failed to load dashboard statistics.");
-        setSessionCount({ allBooked: "N/A", completed: "N/A", upcoming: "N/A" });
-        setFollowedCoachesCount("N/A");
-    } finally {
-        setIsLoadingStats(false);
-    }
-  }, []);
+  return (
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white shadow-md">
+        <h2 className="text-2xl font-bold mb-2">
+            Welcome back, {user?.firstName || 'Client'}!
+        </h2>
+        {/* Display the dynamic upcoming sessions count */}
+        <p className="text-blue-100">
+            You have {isLoadingStats ? '...' : statsData.upcomingSessions} upcoming session(s). Stay prepared!
+        </p>
+      </div>
 
-  useEffect(() => {
-      fetchClientStats();
-  }, [fetchClientStats]);
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => {
+          const Icon = stat.icon;
+          // Determine text color based on change type for better contrast/meaning
+          let changeTextColor = 'text-gray-500'; // Default neutral
+          if (stat.changeType === 'positive') changeTextColor = 'text-green-600';
+          if (stat.changeType === 'negative') changeTextColor = 'text-red-600';
 
-  // MODIFIED: Use dynamic values in the stats array
-  const stats = [
-    {
-      // ✅ 1. Sessions I booked (Total count of all bookings)
-      title: "Total Booked Sessions", 
-      value: sessionCount.allBooked,
-      change: "All time total",
-      changeType: "neutral",
-      icon: Target, 
-      color: "bg-yellow-500" 
-    },
-    {
-      // ✅ 2. No of coaches I follow
-      title: "Coaches Followed", 
-      value: followedCoachesCount,
-      change: "Explore More", 
-      changeType: "neutral",
-      icon: Users, 
-      color: "bg-purple-500" 
-    },
-    {
-      // ✅ 3. Upcoming sessions
-      title: "Upcoming Sessions",
-      value: sessionCount.upcoming, 
-      change: sessionCount.upcoming > 0 ? "Check schedule" : "Time to book!",
-      changeType: sessionCount.upcoming > 0 ? "positive" : "negative",
-      icon: Clock,
-      color: "bg-blue-500"
-    },
-    {
-      // ✅ 4. Completed sessions
-      title: "Completed Sessions",
-      value: sessionCount.completed,
-      change: "+2 this month", // Kept mock for change delta
-      changeType: "positive",
-      icon: Calendar,
-      color: "bg-green-500"
-    }
-  ];
+          return (
+            <div key={index} className="bg-white p-5 rounded-xl border border-gray-200 shadow hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                {/* Text Content */}
+                <div className="flex-1 space-y-1">
+                  <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                  <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+                  <p className={`text-xs font-medium ${changeTextColor}`}>
+                    {stat.change}
+                  </p>
+                </div>
+                {/* Icon */}
+                <div className={`w-10 h-10 ${stat.color} rounded-lg flex items-center justify-center flex-shrink-0 ml-4`}>
+                  <Icon size={20} className="text-white" />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-  // REMOVED: The recentActivities array definition has been removed.
+      {/* Removed the lower section with Recent Activities/Upcoming Sessions Preview */}
+      {/* The UpcomingSessions component handles the detailed list separately */}
 
-  return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">
-           Welcome back, {user?.firstName || 'Client'}!
-        </h2>
-        {/* MODIFIED: Display the dynamic upcoming sessions count */}
-        <p className="text-blue-100">
-            You have {isLoadingStats ? '...' : sessionCount.upcoming} upcoming session(s)
-        </p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div key={index} className="bg-white p-6 rounded-xl border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mb-2">{stat.value}</p>
-                  <p className={`text-sm ${
-                    stat.changeType === 'positive' ? 'text-green-600' :
-                    stat.changeType === 'negative' ? 'text-red-600' : 'text-gray-500'
-                  }`}>
-                    {stat.change}
-                  </p>
-                </div>
-                <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
-                  <Icon size={24} className="text-white" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Main Content Grid REMOVED */}
-    </div>
-  );
+    </div>
+  );
 };
 
 export default ClientOverview;
