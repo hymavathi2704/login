@@ -29,17 +29,20 @@ const getPublicCoachProfile = async (req, res) => {
                     as: 'user', 
                     attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'profilePicture'], 
                 },
-                { // Testimonials received by this coach
+                { 
+                    // Testimonials received by this coach
                     model: Testimonial,
                     as: 'testimonials',
                     required: false,
                     foreignKey: 'coachProfileId',
-                    attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date'], 
+                    // 👇 We only select basic testimonial and client data
+                    attributes: ['id', 'clientId', 'clientTitle', 'rating', 'content', 'date', 'bookingId'], 
                     include: [{ 
                         model: User,
-                        as: 'client', // ✅ CRITICAL FIX: Alias changed to 'client' to match Testimonial.js
+                        as: 'client', 
                         attributes: ['id', 'firstName', 'lastName', 'profilePicture'],
                     }]
+                    // 🛑 Removed all nested Booking and Session includes 🛑
                 },
                 { // Include the coach's available services
                     model: Session,
@@ -87,17 +90,18 @@ const getPublicCoachProfile = async (req, res) => {
             }));
         }
         
-        // Format testimonials
+        // 🔑 REVERTED FORMATTING: Use a static placeholder for session
         const formattedTestimonials = (plainCoachProfile.testimonials || []).map(t => ({
             id: t.id,
             clientId: t.clientId,
-            clientName: t.client ? `${t.client.firstName} ${t.client.lastName}` : 'Anonymous Client', // Use t.client
+            clientName: t.client ? `${t.client.firstName} ${t.client.lastName}` : 'Anonymous Client',
             clientAvatar: t.client?.profilePicture || '/default-avatar.png', 
             clientTitle: t.clientTitle,
             rating: t.rating,
             content: t.content,
             date: t.date,
-            sessionType: t.sessionType,
+            // 🛑 Reverting to a static string, as no session data is fetched
+            sessionTitle: 'Session', 
         }));
 
         const sessionPrices = availableSessions.length > 0 ? availableSessions.map(s => s.price) : [0];

@@ -104,11 +104,11 @@ const TestimonialsSection = ({
 
                 {/* Footer: Date and Session Type */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
-                    <span>Reviewed on: {formatDate(t.date)}</span>
-                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full capitalize">
-                        {t.sessionType || 'Session'}
-                    </span>
-                </div>
+    {/* Only display the review date */}
+    <span>Reviewed on: {formatDate(t.date)}</span> 
+    
+    {/* The session tag is now removed */}
+</div>
             </div>
         ))}
       </div>

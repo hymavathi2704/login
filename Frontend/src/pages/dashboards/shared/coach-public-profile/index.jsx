@@ -79,7 +79,7 @@ const CoachPublicProfile = ({ coachId: propCoachId }) => {
 
   const handleExploreMore = () => {
     // This button correctly navigates to the *internal* Explore Coaches page
-    navigate('/dashboard/client/explore-coaches'); 
+    navigate('/dashboard/client/explore'); 
   };
 
   if (loading) {
