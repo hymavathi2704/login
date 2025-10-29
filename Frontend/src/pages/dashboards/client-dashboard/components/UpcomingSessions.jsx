@@ -184,16 +184,19 @@ const ReviewModal = ({ isOpen, onClose, eligibleSessions, refreshList }) => {
 
           {/* Testimonial Content Textarea */}
           <Textarea
-            label="Your Testimonial <span class='text-red-500'>*</span>"
-            name="content"
-            value={form.content}
-            onChange={handleFormChange}
-            rows={4}
-            placeholder="Share your experience with this session and coach..."
-            required
-            aria-required="true"
-          />
-
+  label={
+    <>
+      Your Testimonial <span className="text-red-500">*</span>
+    </>
+  }
+  name="content"
+  value={form.content}
+  onChange={handleFormChange}
+  rows={4}
+  placeholder="Share your experience with this session and coach..."
+  required
+  aria-required="true"
+/>
           {/* Optional Client Title Input */}
           <div className="space-y-1">
              <label htmlFor="clientTitleInput" className="block text-sm font-medium text-gray-700">Your Title (Optional)</label>
